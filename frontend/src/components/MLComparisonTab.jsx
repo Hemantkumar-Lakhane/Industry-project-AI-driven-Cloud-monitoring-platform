@@ -91,7 +91,7 @@ const MLComparisonTab = ({ showToast }) => {
             <BarChart data={chartData}>
               <XAxis dataKey="model" stroke="#8b949e" tick={{ fontSize: 11 }} />
               <YAxis stroke="#8b949e" domain={[0, 100]} tick={{ fontSize: 11 }} />
-              <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.98)', border: '1px solid rgba(23,33,43,0.08)', borderRadius: '12px', color: '#17212b', boxShadow: '0 12px 30px rgba(23,33,43,0.08)' }} />
+              <Tooltip contentStyle={{ backgroundColor: 'rgba(26,26,46,0.98)', border: '1px solid #e8870e', borderRadius: '12px', color: '#ffffff', boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }} />
               <Legend />
               <Bar dataKey="accuracy" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               <Bar dataKey="precision" fill="#8b5cf6" radius={[4, 4, 0, 0]} />

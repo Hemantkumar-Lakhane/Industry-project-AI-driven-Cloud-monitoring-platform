@@ -99,7 +99,7 @@ const AttackSimulationTab = ({ showToast }) => {
               }}
             >
               {INTENSITY_OPTIONS.map((level) => (
-                <option key={level} value={level} style={{ background: '#141b2d' }}>
+                <option key={level} value={level} style={{ background: '#1a1a2e' }}>
                   {formatLabel(level)}
                 </option>
               ))}
