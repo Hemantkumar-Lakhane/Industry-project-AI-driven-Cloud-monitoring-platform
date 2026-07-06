@@ -150,7 +150,7 @@ const Dashboard = () => {
               <ResponsiveContainer><AreaChart data={chartData}>
                 <defs><linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
                 <XAxis dataKey="time" stroke="#8b949e" tick={{fontSize: 12}} /><YAxis stroke="#8b949e" domain={[0, 1]} tick={{fontSize: 12}} />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.98)', border: '1px solid rgba(23,33,43,0.08)', borderRadius: '12px', color: '#17212b', boxShadow: '0 12px 30px rgba(23,33,43,0.08)' }} />
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(26,26,46,0.98)', border: '1px solid #e8870e', borderRadius: '12px', color: '#ffffff', boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }} />
                 <Area type="monotone" dataKey="score" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorScore)" />
               </AreaChart></ResponsiveContainer>
             </div>
@@ -280,7 +280,7 @@ const Dashboard = () => {
           {complianceDashboard && (<div className="panel col-span-6"><h2 className="section-title"><BarChart3 /> Framework Comparison</h2><div style={{ height: '300px' }}>
             <ResponsiveContainer><BarChart data={Object.entries(complianceDashboard.frameworks).map(([key, fw]) => ({ name: key, Passing: fw.passing, Failing: fw.failing }))}>
             <XAxis dataKey="name" stroke="#8b949e" tick={{ fontSize: 12 }} /><YAxis stroke="#8b949e" tick={{ fontSize: 12 }} />
-            <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.98)', border: '1px solid rgba(23,33,43,0.08)', borderRadius: '12px', color: '#17212b', boxShadow: '0 12px 30px rgba(23,33,43,0.08)' }} /><Legend />
+            <Tooltip contentStyle={{ backgroundColor: 'rgba(26,26,46,0.98)', border: '1px solid #e8870e', borderRadius: '12px', color: '#ffffff', boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }} /><Legend />
             <Bar dataKey="Passing" fill="#10b981" radius={[4, 4, 0, 0]} /><Bar dataKey="Failing" fill="#ef4444" radius={[4, 4, 0, 0]} />
             </BarChart></ResponsiveContainer></div></div>)}
           <div className="panel col-span-6"><h2 className="section-title"><FileText /> Report Preview</h2>
