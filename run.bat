@@ -55,7 +55,7 @@ if not exist "%BACKEND_DIR%\models\iforest.pkl" (
     echo [INFO] Trained models not found. Running train_model.py...
     python train_model.py
 ) else (
-    echo [OK] Pre-trained models found (iforest, knn, hbos).
+    echo [OK] Pre-trained models found: iforest, knn, hbos.
 )
 
 echo.

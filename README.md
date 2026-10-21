@@ -76,6 +76,27 @@ Industry(Ram)/
 
 ---
 
+## Quick Start (Windows 1-Click Launch)
+
+You can launch the entire platform with all dependencies checked and all 3 services running simultaneously using the included launcher script:
+
+```cmd
+run.bat
+```
+
+**What `run.bat` automatically handles:**
+1. **Prerequisite Check**: Validates that Python 3.10+ and Node.js 18+ / npm are installed and in your PATH.
+2. **Backend Dependencies**: Automatically checks and installs required Python packages (`pip install -r requirements.txt`).
+3. **ML Model Verification**: Checks whether trained specialist models (`iforest`, `knn`, `hbos`) exist; automatically runs `train_model.py` if not found.
+4. **Frontend Dependencies**: Checks and installs frontend dependencies (`npm install`) if `node_modules` is missing.
+5. **Parallel Service Launch**: Spawns 3 dedicated, color-coded terminal windows:
+   - **Terminal 1**: Live Wazuh Log Generator (`python simulator/log_generator.py 10`)
+   - **Terminal 2**: FastAPI Backend API (`http://localhost:8000`)
+   - **Terminal 3**: React Frontend UI via Vite (`http://localhost:5173`)
+6. Automatically launches your default web browser to `http://localhost:5173`.
+
+---
+
 ## Step 1 — Install Backend Dependencies
 
 ```bash
