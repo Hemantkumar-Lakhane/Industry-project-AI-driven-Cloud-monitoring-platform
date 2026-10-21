@@ -1,5 +1,5 @@
 """
-Tests for the /healthz health check endpoint.
+Tests for the /healthz health check and / root service endpoints.
 """
 import sys
 import os
@@ -11,6 +11,16 @@ from fastapi.testclient import TestClient
 from main import app
 
 client = TestClient(app)
+
+
+def test_root_endpoint_status_code_and_payload():
+    """Verify GET / returns HTTP 200 with service identification and status."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    data = response.json()
+    assert data["service"] == "RAM Antivirus Cloud Security API"
+    assert data["status"] == "running"
 
 
 def test_healthz_status_code_and_payload():

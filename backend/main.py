@@ -48,6 +48,15 @@ from engines.alert_engine import send_alert_email
 
 app = FastAPI(title="Advanced Cloud Security API")
 
+@app.get("/", tags=["General"])
+def root():
+    """Service identification endpoint."""
+    return {
+        "service": "RAM Antivirus Cloud Security API",
+        "status": "running"
+    }
+
+
 @app.get("/healthz", tags=["Health"])
 def health_check():
     """Lightweight health check endpoint for container probes and Render deployments."""
