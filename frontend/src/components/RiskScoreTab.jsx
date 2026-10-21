@@ -3,8 +3,7 @@ import axios from 'axios';
 import { Gauge, RefreshCw, AlertTriangle, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import { Badge, ScoreRing } from './SharedComponents';
-
-const API_URL = 'http://localhost:8000/api';
+import { API_URL } from '../config';
 
 const RiskScoreTab = ({ showToast }) => {
   const [risk, setRisk] = useState(null);

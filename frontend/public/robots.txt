@@ -1,0 +1,8 @@
+# Robots.txt for RAM Antivirus Cloud Security Platform
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /ws/
+
+# NOTE: Replace 'https://your-domain-placeholder.com' with your actual production domain once deployed
+Sitemap: https://your-domain-placeholder.com/sitemap.xml

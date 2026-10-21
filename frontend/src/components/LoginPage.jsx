@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Lock, User, Mail, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { BrandMark } from './SharedComponents';
-
-const API_URL = 'http://localhost:8000/api';
+import { API_URL } from '../config';
 
 const LoginPage = ({ onLogin }) => {
   const [isRegister, setIsRegister] = useState(false);

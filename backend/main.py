@@ -48,18 +48,37 @@ from engines.alert_engine import send_alert_email
 
 app = FastAPI(title="Advanced Cloud Security API")
 
+@app.get("/healthz", tags=["Health"])
+def health_check():
+    """Lightweight health check endpoint for container probes and Render deployments."""
+    return {"status": "ok"}
+
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://zrtjg51w-5173.inc1.devtunnels.ms"
+    "https://zrtjg51w-5173.inc1.devtunnels.ms",
 ]
+
+# Allow configuring production frontend origin(s) (e.g., Vercel deployment) via environment
+extra_origins = os.environ.get("FRONTEND_URL") or os.environ.get("CORS_ORIGINS", "")
+if extra_origins:
+    for origin in extra_origins.split(","):
+        cleaned = origin.strip().rstrip("/")
+        if cleaned and cleaned not in ALLOWED_ORIGINS:
+            ALLOWED_ORIGINS.append(cleaned)
+
+# Support Vercel domains (*.vercel.app) and devtunnels via configurable regex
+CORS_ORIGIN_REGEX = os.environ.get(
+    "CORS_ORIGIN_REGEX",
+    r"^https://.*(\.devtunnels\.ms|\.vercel\.app)$"
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"^https://.*\.devtunnels\.ms$",
+    allow_origin_regex=CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

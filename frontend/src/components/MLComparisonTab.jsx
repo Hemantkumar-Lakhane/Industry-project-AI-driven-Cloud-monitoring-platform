@@ -3,8 +3,7 @@ import axios from 'axios';
 import { Cpu, RefreshCw, Trophy } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Badge } from './SharedComponents';
-
-const API_URL = 'http://localhost:8000/api';
+import { API_URL } from '../config';
 
 const MLComparisonTab = ({ showToast }) => {
   const [comparison, setComparison] = useState(null);

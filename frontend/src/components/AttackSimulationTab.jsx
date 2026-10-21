@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Crosshair, Play, RefreshCw, AlertTriangle, CheckCircle, XCircle, Zap, Target, Hammer, ArrowUpRight, Upload, Globe, Sparkles } from 'lucide-react';
 import { Badge } from './SharedComponents';
-
-const API_URL = 'http://localhost:8000/api';
+import { API_URL } from '../config';
 
 const FALLBACK_SCENARIO_INFO = {
   brute_force: { icon: Hammer, color: '#c2410c' },

@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Users, UserCheck, UserX, RefreshCw, Shield, Mail, Clock } from 'lucide-react';
 import { Badge } from './SharedComponents';
-
-const API_URL = 'http://localhost:8000/api';
+import { API_URL } from '../config';
 
 const UserManagementTab = ({ token, showToast }) => {
   const [users, setUsers] = useState([]);

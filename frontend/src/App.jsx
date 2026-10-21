@@ -8,9 +8,8 @@ import AttackSimulationTab from './components/AttackSimulationTab';
 import RiskScoreTab from './components/RiskScoreTab';
 import MLComparisonTab from './components/MLComparisonTab';
 import UserManagementTab from './components/UserManagementTab';
+import { API_URL } from './config';
 import './index.css';
-
-const API_URL = 'http://localhost:8000/api';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
