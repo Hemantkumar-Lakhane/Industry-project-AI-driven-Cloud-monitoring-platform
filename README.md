@@ -1,4 +1,5 @@
 # Ram Antivirus — Cloud Security AI Platform
+
 ### Setup & Run Guide
 
 ---
@@ -6,6 +7,7 @@
 ## What This Project Does
 
 A full-stack cloud security platform that:
+
 - Reads real or simulated Wazuh security logs every minute
 - Runs 3 specialist ML models (trained on NSL-KDD, CICIDS-2017, UNSW-NB15) to detect anomalies
 - Derives CSPM and CIEM findings directly from log events — no random selection
@@ -66,11 +68,11 @@ Industry(Ram)/
 
 ## Prerequisites
 
-| Tool | Version | Download |
-|---|---|---|
-| Python | 3.10+ | https://python.org |
-| Node.js | 18+ | https://nodejs.org |
-| pip | latest | comes with Python |
+| Tool    | Version | Download           |
+| ------- | ------- | ------------------ |
+| Python  | 3.10+   | https://python.org |
+| Node.js | 18+     | https://nodejs.org |
+| pip     | latest  | comes with Python  |
 
 ---
 
@@ -96,6 +98,7 @@ python train_model.py
 ```
 
 Expected output:
+
 ```
 === Ram Antivirus — Specialist ML Model Training ===
 
@@ -116,6 +119,7 @@ Expected output:
 ```
 
 What each model specialises in:
+
 - `iforest` (NSL-KDD) → brute force, privilege escalation, port scan
 - `knn` (CICIDS-2017) → DDoS, web attacks, botnet, lateral movement
 - `hbos` (UNSW-NB15) → malware, reconnaissance, backdoor, shellcode
@@ -133,11 +137,13 @@ python simulator/log_generator.py
 ```
 
 To generate logs faster (every 10 seconds) for demo purposes:
+
 ```bash
 python simulator/log_generator.py 10
 ```
 
 Expected output:
+
 ```
 === Ram Antivirus — Live Log Generator ===
 Writing to: backend/data/alerts.json
@@ -158,16 +164,19 @@ Leave this running. Press `Ctrl+C` to stop.
 Tell the backend to read from the live log file:
 
 **Windows (Command Prompt):**
+
 ```cmd
 set WAZUH_LOG_PATH=data/alerts.json
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 $env:WAZUH_LOG_PATH = "data/alerts.json"
 ```
 
 **Optional — Email Alerts (Gmail):**
+
 ```cmd
 set ALERT_EMAIL_FROM=your@gmail.com
 set ALERT_EMAIL_PASS=your-16-char-app-password
@@ -175,12 +184,14 @@ set ALERT_EMAIL_TO=soc@yourcompany.com
 ```
 
 To get a Gmail app password:
+
 1. Go to https://myaccount.google.com/security
 2. Enable 2-Step Verification
 3. Go to App Passwords → generate one for "Mail"
 4. Use that 16-character password as `ALERT_EMAIL_PASS`
 
 **Optional — LocalStack (fake AWS):**
+
 ```cmd
 set LOCALSTACK_ENDPOINT=http://localhost:4566
 ```
@@ -195,6 +206,7 @@ python main.py
 ```
 
 Expected output:
+
 ```
 [ML Engine] Loaded 3 specialist models: ['iforest', 'knn', 'hbos']
   iforest    trained on NSL-KDD       F1=62.0%   specialises: brute_force, privilege_escalation
@@ -225,6 +237,7 @@ npm run dev
 ```
 
 Expected output:
+
 ```
   VITE v6.x.x  ready in 300ms
 
@@ -239,11 +252,11 @@ Open http://localhost:5173 in your browser.
 
 Use one of the default accounts:
 
-| Username | Password | Role | Access |
-|---|---|---|---|
-| `admin` | `admin123` | Admin | Everything including user management |
-| `analyst1` | `analyst123` | Analyst | View + ML + compliance + simulation |
-| `viewer1` | `viewer123` | Viewer | Read-only dashboards |
+| Username     | Password       | Role    | Access                               |
+| ------------ | -------------- | ------- | ------------------------------------ |
+| `admin`    | `admin123`   | Admin   | Everything including user management |
+| `analyst1` | `analyst123` | Analyst | View + ML + compliance + simulation  |
+| `viewer1`  | `viewer123`  | Viewer  | Read-only dashboards                 |
 
 ---
 
@@ -321,34 +334,34 @@ Check status at: http://localhost:8000/api/status
 
 ## All Running Terminals Summary
 
-| Terminal | Command | Purpose |
-|---|---|---|
-| 1 | `python simulator/log_generator.py 10` | Generates live security logs every 10s |
-| 2 | `set WAZUH_LOG_PATH=data/alerts.json` then `python main.py` | FastAPI backend |
-| 3 | `npm run dev` (in frontend/) | React frontend |
+| Terminal | Command                                                         | Purpose                                |
+| -------- | --------------------------------------------------------------- | -------------------------------------- |
+| 1        | `python simulator/log_generator.py 10`                        | Generates live security logs every 10s |
+| 2        | `set WAZUH_LOG_PATH=data/alerts.json` then `python main.py` | FastAPI backend                        |
+| 3        | `npm run dev` (in frontend/)                                  | React frontend                         |
 
 ---
 
 ## API Quick Reference
 
-| Endpoint | What it returns |
-|---|---|
-| `GET /api/status` | Wazuh / LocalStack / DB connection status |
-| `GET /api/simulate/events` | Latest analyzed events with ML scores |
-| `GET /api/cspm/scan` | CSPM findings derived from logs |
-| `GET /api/ciem/scan` | CIEM findings derived from logs |
-| `GET /api/risk/score` | Unified risk score + 7-day trend |
-| `GET /api/ml/compare` | 3 specialist models compared |
-| `GET /api/ml/model-info` | Training metadata for all 3 models |
-| `GET /api/compliance/dashboard` | ISO27001 / SOC2 / GDPR scores |
-| `GET /api/compliance/report?format=csv` | Download compliance report |
-| `GET /api/export/events` | Download events as CSV |
-| `GET /api/export/cspm` | Download CSPM findings as CSV |
-| `GET /api/export/ciem` | Download CIEM findings as CSV |
-| `GET /api/history/cspm` | Historical CSPM scans from SQLite |
-| `GET /api/history/alerts` | Alert log from SQLite |
-| `POST /api/alerts/test` | Send test email alert (admin only) |
-| `WS /ws/events` | WebSocket — live event stream every 10s |
+| Endpoint                                  | What it returns                           |
+| ----------------------------------------- | ----------------------------------------- |
+| `GET /api/status`                       | Wazuh / LocalStack / DB connection status |
+| `GET /api/simulate/events`              | Latest analyzed events with ML scores     |
+| `GET /api/cspm/scan`                    | CSPM findings derived from logs           |
+| `GET /api/ciem/scan`                    | CIEM findings derived from logs           |
+| `GET /api/risk/score`                   | Unified risk score + 7-day trend          |
+| `GET /api/ml/compare`                   | 3 specialist models compared              |
+| `GET /api/ml/model-info`                | Training metadata for all 3 models        |
+| `GET /api/compliance/dashboard`         | ISO27001 / SOC2 / GDPR scores             |
+| `GET /api/compliance/report?format=csv` | Download compliance report                |
+| `GET /api/export/events`                | Download events as CSV                    |
+| `GET /api/export/cspm`                  | Download CSPM findings as CSV             |
+| `GET /api/export/ciem`                  | Download CIEM findings as CSV             |
+| `GET /api/history/cspm`                 | Historical CSPM scans from SQLite         |
+| `GET /api/history/alerts`               | Alert log from SQLite                     |
+| `POST /api/alerts/test`                 | Send test email alert (admin only)        |
+| `WS /ws/events`                         | WebSocket — live event stream every 10s  |
 
 Full interactive docs: http://localhost:8000/docs
 
@@ -357,27 +370,32 @@ Full interactive docs: http://localhost:8000/docs
 ## Troubleshooting
 
 **Backend fails to start — ModuleNotFoundError**
+
 ```bash
 pip install -r requirements.txt
 ```
 
 **ML models not found warning on startup**
+
 ```bash
 cd backend
 python train_model.py
 ```
 
 **Dashboard shows "source: simulated" instead of "source: real"**
+
 - Make sure log_generator.py is running in Terminal 1
 - Make sure `WAZUH_LOG_PATH=data/alerts.json` is set before starting main.py
 - Check `GET /api/status` — wazuh.available should be true
 
 **Email alerts not sending**
+
 - Set `ALERT_EMAIL_FROM`, `ALERT_EMAIL_PASS`, `ALERT_EMAIL_TO` env vars
 - Use a Gmail App Password (not your regular Gmail password)
 - Alerts are always logged to SQLite even without SMTP configured
 
 **Frontend shows blank page**
+
 ```bash
 cd frontend
 npm install
@@ -385,6 +403,7 @@ npm run dev
 ```
 
 **Port already in use**
+
 ```bash
 # Kill process on port 8000
 netstat -ano | findstr :8000
@@ -403,6 +422,9 @@ viewer1  / viewer123   → read-only
 
 Register new users at: `POST /api/auth/register`
 Or use the Register button on the login page.
+
 # Industry-project-AI-driven-Cloud-monitoring-platform-
+
 # Industry-project-AI-driven-Cloud-monitoring-platform-
+
 # Industry-project-AI-driven-Cloud-monitoring-platform-
