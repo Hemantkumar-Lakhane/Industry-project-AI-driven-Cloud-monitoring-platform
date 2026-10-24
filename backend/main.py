@@ -45,6 +45,10 @@ from engines.db import (
     save_compliance_score, get_compliance_trend_db
 )
 from engines.alert_engine import send_alert_email
+from schemas.event import NormalizedEvent, normalize_event
+from schemas.finding import SecurityFinding
+from engines.base_detector import detector_registry
+from engines.detectors.brute_force import brute_force_detector
 
 # ── OpenAPI Tags & Metadata ───────────────────────────────────────────────────
 
@@ -1124,6 +1128,120 @@ def ml_model_comparison(
 def ml_model_info():
     """Return metadata about the loaded pre-trained models."""
     return {"status": "success", "data": get_model_info()}
+
+
+class EvaluateEventsRequest(BaseModel):
+    events: List[Dict[str, Any]] = Field(
+        ...,
+        description="Array of raw or normalized security telemetry events to evaluate"
+    )
+
+
+@app.get(
+    "/api/detection/detectors",
+    tags=["ML Detection & Analytics"],
+    summary="List Registered Attack Category Detectors",
+    description="Retrieve all modular attack category detectors registered in the platform, including taxonomy index, supported telemetry sources, and active status.",
+    response_description="Array of registered detector descriptors.",
+    responses={
+        200: {
+            "description": "Registered attack detectors retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "count": 1,
+                        "data": [
+                            {
+                                "category": "brute_force",
+                                "category_index": 1,
+                                "name": "Brute-Force & Credential Abuse Detector",
+                                "description": "Detects rapid consecutive authentication failures targeting an identity within a sliding time window.",
+                                "supported_sources": ["wazuh", "cloudtrail", "host_audit", "synthetic"],
+                                "enabled": True
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+)
+def list_attack_detectors():
+    return {
+        "status": "success",
+        "count": len(detector_registry.list_all()),
+        "data": detector_registry.list_all()
+    }
+
+
+@app.get(
+    "/api/detection/findings",
+    tags=["ML Detection & Analytics"],
+    summary="Run Attack Detectors on Telemetry Stream",
+    description="Fetch current security telemetry events from Wazuh or live buffer, normalize them, run all registered attack detectors (including Brute-Force Category 1), and return structured SecurityFinding objects.",
+    response_description="Array of security findings with observed facts, inferred hypotheses, and response playbooks.",
+    responses={
+        200: {
+            "description": "Detection executed and findings generated",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "count": 1,
+                        "data": [],
+                        "source": "simulated"
+                    }
+                }
+            }
+        }
+    }
+)
+def get_detected_findings(
+    normal: int = Query(50, ge=1, le=500, description="Baseline normal events count"),
+    attacks: int = Query(15, ge=0, le=200, description="Injected attack events count")
+):
+    raw_events = _get_events(normal, attacks)
+    norm_events = [normalize_event(e) for e in raw_events]
+    findings = detector_registry.run_all(norm_events)
+    return {
+        "status": "success",
+        "count": len(findings),
+        "data": [f.model_dump(mode="json") for f in findings],
+        "source": get_wazuh_status()["mode"]
+    }
+
+
+@app.post(
+    "/api/detection/evaluate",
+    tags=["ML Detection & Analytics"],
+    summary="Evaluate Event Batch with Attack Detectors",
+    description="Submit an arbitrary batch of telemetry events to normalize and evaluate against all registered attack category detectors.",
+    response_description="Array of security findings with evidence and response playbooks.",
+    responses={
+        200: {
+            "description": "Custom event batch evaluated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "count": 1,
+                        "data": []
+                    }
+                }
+            }
+        }
+    }
+)
+def evaluate_custom_events(payload: EvaluateEventsRequest):
+    norm_events = [normalize_event(e) for e in payload.events]
+    findings = detector_registry.run_all(norm_events)
+    return {
+        "status": "success",
+        "count": len(findings),
+        "data": [f.model_dump(mode="json") for f in findings]
+    }
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════

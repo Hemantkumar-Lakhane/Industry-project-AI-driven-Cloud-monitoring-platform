@@ -21,7 +21,7 @@ import json
 import joblib
 import numpy as np
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Any, Optional
 
 from pyod.models.iforest import IForest
 from pyod.models.knn import KNN
@@ -106,7 +106,12 @@ def _severity(score: float) -> str:
 
 
 def _scale_for(name: str, X: np.ndarray) -> np.ndarray:
-    """Apply the scaler that was fitted for this specific model."""
+    """Apply the scaler that was fitted for this specific model with dimension validation."""
+    if X.ndim != 2 or X.shape[1] != len(FEATURES):
+        raise ValueError(
+            f"Incompatible feature dimension for model '{name}'. "
+            f"Expected {len(FEATURES)} features ({FEATURES}), but received {X.shape[1] if X.ndim == 2 else 'invalid'}."
+        )
     scaler = _SCALERS[name]
     p99    = _META["models"][name]["p99_bytes_clip"] if _META else 1e9
     X      = X.copy()
@@ -117,8 +122,13 @@ def _scale_for(name: str, X: np.ndarray) -> np.ndarray:
 def _score_all(X_raw: np.ndarray) -> Dict[str, np.ndarray]:
     """
     Score X_raw with every loaded specialist model.
+    Validates input dimension before scoring.
     Returns dict: model_name → array of probabilities (0–1).
     """
+    if X_raw.ndim != 2 or X_raw.shape[1] != len(FEATURES):
+        print(f"[ML Engine] Incompatible feature dimension: expected {len(FEATURES)}, received {X_raw.shape[1] if X_raw.ndim == 2 else 'invalid'}")
+        return {}
+
     scores = {}
     for name, model in _MODELS.items():
         try:
@@ -127,6 +137,28 @@ def _score_all(X_raw: np.ndarray) -> Dict[str, np.ndarray]:
         except Exception as e:
             print(f"[ML Engine] {name} scoring failed: {e}")
     return scores
+
+
+def score_flow_features(X_flow: np.ndarray) -> Dict[str, Any]:
+    """
+    Controlled entry point for evaluating 9-dimensional operational flow features.
+    Returns explicit NOT CONFIGURED status since 9D models are not yet calibrated
+    and trained with verified dataset provenance.
+    """
+    if not isinstance(X_flow, np.ndarray) or X_flow.ndim != 2 or X_flow.shape[1] != 9:
+        return {
+            "status": "ERROR",
+            "message": f"Expected 9-dimensional feature matrix, but received shape {getattr(X_flow, 'shape', 'invalid')}.",
+            "compatible": False,
+        }
+    return {
+        "status": "NOT CONFIGURED",
+        "message": "9-dimensional operational flow models are scheduled for retraining in a dedicated validation phase. Existing serialized artifacts require the legacy 3-feature schema.",
+        "compatible": False,
+        "feature_dim": 9,
+        "active_models": 0,
+    }
+
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -302,10 +334,14 @@ def get_model_info() -> Dict:
             "models_dir": MODELS_DIR,
         }
     return {
-        "pretrained":       True,
-        "training_mode":    _META.get("training_mode"),
-        "scoring_strategy": _META.get("scoring_strategy"),
-        "features":         FEATURES,
+        "pretrained":                   True,
+        "training_mode":                _META.get("training_mode"),
+        "scoring_strategy":             _META.get("scoring_strategy"),
+        "features":                     FEATURES,
+        "feature_dimension":            len(FEATURES),
+        "feature_schema":               "legacy_3d",
+        "target_leakage_status":        "identified_for_retraining_phase",
+        "compatible_with_9d_extractor": False,
         "models": {
             MODEL_DISPLAY.get(k, k): {
                 "dataset":        v["dataset"],
