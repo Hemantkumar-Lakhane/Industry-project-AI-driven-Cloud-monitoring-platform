@@ -85,6 +85,7 @@ run.bat
 ```
 
 **What `run.bat` automatically handles:**
+
 1. **Prerequisite Check**: Validates that Python 3.10+ and Node.js 18+ / npm are installed and in your PATH.
 2. **Backend Dependencies**: Automatically checks and installs required Python packages (`pip install -r requirements.txt`).
 3. **ML Model Verification**: Checks whether trained specialist models (`iforest`, `knn`, `hbos`) exist; automatically runs `train_model.py` if not found.
@@ -443,9 +444,5 @@ viewer1  / viewer123   → read-only
 
 Register new users at: `POST /api/auth/register`
 Or use the Register button on the login page.
-
-# Industry-project-AI-driven-Cloud-monitoring-platform-
-
-# Industry-project-AI-driven-Cloud-monitoring-platform-
 
 # Industry-project-AI-driven-Cloud-monitoring-platform-
