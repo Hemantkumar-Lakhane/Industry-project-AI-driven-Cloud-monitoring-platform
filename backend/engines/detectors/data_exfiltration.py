@@ -14,16 +14,17 @@ from schemas.event import NormalizedEvent
 from schemas.finding import SecurityFinding
 from engines.base_detector import BaseDetector, detector_registry
 
-WAZUH_EXFIL_RULES: Set[int] = {31100, 31101, 31102}
+WAZUH_EXFIL_RULES: Set[int] = {31101, 31102}
 HIGH_VOLUME_BYTES_SINGLE = 100_000_000    # 100 MB single transfer
 MASSIVE_VOLUME_BYTES_SINGLE = 500_000_000 # 500 MB single transfer
+MODERATE_VOLUME_BYTES = 10_000_000        # 10 MB egress
 
 
 class DataExfiltrationDetector(BaseDetector):
     """
     Evaluates egress traffic and storage retrieval for:
     1. Single massive data transfers (> 100 MB / 500 MB) to external IP destinations.
-    2. Wazuh data exfiltration alert signatures (31100, 31101, 31102).
+    2. Wazuh data exfiltration alert signatures (31101, 31102).
     3. High-velocity repeated GetObject / download streams to external endpoints.
     """
 
@@ -50,9 +51,9 @@ class DataExfiltrationDetector(BaseDetector):
             src_ip = e.source_ip or ""
 
             # Check if this is external egress
-            is_wazuh_exfil = rule_id in WAZUH_EXFIL_RULES or attack_type == "data_exfiltration"
+            is_wazuh_exfil = (rule_id in WAZUH_EXFIL_RULES) or (attack_type == "data_exfiltration")
             is_massive_volume = bytes_out >= HIGH_VOLUME_BYTES_SINGLE
-            is_exfil_desc = "exfiltration" in (e.description or "").lower() or "large volume" in (e.description or "").lower()
+            is_exfil_desc = ("exfiltration" in (e.description or "").lower() or "large volume egress" in (e.description or "").lower()) and bytes_out > 0
 
             if not (is_wazuh_exfil or is_massive_volume or is_exfil_desc):
                 continue
@@ -60,12 +61,18 @@ class DataExfiltrationDetector(BaseDetector):
             principal = e.principal or e.user_id or "unknown-user"
             dest = dst_ip or "external-endpoint"
 
-            if bytes_out >= MASSIVE_VOLUME_BYTES_SINGLE or is_wazuh_exfil:
+            if bytes_out >= MASSIVE_VOLUME_BYTES_SINGLE or (is_wazuh_exfil and bytes_out >= HIGH_VOLUME_BYTES_SINGLE):
                 severity = "critical"
                 confidence = 0.95
-            else:
+            elif bytes_out >= HIGH_VOLUME_BYTES_SINGLE or is_wazuh_exfil:
                 severity = "high"
-                confidence = 0.85
+                confidence = 0.88
+            elif bytes_out >= MODERATE_VOLUME_BYTES:
+                severity = "medium"
+                confidence = 0.75
+            else:
+                severity = "medium"
+                confidence = 0.70
 
             mb_transferred = round(bytes_out / (1024 * 1024), 2)
             facts = [

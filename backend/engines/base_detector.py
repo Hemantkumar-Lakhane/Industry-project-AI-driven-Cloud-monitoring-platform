@@ -9,6 +9,7 @@ objects with strict separation of observed evidence from analytical inference.
 """
 from abc import ABC, abstractmethod
 import uuid
+import hashlib
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Union, Type
 
@@ -123,8 +124,12 @@ class BaseDetector(ABC):
             requires_admin_auth=True
         )
 
+        # Deterministic finding ID enables deduplication across repeated evaluation scans
+        id_seed = f"{self.category}:{affected_resource or 'none'}:{affected_principal or 'none'}:{title}"
+        det_hash = hashlib.sha256(id_seed.encode("utf-8")).hexdigest()[:8].upper()
+
         return SecurityFinding(
-            finding_id=f"FIND-{self.category.upper()[:4]}-{str(uuid.uuid4())[:8].upper()}",
+            finding_id=f"FIND-{self.category.upper()[:4]}-{det_hash}",
             attack_category=self.category,
             category_index=self.category_index,
             title=title,

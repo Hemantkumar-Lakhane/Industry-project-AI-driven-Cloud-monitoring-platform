@@ -551,6 +551,7 @@ const Dashboard = () => {
               showToast={showToast}
               cspm={data.cspm}
               ciem={data.ciem}
+              findings={findings}
             />
           )}
 

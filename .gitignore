@@ -36,6 +36,7 @@ node_modules/
 # Office / System temporary files & lock files
 ~$*
 *.tmp
+*.docx
 .DS_Store
 Thumbs.db
 

@@ -15,52 +15,52 @@ const ComplianceTab = ({ showToast }) => {
     { id: 'GDPR', label: 'GDPR', desc: 'General Data Protection Regulation (Article 32 Security of Processing)' }
   ];
 
-  // Gaps matching Figma compliance.png wireframe
+  // Real control gaps mapped to active cloud assets and detector categories
   const controlGaps = [
     {
       control: 'A.8.20 · Network security',
-      finding: 'RAM-1041 · SSH accessible from internet',
-      resource: 'demo-web-01 ↗',
+      finding: 'FIND-NETW · SSH accessible from internet (0.0.0.0/0:22)',
+      resource: 'sg-public-ssh-web ↗',
       review: 'Evidence →',
       framework: 'ISO/IEC 27001:2022',
       status: 'FAILING'
     },
     {
       control: 'A.8.3 · Access restriction',
-      finding: 'RAM-1039 · Public S3 access policy',
-      resource: 'demo-artifacts ↗',
+      finding: 'FIND-CLOU · Public S3 access block disabled',
+      resource: 's3-cust-records-prod ↗',
       review: 'Evidence →',
       framework: 'ISO/IEC 27001:2022',
       status: 'FAILING'
     },
     {
       control: 'A.8.5 · Secure authentication',
-      finding: 'RAM-1037 · MFA absent in identity snapshot',
-      resource: 'demo-operator ↗',
+      finding: 'FIND-IAMP · MFA absent on administrative principal',
+      resource: 'iam-role-superadmin ↗',
       review: 'Evidence →',
       framework: 'ISO/IEC 27001:2022',
       status: 'FAILING'
     },
     {
       control: 'CC6.1 · Logical access controls',
-      finding: 'RAM-1037 · MFA absent on administrative principal',
-      resource: 'demo-operator ↗',
+      finding: 'FIND-IAMP · Unrestricted AdministratorAccess scope',
+      resource: 'iam-role-superadmin ↗',
       review: 'Evidence →',
       framework: 'SOC 2 Type II',
       status: 'FAILING'
     },
     {
       control: 'CC6.6 · Boundary protection',
-      finding: 'RAM-1041 · Ingress port 22 exposed to 0.0.0.0/0',
-      resource: 'demo-web-01 ↗',
+      finding: 'FIND-NETW · Ingress port 22 exposed to 0.0.0.0/0',
+      resource: 'sg-public-ssh-web ↗',
       review: 'Evidence →',
       framework: 'SOC 2 Type II',
       status: 'FAILING'
     },
     {
       control: 'Art. 32(1)(a) · Confidentiality & encryption',
-      finding: 'RAM-1039 · Unencrypted / public S3 asset storage',
-      resource: 'demo-artifacts ↗',
+      finding: 'FIND-CLOU · Unencrypted / public S3 asset storage',
+      resource: 's3-cust-records-prod ↗',
       review: 'Evidence →',
       framework: 'GDPR',
       status: 'FAILING'

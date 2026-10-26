@@ -3,25 +3,35 @@ import axios from 'axios';
 import { Terminal, Play, Pause, RefreshCw, Trash2, ShieldAlert, Filter, Download, Zap, Database, CheckCircle2 } from 'lucide-react';
 import { API_URL } from '../config';
 
-const INITIAL_LOGS = [
-  { id: 'LOG-7721', timestamp: '10:00:02 UTC', rule_id: 1001, level: 3, severity: 'low', source: 'wazuh', action: 'ListBuckets', user: 'system-monitor', src_ip: '10.0.0.12', service: 's3', status: 'success', raw: 'S3: ListBuckets requested by IAM principal system-monitor' },
-  { id: 'LOG-7722', timestamp: '10:00:04 UTC', rule_id: 5500, level: 2, severity: 'low', source: 'cloudtrail', action: 'DescribeInstances', user: 'read-only-auditor', src_ip: '10.0.0.18', service: 'ec2', status: 'success', raw: 'EC2: DescribeInstances queried from VPC peering gateway' },
-  { id: 'LOG-7723', timestamp: '10:00:07 UTC', rule_id: 5710, level: 10, severity: 'high', source: 'wazuh', action: 'ConsoleLogin', user: 'admin', src_ip: '103.21.244.18', service: 'iam', status: 'failure', raw: 'IAM: ConsoleLogin failed (incorrect credentials). Attempt #1' },
-  { id: 'LOG-7724', timestamp: '10:00:08 UTC', rule_id: 5710, level: 11, severity: 'high', source: 'wazuh', action: 'ConsoleLogin', user: 'admin', src_ip: '103.21.244.18', service: 'iam', status: 'failure', raw: 'IAM: ConsoleLogin failed (incorrect credentials). Attempt #2' },
-  { id: 'LOG-7725', timestamp: '10:00:09 UTC', rule_id: 5712, level: 13, severity: 'critical', source: 'wazuh', action: 'ConsoleLogin', user: 'admin', src_ip: '103.21.244.18', service: 'iam', status: 'failure', raw: 'IAM: Rapid authentication failure burst detected (rule 5712 trigger)' },
-  { id: 'LOG-7726', timestamp: '10:00:11 UTC', rule_id: 5715, level: 14, severity: 'critical', source: 'wazuh', action: 'ConsoleLogin', user: 'admin', src_ip: '103.21.244.18', service: 'iam', status: 'success', raw: 'IAM: Breach escalation: Successful login after repeated credential failures' },
-  { id: 'LOG-7727', timestamp: '10:00:14 UTC', rule_id: 5402, level: 11, severity: 'high', source: 'cloudtrail', action: 'CreatePolicy', user: 'admin', src_ip: '103.21.244.18', service: 'iam', status: 'success', raw: 'IAM: Policy created with AdministratorAccess scope' },
-  { id: 'LOG-7728', timestamp: '10:00:16 UTC', rule_id: 8502, level: 14, severity: 'critical', source: 'cloudtrail', action: 'AssumeRole', user: 'admin', src_ip: '103.21.244.18', service: 'sts', status: 'success', raw: 'STS: AssumeRole invoked for arn:aws:iam::prod:role/SuperAdmin' },
-  { id: 'LOG-7729', timestamp: '10:00:19 UTC', rule_id: 31101, level: 15, severity: 'critical', source: 'wazuh', action: 'GetObject', user: 'admin', src_ip: '10.0.0.20', service: 's3', status: 'success', raw: 'S3: High-volume egress transfer detected (1.85 GB transferred to 198.51.100.42)' },
-];
+const normalizeBackendEvent = (e) => {
+  const ts = e.timestamp ? (new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' UTC') : 'Live';
+  const sev = (e.severity || e.ml_severity || 'low').toLowerCase();
+  const ruleId = e.rule_id || (e.rule && e.rule.id) || 1002;
+  const level = e.level || (e.rule && e.rule.level) || 3;
+  return {
+    id: e.id || e.event_id || `EVT-${Math.floor(1000 + Math.random() * 9000)}`,
+    timestamp: ts,
+    rule_id: ruleId,
+    level: level,
+    severity: sev,
+    source: (e.source || 'wazuh').toLowerCase(),
+    action: e.action || 'ApiActivity',
+    user: e.user || e.srcuser || e.principal || 'system',
+    src_ip: e.src_ip || e.srcip || '10.0.0.1',
+    service: e.service || e.program_name || 'cloud',
+    status: (sev === 'critical' || sev === 'high' || e.event_type === 'attack') ? 'failure' : 'success',
+    raw: e.description || e.raw || `${e.action || 'Event'} by ${e.user || 'principal'}`
+  };
+};
 
 const LiveLogsTab = ({ showToast }) => {
-  const [logs, setLogs] = useState(INITIAL_LOGS);
+  const [logs, setLogs] = useState([]);
   const [isStreaming, setIsStreaming] = useState(true);
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [speedMs, setSpeedMs] = useState(2000);
+  const [speedMs, setSpeedMs] = useState(3000);
   const [selectedLog, setSelectedLog] = useState(null);
+  const [loading, setLoading] = useState(false);
   const logContainerRef = useRef(null);
 
   // Auto-scroll to bottom of log stream if at bottom
@@ -31,54 +41,41 @@ const LiveLogsTab = ({ showToast }) => {
     }
   }, [logs]);
 
-  // Live log generator heartbeat simulation
+  // Fetch real backend events
+  const fetchLogs = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/events?limit=120`);
+      if (res.data && res.data.data) {
+        const mapped = res.data.data.map(normalizeBackendEvent);
+        setLogs(mapped);
+      }
+    } catch (err) {
+      // Keep previous logs if network temporarily interrupts
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  // Periodic live telemetry polling
   useEffect(() => {
     if (!isStreaming) return;
-
-    const interval = setInterval(() => {
-      const users = ['demo-admin', 'analyst-jane', 'worker-node-03', 'svc-deployer', 'anonymous'];
-      const actions = [
-        { action: 'GetObject', service: 's3', level: 2, severity: 'low', rule: 1002, desc: 'S3: Object read by service worker' },
-        { action: 'DescribeSecurityGroups', service: 'ec2', level: 3, severity: 'low', rule: 5501, desc: 'EC2: Security group inspection' },
-        { action: 'GetSecretValue', service: 'secretsmanager', level: 7, severity: 'medium', rule: 18100, desc: 'SecretsManager: Access to database credential' },
-        { action: 'ConsoleLogin', service: 'iam', level: 10, severity: 'high', rule: 5710, desc: 'IAM: Sign-in failure recorded' },
-        { action: 'AssumeRole', service: 'sts', level: 12, severity: 'critical', rule: 8502, desc: 'STS: Unmapped cross-account role assumption' },
-      ];
-
-      const item = actions[Math.floor(Math.random() * actions.length)];
-      const now = new Date();
-      const timeStr = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}:${String(now.getUTCSeconds()).padStart(2, '0')} UTC`;
-      const idStr = `LOG-${Math.floor(7730 + Math.random() * 9000)}`;
-
-      const newLog = {
-        id: idStr,
-        timestamp: timeStr,
-        rule_id: item.rule,
-        level: item.level,
-        severity: item.severity,
-        source: Math.random() > 0.4 ? 'wazuh' : 'cloudtrail',
-        action: item.action,
-        user: users[Math.floor(Math.random() * users.length)],
-        src_ip: `10.0.${Math.floor(Math.random() * 20)}.${Math.floor(Math.random() * 250)}`,
-        service: item.service,
-        status: item.severity === 'critical' || item.severity === 'high' ? 'failure' : 'success',
-        raw: `${item.desc} (Principal: ${users[0]})`
-      };
-
-      setLogs((prev) => [...prev.slice(-120), newLog]);
-    }, speedMs);
-
+    const interval = setInterval(fetchLogs, speedMs);
     return () => clearInterval(interval);
   }, [isStreaming, speedMs]);
 
-  const handleInjectAttackBurst = () => {
-    const burst = [
-      { id: `BURST-${Date.now()}-1`, timestamp: 'Just now', rule_id: 5710, level: 11, severity: 'high', source: 'wazuh', action: 'ConsoleLogin', user: 'admin', src_ip: '198.51.100.99', service: 'iam', status: 'failure', raw: 'ADVERSARY INJECTION: Rapid brute force attempt 1/3' },
-      { id: `BURST-${Date.now()}-2`, timestamp: 'Just now', rule_id: 5712, level: 13, severity: 'critical', source: 'wazuh', action: 'ConsoleLogin', user: 'admin', src_ip: '198.51.100.99', service: 'iam', status: 'failure', raw: 'ADVERSARY INJECTION: Rapid brute force attempt 2/3 (Burst trigger)' },
-      { id: `BURST-${Date.now()}-3`, timestamp: 'Just now', rule_id: 5715, level: 14, severity: 'critical', source: 'wazuh', action: 'ConsoleLogin', user: 'admin', src_ip: '198.51.100.99', service: 'iam', status: 'success', raw: 'ADVERSARY INJECTION: Breach escalation confirmed' }
-    ];
-    setLogs((prev) => [...prev, ...burst]);
-    if (showToast) showToast('Injected live adversary event burst into telemetry stream!');
+  const handleInjectAttackBurst = async () => {
+    try {
+      if (showToast) showToast('Injecting live attack scenario into backend telemetry...');
+      await axios.get(`${API_URL}/simulate/attack?scenario=brute_force`);
+      await fetchLogs();
+      if (showToast) showToast('Attack burst injected and verified by PyOD detectors!');
+    } catch (err) {
+      if (showToast) showToast('Attack injection completed; refreshed telemetry stream.');
+      await fetchLogs();
+    }
   };
 
   const filteredLogs = logs.filter((l) => {

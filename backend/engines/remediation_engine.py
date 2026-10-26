@@ -11,8 +11,12 @@ This engine simulates what would happen in a real cloud environment:
 import uuid
 import random
 from datetime import datetime, timezone
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from engines.alert_engine import alert_soc, alert_remediation
+from engines.db import update_finding_status_db
+
+# In-memory execution rollback registry for safe remediation rollback (SRS FR-10)
+EXECUTION_HISTORY: Dict[str, Dict[str, Any]] = {}
 
 
 # ── Remediation Playbook Definitions ──────────────────────────────────────
@@ -226,7 +230,16 @@ def execute_playbook(attack_type: str, event: Optional[Dict] = None, dry_run: bo
     else:
         overall_status = "LIVE EXECUTION COMPLETED" if all_success else "LIVE EXECUTION PARTIAL FAILURE"
 
-    return {
+    target_fid = None
+    if event:
+        target_fid = event.get("finding_id") or event.get("id")
+
+    # If execution succeeded and target finding exists, transition lifecycle status
+    if all_success and target_fid:
+        new_status = "contained" if dry_run else "resolved"
+        update_finding_status_db(str(target_fid), new_status)
+
+    result_payload = {
         "execution_id": execution_id,
         "playbook_id": playbook["playbook_id"],
         "playbook_name": playbook["name"],
@@ -246,7 +259,58 @@ def execute_playbook(attack_type: str, event: Optional[Dict] = None, dry_run: bo
         "total_duration_ms": sum(s["duration_ms"] for s in executed_steps),
         "steps": executed_steps,
         "rollback_available": playbook["rollback_available"],
-        "target_event": event.get("id") if event else None
+        "target_event": target_fid
+    }
+
+    # Record execution state for rollback verification (SRS FR-10)
+    EXECUTION_HISTORY[execution_id] = {
+        "execution_id": execution_id,
+        "playbook_id": playbook["playbook_id"],
+        "target_fid": target_fid,
+        "is_dry_run": dry_run,
+        "pre_remediation_state": "open",
+        "post_remediation_state": "resolved" if not dry_run else "contained",
+        "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "rolled_back": False
+    }
+
+    return result_payload
+
+
+def rollback_remediation(execution_id: str) -> Dict[str, Any]:
+    """
+    Rolls back an executed remediation action (SRS FR-10).
+    Restores the targeted finding to its pre-remediation status ('open').
+    """
+    exec_record = EXECUTION_HISTORY.get(execution_id)
+    if not exec_record:
+        return {
+            "status": "error",
+            "message": f"Execution ID '{execution_id}' not found in audit registry.",
+            "execution_id": execution_id
+        }
+
+    if exec_record.get("rolled_back"):
+        return {
+            "status": "warning",
+            "message": f"Remediation '{execution_id}' has already been rolled back.",
+            "execution_id": execution_id
+        }
+
+    target_fid = exec_record.get("target_fid")
+    if target_fid:
+        update_finding_status_db(str(target_fid), "open")
+
+    exec_record["rolled_back"] = True
+    exec_record["rolled_back_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    return {
+        "status": "success",
+        "execution_id": execution_id,
+        "message": f"Successfully rolled back playbook {exec_record['playbook_id']}. Target {target_fid} restored to 'open'.",
+        "pre_state": exec_record["post_remediation_state"],
+        "current_state": "open",
+        "target_finding_id": target_fid
     }
 
 

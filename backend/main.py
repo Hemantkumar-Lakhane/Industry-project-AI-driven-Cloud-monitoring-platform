@@ -21,10 +21,10 @@ from simulator.wazuh_reader import read_wazuh_logs, get_wazuh_status, is_wazuh_a
 from simulator.attack_simulator import run_attack_simulation, run_full_simulation, SCENARIOS, get_scenario_catalog, simulate_brute_force
 from engines.cspm_engine import run_cspm_scan
 from engines.ciem_engine import run_ciem_scan
-from engines.ml_engine import analyze_events, compare_models, get_model_info
+from engines.ml_engine import analyze_events, compare_models, get_model_info, get_benchmark_results
 from engines.remediation_engine import (
     execute_playbook, correct_configuration, revoke_entity_access,
-    get_all_playbooks, auto_remediate_threats
+    get_all_playbooks, auto_remediate_threats, rollback_remediation
 )
 from engines.compliance_engine import (
     map_findings_to_compliance, get_compliance_dashboard,
@@ -43,8 +43,13 @@ from engines.db import (
     save_risk_score, get_cspm_history, get_ciem_history,
     save_cspm_scan, save_ciem_scan, get_alert_log,
     save_compliance_score, get_compliance_trend_db,
-    save_findings_db, get_findings_db, get_findings_stats_db
+    save_findings_db, get_findings_db, get_findings_stats_db,
+    update_finding_status_db, update_incident_status_db,
+    get_cloud_assets_db, get_vulnerabilities_db, get_incidents_db
 )
+from engines.asset_engine import discover_assets, get_asset_inventory, check_connectors
+from engines.vulnerability_engine import run_vulnerability_scan, get_vulnerability_summary
+from engines.correlation_engine import correlate_findings, get_correlated_incidents
 from engines.alert_engine import send_alert_email
 from schemas.event import NormalizedEvent, normalize_event
 from schemas.finding import SecurityFinding
@@ -745,6 +750,7 @@ def api_reactivate_user(
 # 2 — SECURITY POSTURE & SCANS (CSPM & CIEM)
 # ══════════════════════════════════════════════════════════════════════════════
 
+@app.get("/api/events", include_in_schema=False)
 @app.get(
     "/api/simulate/events",
     tags=["ML Detection & Analytics"],
@@ -800,15 +806,49 @@ Each event is evaluated by Isolation Forest, KNN, and HBOS models to assign an a
 def get_simulated_events(
     hours: int = Query(24, ge=1, le=168, description="Time window in hours for event generation", openapi_examples={"default": {"value": 24}}),
     normal: int = Query(150, ge=1, le=1000, description="Number of baseline normal events to generate", openapi_examples={"default": {"value": 150}}),
-    attacks: int = Query(25, ge=0, le=500, description="Number of simulated threat/attack events to inject", openapi_examples={"default": {"value": 25}})
+    attacks: int = Query(25, ge=0, le=500, description="Number of simulated threat/attack events to inject", openapi_examples={"default": {"value": 25}}),
+    search: Optional[str] = Query(None, description="Search filter for user, IP, action, or description"),
+    severity: Optional[str] = Query(None, description="Filter by event severity (all, critical, high, medium, low)"),
+    limit: int = Query(200, ge=1, le=1000, description="Maximum number of events to return")
 ):
-    raw_events = _get_events(normal, attacks)
-    analyzed_events = analyze_events(raw_events)
+    session = session_manager.get_session()
+    if session and session.analyzed_events:
+        all_events = session.analyzed_events
+        source_mode = session.data_source
+    else:
+        raw_events = _get_events(normal, attacks)
+        all_events = analyze_events(raw_events)
+        source_mode = get_wazuh_status()["mode"]
+
+    # Apply search filter
+    filtered = all_events
+    if search:
+        s_lower = search.lower()
+        filtered = [
+            e for e in filtered
+            if s_lower in str(e.get("user", "")).lower()
+            or s_lower in str(e.get("src_ip", "")).lower()
+            or s_lower in str(e.get("action", "")).lower()
+            or s_lower in str(e.get("description", "")).lower()
+            or s_lower in str(e.get("service", "")).lower()
+            or s_lower in str(e.get("id", "")).lower()
+        ]
+
+    # Apply severity filter
+    if severity and severity.lower() != "all":
+        sev_target = severity.lower()
+        filtered = [
+            e for e in filtered
+            if (e.get("severity") or e.get("ml_severity") or "").lower() == sev_target
+        ]
+
+    paginated = filtered[:limit]
     return {
         "status": "success",
-        "count": len(analyzed_events),
-        "data": analyzed_events,
-        "source": get_wazuh_status()["mode"]
+        "total": len(all_events),
+        "count": len(paginated),
+        "data": paginated,
+        "source": source_mode
     }
 
 
@@ -960,6 +1000,31 @@ def get_ciem_results():
 def get_dashboard_summary():
     session = session_manager.get_session()
     summary = session.to_summary()
+
+    # Enrich with live asset inventory and correlated incidents
+    try:
+        inv = get_asset_inventory()
+        inc = get_correlated_incidents()
+        vulns = get_vulnerability_summary()
+        summary["assets"] = {
+            "total_assets": inv.get("total_assets", 8),
+            "critical_risk_assets": inv.get("critical_risk_assets", 0),
+            "connectors": inv.get("connectors", {})
+        }
+        summary["incidents"] = {
+            "total_incidents": inc.get("total_incidents", 0),
+            "open_incidents": inc.get("open_incidents", 0),
+            "contained_incidents": inc.get("contained_incidents", 0),
+            "resolved_incidents": inc.get("resolved_incidents", 0)
+        }
+        summary["vulnerabilities"] = {
+            "total": vulns.get("total_vulnerabilities", 0),
+            "critical": vulns.get("critical_count", 0),
+            "high": vulns.get("high_count", 0)
+        }
+    except Exception:
+        pass
+
     return {
         "status": "success",
         "data": summary
@@ -1132,11 +1197,31 @@ def ml_model_info():
     return {"status": "success", "data": get_model_info()}
 
 
+@app.get(
+    "/api/ml/benchmark",
+    tags=["ML Detection & Analytics"],
+    summary="Get Multi-Algorithm Benchmark Results",
+    description="Retrieve empirical evaluation metrics across all 7 benchmarked candidate algorithms on the NSL-KDD held-out test set (N=22,544)."
+)
+def ml_benchmark_results():
+    """Return empirical evaluation metrics across all 7 benchmarked candidate algorithms."""
+    return {"status": "success", "data": get_benchmark_results()}
+
+
 class EvaluateEventsRequest(BaseModel):
     events: List[Dict[str, Any]] = Field(
         ...,
         description="Array of raw or normalized security telemetry events to evaluate"
     )
+
+
+class UpdateFindingStatusRequest(BaseModel):
+    status: str = Field(..., description="Target status: open, investigating, contained, resolved")
+
+
+class UpdateIncidentStatusRequest(BaseModel):
+    status: str = Field(..., description="Target status: open, investigating, contained, resolved")
+    notes: Optional[str] = Field(None, description="Optional resolution or analyst notes")
 
 
 @app.get(
@@ -1266,6 +1351,183 @@ def evaluate_custom_events(payload: EvaluateEventsRequest):
         "count": len(findings),
         "data": [f.model_dump(mode="json") for f in findings]
     }
+
+
+# ── Finding Status Lifecycle ──────────────────────────────────────────────────
+
+@app.patch(
+    "/api/findings/{finding_id}/status",
+    tags=["Threat Detection & Findings"],
+    summary="Update Security Finding Status",
+    description="Update the lifecycle status of a specific security finding (open, investigating, contained, resolved)."
+)
+def update_finding_status(
+    finding_id: str = Path(..., description="The unique finding ID"),
+    payload: UpdateFindingStatusRequest = None
+):
+    valid_statuses = {"open", "investigating", "contained", "resolved"}
+    if not payload or payload.status.lower() not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of {valid_statuses}")
+
+    updated = update_finding_status_db(finding_id, payload.status.lower())
+
+    # Also update in active session if present
+    session = session_manager.get_session()
+    if session and session.findings:
+        for f in session.findings:
+            if f.get("finding_id") == finding_id:
+                f["status"] = payload.status.lower()
+                break
+
+    return {
+        "status": "success",
+        "finding_id": finding_id,
+        "new_status": payload.status.lower(),
+        "updated_in_db": updated
+    }
+
+
+# ── Incident Correlation (SRS FR-08) ──────────────────────────────────────────
+
+@app.get(
+    "/api/incidents",
+    tags=["Incident Correlation & Management"],
+    summary="Get Correlated Security Incidents",
+    description="Retrieve incidents synthesized across the 16 attack category detectors using kill-chain correlation."
+)
+def get_incidents_list(limit: int = Query(100, ge=1, le=500)):
+    return get_correlated_incidents()
+
+
+@app.post(
+    "/api/incidents/correlate",
+    tags=["Incident Correlation & Management"],
+    summary="Trigger Cross-Detector Incident Correlation",
+    description="Re-run correlation engine across current findings to synthesize updated incidents."
+)
+def trigger_incident_correlation():
+    findings = get_findings_db(limit=500)
+    incidents = correlate_findings(findings)
+    return {
+        "status": "success",
+        "incidents_created": len(incidents),
+        "data": incidents
+    }
+
+
+@app.patch(
+    "/api/incidents/{incident_id}/status",
+    tags=["Incident Correlation & Management"],
+    summary="Update Incident Status",
+    description="Update incident lifecycle status (open, investigating, contained, resolved)."
+)
+def update_incident_status(
+    incident_id: str = Path(..., description="The unique incident ID"),
+    payload: UpdateIncidentStatusRequest = None
+):
+    valid_statuses = {"open", "investigating", "contained", "resolved"}
+    if not payload or payload.status.lower() not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of {valid_statuses}")
+
+    updated = update_incident_status_db(incident_id, payload.status.lower(), payload.notes)
+    return {
+        "status": "success",
+        "incident_id": incident_id,
+        "new_status": payload.status.lower(),
+        "updated": updated
+    }
+
+
+# ── Cloud Asset Discovery & Inventory (SRS FR-01) ─────────────────────────────
+
+@app.get(
+    "/api/assets",
+    tags=["Cloud Asset Discovery & Inventory"],
+    summary="Get Cloud Asset Inventory",
+    description="Retrieve inventory of discovered cloud accounts, workloads, object storage, and security resources."
+)
+def get_assets_list():
+    return get_asset_inventory()
+
+
+@app.get(
+    "/api/assets/inventory",
+    tags=["Cloud Asset Discovery & Inventory"],
+    summary="Get Detailed Cloud Asset Inventory",
+    description="Retrieve full cloud asset inventory with risk scores, finding counts, and connector metadata."
+)
+def get_assets_inventory_detail():
+    return get_asset_inventory()
+
+
+@app.post(
+    "/api/assets/scan",
+    tags=["Cloud Asset Discovery & Inventory"],
+    summary="Run Cloud Asset Discovery Scan",
+    description="Trigger an active cloud resource discovery scan across connected providers."
+)
+def run_asset_discovery_scan():
+    discovered = discover_assets(force_rescan=True)
+    return {
+        "status": "success",
+        "count": len(discovered),
+        "data": discovered
+    }
+
+
+@app.get(
+    "/api/assets/connectors",
+    tags=["Cloud Asset Discovery & Inventory"],
+    summary="Check Cloud Connector Status",
+    description="Check connectivity status for LocalStack, AWS, and Wazuh workload connectors."
+)
+def get_connectors_status():
+    return {
+        "status": "success",
+        "connectors": check_connectors()
+    }
+
+
+# ── Workload Vulnerability Analysis (SRS FR-05) ───────────────────────────────
+
+@app.get(
+    "/api/vulnerabilities",
+    tags=["Vulnerability Analysis"],
+    summary="Get Workload Vulnerability Findings",
+    description="Retrieve prioritized workload software vulnerabilities with CVSS scores and remediation patches."
+)
+def get_vulnerabilities_list():
+    return get_vulnerability_summary()
+
+
+@app.post(
+    "/api/vulnerabilities/scan",
+    tags=["Vulnerability Analysis"],
+    summary="Execute Workload Vulnerability Scan",
+    description="Execute vulnerability analysis against discovered workload assets."
+)
+def run_vulnerabilities_scan():
+    findings = run_vulnerability_scan()
+    return {
+        "status": "success",
+        "count": len(findings),
+        "data": findings
+    }
+
+
+# ── Remediation Rollback (SRS FR-10) ──────────────────────────────────────────
+
+@app.post(
+    "/api/remediation/rollback/{execution_id}",
+    tags=["Remediation & Playbooks"],
+    summary="Rollback Executed Remediation Action",
+    description="Roll back an automated remediation action and restore the targeted entity to its previous security state (SRS FR-10)."
+)
+def rollback_executed_remediation(execution_id: str = Path(..., description="Remediation execution ID")):
+    result = rollback_remediation(execution_id)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=404, detail=result["message"])
+    return result
 
 
 

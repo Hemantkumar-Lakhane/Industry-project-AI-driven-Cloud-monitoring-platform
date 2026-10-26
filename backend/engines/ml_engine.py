@@ -13,7 +13,7 @@ Feature Schema (9D, leakage-free from IEEE paper):
 Scoring strategy:
   Every event is mapped through feature_extractor to the 9D schema.
   Final score = max(iforest_score, knn_score, hbos_score).
-  Detected_by = model with highest anomaly probability.
+  Detected_by = model with highest normalized anomaly score.
 """
 
 import os
@@ -142,7 +142,9 @@ def _score_all(X_raw: np.ndarray) -> Dict[str, np.ndarray]:
     """
     Score X_raw with every loaded specialist model.
     Validates input dimension before scoring.
-    Returns dict: model_name -> array of probabilities (0–1).
+    Returns dict: model_name -> array of normalized anomaly scores in [0.0, 1.0].
+    NOTE: PyOD's predict_proba applies min-max scaling across decision scores.
+    These are normalized anomaly scores rather than calibrated Bayesian posterior probabilities.
     """
     if X_raw.ndim != 2 or X_raw.shape[1] != FEATURE_DIM:
         print(f"[ML Engine] Incompatible feature dimension: expected {FEATURE_DIM}, received {X_raw.shape[1] if X_raw.ndim == 2 else 'invalid'}")
@@ -152,7 +154,7 @@ def _score_all(X_raw: np.ndarray) -> Dict[str, np.ndarray]:
     for name, model in _MODELS.items():
         try:
             X_s = _scale_for(name, X_raw)
-            # PyOD predict_proba returns [prob_normal, prob_anomaly]
+            # PyOD predict_proba returns [score_normal, score_anomaly] normalized in [0, 1]
             probs = model.predict_proba(X_s)[:, 1]
             scores[name] = probs
         except Exception as e:
@@ -392,3 +394,15 @@ def get_model_info() -> Dict:
             for k, v in _META.get("models", {}).items()
         },
     }
+
+
+def get_benchmark_results() -> Dict[str, Any]:
+    """Return empirical evaluation metrics across all 7 benchmarked candidate algorithms."""
+    bench_path = os.path.join(MODELS_DIR, "benchmark_results.json")
+    if os.path.exists(bench_path):
+        try:
+            with open(bench_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[ML Engine] Failed to read benchmark results: {e}")
+    return {}

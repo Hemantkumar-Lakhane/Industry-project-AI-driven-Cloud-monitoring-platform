@@ -90,6 +90,49 @@ def init_db():
             evidence_json TEXT,
             verification_status TEXT DEFAULT 'VERIFIED'
         );
+
+        CREATE TABLE IF NOT EXISTS cloud_assets (
+            asset_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            asset_type TEXT NOT NULL,
+            provider TEXT NOT NULL DEFAULT 'aws',
+            region TEXT NOT NULL DEFAULT 'us-east-1',
+            account_id TEXT NOT NULL DEFAULT '123456789012',
+            status TEXT NOT NULL DEFAULT 'active',
+            risk_score REAL NOT NULL DEFAULT 0.0,
+            connector_status TEXT NOT NULL DEFAULT 'CONNECTED',
+            tags_json TEXT,
+            discovered_at TEXT NOT NULL,
+            last_scanned_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS vulnerabilities (
+            vuln_id TEXT PRIMARY KEY,
+            cve_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            package_name TEXT NOT NULL,
+            installed_version TEXT NOT NULL,
+            fixed_version TEXT,
+            severity TEXT NOT NULL,
+            cvss_score REAL NOT NULL,
+            affected_asset_id TEXT,
+            status TEXT DEFAULT 'open',
+            discovered_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS incidents (
+            incident_id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            status TEXT DEFAULT 'open',
+            lead_attack_category TEXT,
+            entity_key TEXT,
+            finding_ids_json TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            resolved_at TEXT,
+            resolution_notes TEXT
+        );
     """)
     conn.commit()
     conn.close()
@@ -314,6 +357,210 @@ def get_findings_stats_db() -> dict:
     stats["total"] = total_row["total"] if total_row else 0
     stats["open"] = open_row["open_cnt"] if open_row else stats["total"]
     return stats
+
+
+def update_finding_status_db(finding_id: str, status: str) -> bool:
+    """Update finding status (open, investigating, contained, resolved)."""
+    conn = get_conn()
+    cur = conn.execute(
+        "UPDATE findings SET status = ? WHERE finding_id = ?",
+        (status.lower(), finding_id)
+    )
+    conn.commit()
+    updated = cur.rowcount > 0
+    conn.close()
+    return updated
+
+
+def cleanup_duplicate_findings_db():
+    """Purge duplicate findings and retain the newest record per category, title, and target."""
+    conn = get_conn()
+    conn.execute("""
+        DELETE FROM findings
+        WHERE rowid NOT IN (
+            SELECT MAX(rowid)
+            FROM findings
+            GROUP BY attack_category, title, affected_resource, affected_principal
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+# ── Cloud Asset Persistence ───────────────────────────────────────────────────
+
+def save_cloud_assets_db(assets: list):
+    """Persist discovered cloud assets into SQLite with upsert."""
+    if not assets:
+        return
+    import json
+    conn = get_conn()
+    now_str = datetime.now(timezone.utc).isoformat()
+    for a in assets:
+        asset_id = a.get("asset_id") or a.get("id")
+        name = a.get("name") or asset_id
+        asset_type = a.get("asset_type") or a.get("type") or "workload"
+        provider = a.get("provider") or "aws"
+        region = a.get("region") or "us-east-1"
+        account_id = a.get("account_id") or "123456789012"
+        status = a.get("status") or "active"
+        risk_score = float(a.get("risk_score") or 0.0)
+        connector_status = a.get("connector_status") or "CONNECTED"
+        tags_json = json.dumps(a.get("tags") or {})
+        disc_at = a.get("discovered_at") or now_str
+        last_scanned = a.get("last_scanned_at") or now_str
+
+        conn.execute("""
+            INSERT INTO cloud_assets (
+                asset_id, name, asset_type, provider, region, account_id,
+                status, risk_score, connector_status, tags_json, discovered_at, last_scanned_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(asset_id) DO UPDATE SET
+                status = excluded.status,
+                risk_score = excluded.risk_score,
+                connector_status = excluded.connector_status,
+                tags_json = excluded.tags_json,
+                last_scanned_at = excluded.last_scanned_at
+        """, (
+            asset_id, name, asset_type, provider, region, account_id,
+            status, risk_score, connector_status, tags_json, disc_at, last_scanned
+        ))
+    conn.commit()
+    conn.close()
+
+
+def get_cloud_assets_db(limit: int = 100) -> list:
+    """Retrieve inventory of cloud assets from SQLite."""
+    import json
+    conn = get_conn()
+    rows = conn.execute("SELECT * FROM cloud_assets ORDER BY risk_score DESC LIMIT ?", (limit,)).fetchall()
+    conn.close()
+    results = []
+    for r in rows:
+        item = dict(r)
+        try:
+            item["tags"] = json.loads(item.get("tags_json") or "{}")
+        except Exception:
+            item["tags"] = {}
+        results.append(item)
+    return results
+
+
+# ── Vulnerabilities Persistence ───────────────────────────────────────────────
+
+def save_vulnerabilities_db(vulns: list):
+    """Persist vulnerability analysis records into SQLite."""
+    if not vulns:
+        return
+    conn = get_conn()
+    now_str = datetime.now(timezone.utc).isoformat()
+    for v in vulns:
+        vuln_id = v.get("vuln_id") or v.get("id") or f"VULN-{v.get('cve_id')}"
+        cve_id = v.get("cve_id") or "CVE-UNKNOWN"
+        title = v.get("title") or cve_id
+        pkg = v.get("package_name") or "unknown-package"
+        inst_ver = v.get("installed_version") or "1.0.0"
+        fixed_ver = v.get("fixed_version") or "Latest"
+        sev = (v.get("severity") or "medium").lower()
+        cvss = float(v.get("cvss_score") or 5.0)
+        asset_id = v.get("affected_asset_id") or "workload-host"
+        status = v.get("status") or "open"
+        disc_at = v.get("discovered_at") or now_str
+
+        conn.execute("""
+            INSERT INTO vulnerabilities (
+                vuln_id, cve_id, title, package_name, installed_version,
+                fixed_version, severity, cvss_score, affected_asset_id, status, discovered_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(vuln_id) DO UPDATE SET
+                status = excluded.status,
+                cvss_score = excluded.cvss_score
+        """, (
+            vuln_id, cve_id, title, pkg, inst_ver,
+            fixed_ver, sev, cvss, asset_id, status, disc_at
+        ))
+    conn.commit()
+    conn.close()
+
+
+def get_vulnerabilities_db(limit: int = 100) -> list:
+    """Retrieve persisted vulnerability records ordered by CVSS score descending."""
+    conn = get_conn()
+    rows = conn.execute("SELECT * FROM vulnerabilities ORDER BY cvss_score DESC LIMIT ?", (limit,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Incidents Correlation Persistence ─────────────────────────────────────────
+
+def save_incidents_db(incidents: list):
+    """Persist correlated incidents into SQLite."""
+    if not incidents:
+        return
+    import json
+    conn = get_conn()
+    now_str = datetime.now(timezone.utc).isoformat()
+    for inc in incidents:
+        inc_id = inc.get("incident_id") or inc.get("id")
+        title = inc.get("title") or "Correlated Security Incident"
+        sev = inc.get("severity") or "high"
+        status = inc.get("status") or "open"
+        lead_cat = inc.get("lead_attack_category") or "unknown"
+        entity_key = inc.get("entity_key") or "global"
+        finding_ids_json = json.dumps(inc.get("finding_ids") or [])
+        created_at = inc.get("created_at") or now_str
+        updated_at = inc.get("updated_at") or now_str
+        resolved_at = inc.get("resolved_at")
+        notes = inc.get("resolution_notes")
+
+        conn.execute("""
+            INSERT INTO incidents (
+                incident_id, title, severity, status, lead_attack_category,
+                entity_key, finding_ids_json, created_at, updated_at, resolved_at, resolution_notes
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(incident_id) DO UPDATE SET
+                status = excluded.status,
+                updated_at = excluded.updated_at,
+                resolved_at = excluded.resolved_at,
+                resolution_notes = excluded.resolution_notes
+        """, (
+            inc_id, title, sev, status, lead_cat,
+            entity_key, finding_ids_json, created_at, updated_at, resolved_at, notes
+        ))
+    conn.commit()
+    conn.close()
+
+
+def get_incidents_db(limit: int = 100) -> list:
+    """Retrieve correlated incidents from SQLite."""
+    import json
+    conn = get_conn()
+    rows = conn.execute("SELECT * FROM incidents ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+    conn.close()
+    results = []
+    for r in rows:
+        item = dict(r)
+        try:
+            item["finding_ids"] = json.loads(item.get("finding_ids_json") or "[]")
+        except Exception:
+            item["finding_ids"] = []
+        results.append(item)
+    return results
+
+
+def update_incident_status_db(incident_id: str, status: str, notes: str = None) -> bool:
+    """Update incident status and link to finding resolution."""
+    conn = get_conn()
+    now_str = datetime.now(timezone.utc).isoformat()
+    cur = conn.execute("""
+        UPDATE incidents
+        SET status = ?, updated_at = ?, resolved_at = CASE WHEN ? = 'resolved' THEN ? ELSE resolved_at END, resolution_notes = ?
+        WHERE incident_id = ?
+    """, (status.lower(), now_str, status.lower(), now_str, notes, incident_id))
+    conn.commit()
+    updated = cur.rowcount > 0
+    conn.close()
+    return updated
 
 
 # Initialize on import

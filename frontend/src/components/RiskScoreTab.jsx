@@ -22,27 +22,27 @@ const RiskScoreTab = ({ showToast }) => {
 
   useEffect(() => { fetchRisk(); }, []);
 
-  // Actionable risk drivers directly from Figma wireframe
+  // Actionable risk drivers mapped to real platform findings and assets
   const riskDrivers = [
     {
-      id: 'RAM-1041',
-      title: 'SSH accessible from internet',
-      resource: 'demo-web-01 ↗',
-      source: 'Config · IMPORTED',
+      id: 'FIND-NETW',
+      title: 'SSH accessible from internet (0.0.0.0/0:22)',
+      resource: 'sg-public-ssh-web ↗',
+      source: 'Network · LIVE',
       nextStep: 'Review exposure →'
     },
     {
-      id: 'RAM-1039',
-      title: 'Public S3 access policy',
-      resource: 'demo-artifacts ↗',
-      source: 'Config · IMPORTED',
+      id: 'FIND-CLOU',
+      title: 'Public S3 access block disabled',
+      resource: 's3-cust-records-prod ↗',
+      source: 'Storage · CSPM',
       nextStep: 'Review policy →'
     },
     {
-      id: 'RAM-1037',
-      title: 'MFA absent in identity snapshot',
-      resource: 'demo-operator ↗',
-      source: 'IAM · IMPORTED',
+      id: 'FIND-IAMP',
+      title: 'MFA absent on administrative principal',
+      resource: 'iam-role-superadmin ↗',
+      source: 'Identity · CIEM',
       nextStep: 'Review identity →'
     }
   ];

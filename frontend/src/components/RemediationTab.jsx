@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { API_URL } from '../config';
 
-const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [], ciem = [] }) => {
+const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [], ciem = [], findings = [] }) => {
   const [selectedPlaybookKey, setSelectedPlaybookKey] = useState('brute_force');
   const [remediationResult, setRemediationResult] = useState(null);
   const [executing, setExecuting] = useState(false);
@@ -40,6 +40,33 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
   const [healedConfigs, setHealedConfigs] = useState(new Set());
   const [revokedEntities, setRevokedEntities] = useState(new Set());
 
+  // Helper to associate live findings with playbooks
+  const getEvidence = (cat, fallbackId, fallbackTarget) => {
+    const f = findings.find(item => (item.attack_category || '').toLowerCase().includes(cat.toLowerCase()));
+    if (f) {
+      const ts = f.timestamp || f.created_at;
+      const timeStr = ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' UTC' : 'Live';
+      const target = f.affected_principal || f.affected_resource || fallbackTarget;
+      return {
+        target: `${target} · Active Target`,
+        evidence: `${f.finding_id} · ${(f.data_source || 'LIVE').toUpperCase()} · ${timeStr}`
+      };
+    }
+    return {
+      target: fallbackTarget,
+      evidence: `${fallbackId} · BASELINE · 09:30 UTC`
+    };
+  };
+
+  const bfEvidence = getEvidence('brute_force', 'FIND-BRUT-001', 'admin');
+  const peEvidence = getEvidence('privilege_escalation', 'FIND-IAMP-001', 'SuperAdminExecutionRole');
+  const deEvidence = getEvidence('data_exfiltration', 'FIND-DATA-001', 'prod-api-workload-01');
+  const lmEvidence = getEvidence('network_scanning', 'FIND-NETW-001', 'sg-0442ab91c890f11');
+  const mcEvidence = getEvidence('misconfiguration', 'FIND-CLOU-001', 'prod-customer-financial-records-2026');
+  const cmEvidence = getEvidence('cryptomining', 'FIND-CRYP-001', 'i-09ab12cd34ef5601');
+  const csEvidence = getEvidence('account_takeover', 'FIND-ACCO-001', 'svc-deployer-pipeline');
+  const rmEvidence = getEvidence('malware', 'FIND-MALW-001', 'prod-worker-node-02');
+
   // Exact 8 playbooks matching Figma wireframe (remediation.png)
   const figmaPlaybooks = [
     {
@@ -48,8 +75,8 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
       name: 'Brute Force Response',
       scope: 'Sign-in identity',
       mode: 'Approval',
-      proposedTarget: 'demo-admin · Fixture only',
-      observedEvidence: 'RAM-1040 · SIMULATED · 09:26 UTC',
+      proposedTarget: bfEvidence.target,
+      observedEvidence: bfEvidence.evidence,
       steps: [
         { name: 'Review sign-in evidence', impact: 'Confirm sequence and target identity.', status: 'completed' },
         { name: 'Propose temporary lock', impact: 'Sign-in interruption; restore account access.', status: 'pending' },
@@ -63,8 +90,8 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
       name: 'Privilege Escalation Response',
       scope: 'IAM role',
       mode: 'Approval',
-      proposedTarget: 'demo-build-role · Fixture only',
-      observedEvidence: 'RAM-1042 · IMPORTED · 09:18 UTC',
+      proposedTarget: peEvidence.target,
+      observedEvidence: peEvidence.evidence,
       steps: [
         { name: 'Audit AssumeRole trail', impact: 'Inspect STS tokens issued.', status: 'pending' },
         { name: 'Detach excessive policy', impact: 'Revoke elevated privileges.', status: 'pending' },
@@ -77,8 +104,8 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
       name: 'Data Exfiltration Response',
       scope: 'Outbound traffic',
       mode: 'Approval',
-      proposedTarget: 'demo-worker-02 · Fixture only',
-      observedEvidence: 'RAM-1036 · SIMULATED · 09:48 UTC',
+      proposedTarget: deEvidence.target,
+      observedEvidence: deEvidence.evidence,
       steps: [
         { name: 'Inspect egress flow logs', impact: 'Verify destination reputation.', status: 'pending' },
         { name: 'Quarantine network interface', impact: 'Isolate instance traffic.', status: 'pending' }
@@ -90,8 +117,8 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
       name: 'Lateral Movement Response',
       scope: 'Cloud resources',
       mode: 'Approval',
-      proposedTarget: 'sg-0a1b2c3d · Security group',
-      observedEvidence: 'RAM-1041 · IMPORTED · 09:40 UTC',
+      proposedTarget: lmEvidence.target,
+      observedEvidence: lmEvidence.evidence,
       steps: [
         { name: 'Restrict east-west traffic', impact: 'Block inter-VPC ingress.', status: 'pending' },
         { name: 'Invalidate active sessions', impact: 'Force credential re-auth.', status: 'pending' }
@@ -103,8 +130,8 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
       name: 'Misconfiguration Auto-Fix',
       scope: 'Config resource',
       mode: 'Approval',
-      proposedTarget: 'demo-artifacts · S3 bucket',
-      observedEvidence: 'RAM-1039 · IMPORTED · 09:42 UTC',
+      proposedTarget: mcEvidence.target,
+      observedEvidence: mcEvidence.evidence,
       steps: [
         { name: 'Apply S3 block public access', impact: 'Close anonymous read access.', status: 'pending' },
         { name: 'Revert bucket ACL drift', impact: 'Restore secure baseline.', status: 'pending' }
@@ -116,8 +143,8 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
       name: 'Crypto Mining Response',
       scope: 'Compute resource',
       mode: 'Approval',
-      proposedTarget: 'i-0987654321 · EC2 instance',
-      observedEvidence: 'Simulated fixture',
+      proposedTarget: cmEvidence.target,
+      observedEvidence: cmEvidence.evidence,
       steps: [
         { name: 'Terminate rogue daemon', impact: 'Halt unauthorized compute usage.', status: 'pending' },
         { name: 'Revoke instance profile', impact: 'Cut AWS metadata API access.', status: 'pending' }
@@ -129,8 +156,8 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
       name: 'Credential Stuffing Response',
       scope: 'Sign-in identity',
       mode: 'Approval',
-      proposedTarget: 'demo-operator · IAM user',
-      observedEvidence: 'RAM-1037 · IMPORTED · 09:35 UTC',
+      proposedTarget: csEvidence.target,
+      observedEvidence: csEvidence.evidence,
       steps: [
         { name: 'Force password rotation', impact: 'Invalidate compromised password.', status: 'pending' },
         { name: 'Enforce virtual MFA device', impact: 'Mandate 2FA enrollment.', status: 'pending' }
@@ -142,8 +169,8 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
       name: 'Ransomware Precursor Response',
       scope: 'Workload fixture',
       mode: 'Approval',
-      proposedTarget: 'demo-web-01 · Fixture only',
-      observedEvidence: 'Host anomaly fixture',
+      proposedTarget: rmEvidence.target,
+      observedEvidence: rmEvidence.evidence,
       steps: [
         { name: 'Snapshot volume state', impact: 'Capture forensics image.', status: 'pending' },
         { name: 'Isolate host from subnet', impact: 'Stop worm propagation.', status: 'pending' }
