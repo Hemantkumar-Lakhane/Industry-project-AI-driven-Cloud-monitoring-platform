@@ -18,7 +18,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from simulator.wazuh_simulator import simulate_session
 from simulator.wazuh_reader import read_wazuh_logs, get_wazuh_status, is_wazuh_available
-from simulator.attack_simulator import run_attack_simulation, run_full_simulation, SCENARIOS, get_scenario_catalog
+from simulator.attack_simulator import run_attack_simulation, run_full_simulation, SCENARIOS, get_scenario_catalog, simulate_brute_force
 from engines.cspm_engine import run_cspm_scan
 from engines.ciem_engine import run_ciem_scan
 from engines.ml_engine import analyze_events, compare_models, get_model_info
@@ -42,13 +42,15 @@ from engines.localstack_engine import (
 from engines.db import (
     save_risk_score, get_cspm_history, get_ciem_history,
     save_cspm_scan, save_ciem_scan, get_alert_log,
-    save_compliance_score, get_compliance_trend_db
+    save_compliance_score, get_compliance_trend_db,
+    save_findings_db, get_findings_db, get_findings_stats_db
 )
 from engines.alert_engine import send_alert_email
 from schemas.event import NormalizedEvent, normalize_event
 from schemas.finding import SecurityFinding
 from engines.base_detector import detector_registry
 from engines.detectors.brute_force import brute_force_detector
+from simulator.session_manager import session_manager
 
 # ── OpenAPI Tags & Metadata ───────────────────────────────────────────────────
 
@@ -343,6 +345,13 @@ def _require_permission(
     return result.get("user")
 
 def _get_events(normal: int = 80, attacks: int = 15):
+    """
+    Returns events from the unified active session buffer.
+    Ensures Overview, Findings, and Attack Simulation observe identical event batches.
+    """
+    session = session_manager.get_session()
+    if session and session.events:
+        return session.events
     if is_wazuh_available():
         events = read_wazuh_logs(max_events=normal + attacks)
         if events:
@@ -350,24 +359,30 @@ def _get_events(normal: int = 80, attacks: int = 15):
     return simulate_session(n_normal=normal, n_attacks=attacks)
 
 def _get_cspm(events: list = None):
-    """Derive CSPM findings from log events. Falls back to LocalStack if running."""
+    """Derive CSPM findings from active session or log events."""
     if is_localstack_running():
         results = run_cspm_scan_localstack()
         if results:
             save_cspm_scan(results)
             return results
-    results = run_cspm_scan(events or [])
+    session = session_manager.get_session()
+    if not events and session and session.cspm_results:
+        return session.cspm_results
+    results = run_cspm_scan(events or (session.events if session else []))
     save_cspm_scan(results)
     return results
 
 def _get_ciem(events: list = None):
-    """Derive CIEM findings from log events. Falls back to LocalStack if running."""
+    """Derive CIEM findings from active session or log events."""
     if is_localstack_running():
         results = run_ciem_scan_localstack()
         if results:
             save_ciem_scan(results)
             return results
-    results = run_ciem_scan(events or [])
+    session = session_manager.get_session()
+    if not events and session and session.ciem_results:
+        return session.ciem_results
+    results = run_ciem_scan(events or (session.events if session else []))
     save_ciem_scan(results)
     return results
 
@@ -943,24 +958,11 @@ def get_ciem_results():
     }
 )
 def get_dashboard_summary():
-    events = _get_events(100, 15)
-    analyzed = analyze_events(events)
-    cspm_issues = _get_cspm(events)
-    ciem_issues = _get_ciem(events)
+    session = session_manager.get_session()
+    summary = session.to_summary()
     return {
         "status": "success",
-        "data": {
-            "threats": {
-                "critical": sum(1 for e in analyzed if e.get("ml_severity") == "Critical"),
-                "high": sum(1 for e in analyzed if e.get("ml_severity") == "High"),
-                "total_analyzed": len(analyzed)
-            },
-            "posture": {
-                "cspm_open_issues": len(cspm_issues),
-                "ciem_open_risks": len(ciem_issues)
-            },
-            "recent_critical_alerts": [e for e in analyzed if e.get("ml_severity") == "Critical"][:5]
-        }
+        "data": summary
     }
 
 
@@ -1198,17 +1200,40 @@ def list_attack_detectors():
     }
 )
 def get_detected_findings(
-    normal: int = Query(50, ge=1, le=500, description="Baseline normal events count"),
-    attacks: int = Query(15, ge=0, le=200, description="Injected attack events count")
+    normal: Optional[int] = Query(None, ge=1, le=500, description="Baseline normal events count"),
+    attacks: Optional[int] = Query(None, ge=0, le=200, description="Injected attack events count")
 ):
-    raw_events = _get_events(normal, attacks)
-    norm_events = [normalize_event(e) for e in raw_events]
-    findings = detector_registry.run_all(norm_events)
+    session = session_manager.get_session()
+    # If the caller explicitly requested a specific attack count > 0, inject brute force scenario
+    if attacks is not None and attacks > 0:
+        session_manager.inject_scenario("brute_force", "high")
+        session = session_manager.get_session()
+
+    if session and session.findings is not None:
+        findings_data = session.findings
+    else:
+        persisted = get_findings_db(limit=200)
+        if persisted:
+            findings_data = persisted
+        else:
+            raw_events = session.events if session and session.events else _get_events(normal or 50, attacks or 0)
+            norm_events = [normalize_event(e) for e in raw_events]
+            eval_findings = detector_registry.run_all(norm_events)
+            findings_data = [f.model_dump(mode="json") for f in eval_findings]
+            for f in findings_data:
+                f["data_source"] = session.data_source if session else "SIMULATED"
+            try:
+                save_findings_db(findings_data)
+            except Exception:
+                pass
+        if session:
+            session.findings = findings_data
+
     return {
         "status": "success",
-        "count": len(findings),
-        "data": [f.model_dump(mode="json") for f in findings],
-        "source": get_wazuh_status()["mode"]
+        "count": len(findings_data),
+        "data": findings_data,
+        "source": session.data_source if session else get_wazuh_status()["mode"]
     }
 
 
@@ -1286,12 +1311,44 @@ def list_playbooks():
 
 
 @app.post(
+    "/api/remediation/dry-run/{attack_type}",
+    tags=["Remediation & Playbooks"],
+    summary="Execute Dry-Run of Remediation Playbook",
+    description="Safely evaluate a remediation playbook in non-destructive dry-run mode. Validates execution steps without mutating cloud resources or issuing external alerts.",
+    response_description="Dry-run execution outcome and step-by-step verification.",
+    responses={
+        200: {
+            "description": "Playbook dry-run completed successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "data": {
+                            "execution_id": "EXEC-8F3E2B1A",
+                            "playbook_id": "PB-BF-001",
+                            "is_dry_run": True,
+                            "overall_status": "completed"
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
+def dry_run_remediation(
+    attack_type: str = Path(..., description="Attack category playbook to dry-run", openapi_examples={"default": {"value": "brute_force"}})
+):
+    result = execute_playbook(attack_type, dry_run=True)
+    return {"status": "success", "data": result}
+
+
+@app.post(
     "/api/remediation/execute/{attack_type}",
     tags=["Remediation & Playbooks"],
     summary="Execute Incident Remediation Playbook",
     description="""
 Trigger and execute an automated remediation playbook for a designated attack type (e.g., `brute_force`, `data_exfiltration`, `privilege_escalation`).
-Simulates operational cloud remediation actions: blocking malicious source IPs, locking compromised user accounts, reverting IAM policy modifications, and alerting SOC channels.
+Supports safe dry-run execution (default) to avoid destructive cloud mutations unless live execution is explicitly instructed.
 """,
     response_description="Playbook execution result record detailing actions executed, status, and outcome.",
     responses={
@@ -1319,9 +1376,10 @@ Simulates operational cloud remediation actions: blocking malicious source IPs, 
     }
 )
 def execute_remediation(
-    attack_type: str = Path(..., description="Attack category to remediate (e.g., 'brute_force', 'data_exfiltration', 'privilege_escalation')", openapi_examples={"default": {"value": "brute_force"}})
+    attack_type: str = Path(..., description="Attack category to remediate (e.g., 'brute_force', 'data_exfiltration', 'privilege_escalation')", openapi_examples={"default": {"value": "brute_force"}}),
+    dry_run: bool = Query(True, description="When true (default), executes in dry-run mode without mutating live cloud resources")
 ):
-    result = execute_playbook(attack_type)
+    result = execute_playbook(attack_type, dry_run=dry_run)
     return {"status": "success", "data": result}
 
 
@@ -1868,26 +1926,10 @@ def run_simulation(
 ):
     if scenario not in SCENARIOS:
         raise HTTPException(status_code=400, detail=f"Unknown scenario '{scenario}'. Valid: {list(SCENARIOS.keys())}")
-    sim = run_attack_simulation(scenario, intensity)
-    noise = simulate_session(n_normal=50, n_attacks=0)
-    all_events = sim["events"] + noise
-    analyzed = analyze_events(all_events)
-    sim_ids = {e["id"] for e in sim["events"]}
-    detected = [e for e in analyzed if e["id"] in sim_ids and e.get("is_anomaly")]
-    detection_rate = len(detected) / len(sim["events"]) * 100 if sim["events"] else 0
+    result = session_manager.inject_scenario(scenario, intensity)
     return {
         "status": "success",
-        "data": {
-            "simulation": {k: v for k, v in sim.items() if k != "events"},
-            "detection": {
-                "total_sim_events": len(sim["events"]),
-                "detected_as_anomaly": len(detected),
-                "detection_rate": round(detection_rate, 1),
-                "detection_success": detection_rate > 50
-            },
-            "sample_sim_events": sim["events"][:5],
-            "all_analyzed_events": analyzed
-        }
+        "data": result
     }
 
 
@@ -1940,16 +1982,16 @@ Measures overall ensemble detection rate, re-calculates unified risk score under
 def run_full_attack_simulation(
     intensity: str = Query("high", description="Simulation intensity: 'low', 'medium', 'high', or 'extreme'", openapi_examples={"default": {"value": "high"}})
 ):
-    full_sim = run_full_simulation(intensity)
+    full_sim = session_manager.inject_full_simulation(intensity)
     all_sim_events = [e for s in full_sim["scenarios"] for e in s["events"]]
-    noise = simulate_session(n_normal=80, n_attacks=0)
-    all_events = all_sim_events + noise
-    analyzed = analyze_events(all_events)
+    session = session_manager.get_session()
+    all_events = session.events
+    analyzed = session.analyzed_events
     sim_ids = {e["id"] for e in all_sim_events}
     detected = [e for e in analyzed if e["id"] in sim_ids and e.get("is_anomaly")]
     detection_rate = len(detected) / len(all_sim_events) * 100 if all_sim_events else 0
-    cspm = _get_cspm(all_events)
-    ciem = _get_ciem(all_events)
+    cspm = session.cspm_results
+    ciem = session.ciem_results
     risk = calculate_unified_risk(analyzed, cspm, ciem)
     remediation = auto_remediate_threats(analyzed)
     return {
@@ -1979,6 +2021,33 @@ def run_full_attack_simulation(
             },
             "scenarios": [{k: v for k, v in s.items() if k != "events"} for s in full_sim["scenarios"]]
         }
+    }
+
+
+@app.post(
+    "/api/simulation/reset",
+    tags=["Attack Simulation"],
+    summary="Reset Telemetry Session to Clean Baseline",
+    description="Resets the shared active telemetry session buffer to clean baseline noise with zero injected attacks.",
+    response_description="Confirmation of session reset.",
+    responses={
+        200: {
+            "description": "Telemetry session reset to baseline successfully",
+            "content": {
+                "application/json": {
+                    "example": {"status": "success", "message": "Telemetry session reset to baseline"}
+                }
+            }
+        }
+    }
+)
+def reset_simulation_session():
+    session = session_manager.reset_to_baseline()
+    return {
+        "status": "success",
+        "message": "Telemetry session reset to clean baseline",
+        "session_id": session.session_id,
+        "threats": session.to_summary()["threats"]
     }
 
 

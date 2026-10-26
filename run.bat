@@ -50,7 +50,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [3/5] Checking ML Models...
+echo [3/6] Checking ML Models...
 if not exist "%BACKEND_DIR%\models\iforest.pkl" (
     echo [INFO] Trained models not found. Running train_model.py...
     python train_model.py
@@ -59,7 +59,19 @@ if not exist "%BACKEND_DIR%\models\iforest.pkl" (
 )
 
 echo.
-echo [4/5] Checking Frontend dependencies...
+echo [4/6] Verifying Database & Telemetry Seeds...
+cd /d "%BACKEND_DIR%"
+python -c "import os, sys; sys.path.insert(0, '.'); from engines.auth_engine import _seed_defaults; _seed_defaults(); print('[OK] Default user accounts verified in security.db (admin, analyst1, viewer1).')"
+if not exist "%BACKEND_DIR%\data\alerts.json" (
+    echo [INFO] Seeding initial Wazuh telemetry batch to data/alerts.json...
+    python -c "import os, sys; sys.path.insert(0, '.'); from simulator.log_generator import generate_batch, append_to_log; append_to_log(generate_batch())"
+    echo [OK] Initial telemetry alerts seeded.
+) else (
+    echo [OK] Telemetry alerts found in data/alerts.json.
+)
+
+echo.
+echo [5/6] Checking Frontend dependencies...
 cd /d "%FRONTEND_DIR%"
 if not exist "%FRONTEND_DIR%\node_modules" (
     echo [INFO] Installing frontend npm packages...
@@ -69,7 +81,7 @@ if not exist "%FRONTEND_DIR%\node_modules" (
 )
 
 echo.
-echo [5/5] Launching Platform Services...
+echo [6/6] Launching Platform Services...
 echo.
 
 :: 1. Launch Wazuh Live Log Generator in separate window

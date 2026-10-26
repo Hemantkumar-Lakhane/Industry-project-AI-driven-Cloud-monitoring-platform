@@ -16,6 +16,10 @@ class PrincipalInfo(BaseModel):
     principal_type: str = Field(default="unknown", description="IAMUser, IAMRole, Root, ServiceAccount, HostUser")
     arn: Optional[str] = Field(default=None, description="Cloud Resource Name or identity URI")
 
+    def __str__(self) -> str:
+        return self.identity
+
+
 
 class NetworkInfo(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -99,6 +103,36 @@ class NormalizedEvent(BaseModel):
         if val in ("critical", "high", "medium", "low", "info"):
             return val
         return "low"
+
+    @property
+    def event_type(self) -> str:
+        return self.raw_payload.get("event_type", "normal") if self.raw_payload else "normal"
+
+    @property
+    def user_id(self) -> str:
+        return self.principal.identity if self.principal else "unknown"
+
+    @property
+    def source_ip(self) -> str:
+        return self.network.src_ip if self.network else "unknown"
+
+    @property
+    def destination_ip(self) -> str:
+        return self.network.dst_ip if self.network else "unknown"
+
+    @property
+    def attack_type(self) -> Optional[str]:
+        return self.raw_payload.get("attack_type") if self.raw_payload else None
+
+    @property
+    def raw_data(self) -> Dict[str, Any]:
+        return self.raw_payload or {}
+
+    @property
+    def bytes_transferred(self) -> int:
+        return (self.src_bytes or 0) + (self.dst_bytes or 0)
+
+
 
 
 def normalize_event(raw: Dict[str, Any], default_source: str = "wazuh") -> NormalizedEvent:

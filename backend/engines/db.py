@@ -71,6 +71,25 @@ def init_db():
             email_sent INTEGER DEFAULT 0,
             recipient TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS findings (
+            finding_id TEXT PRIMARY KEY,
+            timestamp TEXT NOT NULL,
+            attack_category TEXT NOT NULL,
+            category_index INTEGER,
+            title TEXT NOT NULL,
+            description TEXT,
+            severity TEXT NOT NULL,
+            confidence REAL,
+            detection_method TEXT,
+            status TEXT DEFAULT 'open',
+            affected_resource TEXT,
+            affected_principal TEXT,
+            playbook_id TEXT,
+            data_source TEXT,
+            evidence_json TEXT,
+            verification_status TEXT DEFAULT 'VERIFIED'
+        );
     """)
     conn.commit()
     conn.close()
@@ -191,6 +210,110 @@ def get_compliance_trend_db(current_score: float):
         "direction": "improving" if current_score >= week_ago else "declining",
         "change_7d": round(current_score - week_ago, 1)
     }
+
+
+# ── Findings Persistence ──────────────────────────────────────────────────────
+
+def save_findings_db(findings: list):
+    """Persist security findings into SQLite with deduplication."""
+    if not findings:
+        return
+    import json
+    conn = get_conn()
+    for f in findings:
+        if hasattr(f, "model_dump"):
+            d = f.model_dump(mode="json")
+        elif isinstance(f, dict):
+            d = f
+        else:
+            continue
+
+        finding_id = d.get("finding_id") or str(d.get("id"))
+        ts = d.get("created_at") or d.get("timestamp") or datetime.now(timezone.utc).isoformat()
+        attack_category = d.get("attack_category") or "unknown"
+        category_index = d.get("category_index") or 0
+        title = d.get("title") or "Security Finding"
+        desc = d.get("description") or title
+        severity = (d.get("severity") or "medium").lower()
+        confidence = float(d.get("confidence") or 0.85)
+        detection_method = d.get("detection_method") or "rule_based"
+        status = d.get("status") or "open"
+        affected_resource = str(d.get("affected_resource") or "")
+        affected_principal = str(d.get("affected_principal") or "")
+        rec_resp = d.get("recommended_response") or {}
+        playbook_id = rec_resp.get("playbook_id") if isinstance(rec_resp, dict) else d.get("playbook_id")
+        data_source = d.get("data_source") or "SIMULATED"
+        evidence_json = json.dumps(d.get("evidence") or {})
+        verification_status = d.get("verification_status") or "VERIFIED"
+
+        conn.execute("""
+            INSERT INTO findings (
+                finding_id, timestamp, attack_category, category_index, title, description,
+                severity, confidence, detection_method, status, affected_resource,
+                affected_principal, playbook_id, data_source, evidence_json, verification_status
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(finding_id) DO UPDATE SET
+                status = excluded.status,
+                confidence = excluded.confidence,
+                verification_status = excluded.verification_status
+        """, (
+            finding_id, ts, attack_category, category_index, title, desc,
+            severity, confidence, detection_method, status, affected_resource,
+            affected_principal, playbook_id, data_source, evidence_json, verification_status
+        ))
+    conn.commit()
+    conn.close()
+
+
+def get_findings_db(limit: int = 100, severity: str = None) -> list:
+    """Retrieve persisted findings ordered by timestamp descending."""
+    import json
+    conn = get_conn()
+    if severity and severity.lower() != "all":
+        rows = conn.execute(
+            "SELECT * FROM findings WHERE LOWER(severity) = ? ORDER BY timestamp DESC LIMIT ?",
+            (severity.lower(), limit)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM findings ORDER BY timestamp DESC LIMIT ?", (limit,)
+        ).fetchall()
+    conn.close()
+
+    results = []
+    for r in rows:
+        item = dict(r)
+        # Parse evidence JSON back into dict
+        try:
+            item["evidence"] = json.loads(item.get("evidence_json") or "{}")
+        except Exception:
+            item["evidence"] = {}
+        item["recommended_response"] = {
+            "playbook_id": item.get("playbook_id") or "PB-BF-001",
+            "is_dry_run_supported": True,
+            "action_summary": f"Execute response playbook {item.get('playbook_id')} for {item.get('title')}"
+        }
+        item["created_at"] = item.get("timestamp")
+        results.append(item)
+    return results
+
+
+def get_findings_stats_db() -> dict:
+    """Get count metrics across persisted findings."""
+    conn = get_conn()
+    rows = conn.execute("SELECT severity, count(*) as cnt FROM findings GROUP BY severity").fetchall()
+    total_row = conn.execute("SELECT count(*) as total FROM findings").fetchone()
+    open_row = conn.execute("SELECT count(*) as open_cnt FROM findings WHERE status = 'open'").fetchone()
+    conn.close()
+
+    stats = {"critical": 0, "high": 0, "medium": 0, "low": 0, "total": 0, "open": 0}
+    for r in rows:
+        sev = (r["severity"] or "").lower()
+        if sev in stats:
+            stats[sev] = r["cnt"]
+    stats["total"] = total_row["total"] if total_row else 0
+    stats["open"] = open_row["open_cnt"] if open_row else stats["total"]
+    return stats
 
 
 # Initialize on import

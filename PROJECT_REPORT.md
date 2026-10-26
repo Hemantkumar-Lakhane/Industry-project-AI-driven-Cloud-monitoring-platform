@@ -764,40 +764,75 @@ The following workflows can be used to verify the project:
 - Generate compliance dashboard and reports.
 - Export event, CSPM, and CIEM CSV files.
 - Check `/api/status` for Wazuh, LocalStack, and database status.
+- Category 1 Verification: Test `POST /api/detection/evaluate` with 5 qualifying authentication failures within 60 seconds (produces HIGH severity finding; escalates to CRITICAL upon successful login following failures; benign logins produce zero findings).
+- Consistent Attack Counts Across Modules: Overview dashboard, Security Findings, and Attack Simulation all query and evaluate the centralized `ActiveTelemetrySession` singleton buffer (`backend/simulator/session_manager.py`). Counts match actual events across runs, finding IDs match 1:1, and rescans do not generate random attacks.
+- Honest Remediation Statuses: Playbook execution results are strictly labeled `DRY-RUN COMPLETED` or `LIVE EXECUTION COMPLETED`. Step descriptions are prefixed with `[DRY-RUN]` during simulation, and dry-run remains the platform default.
+- Honest Finding Sources & Badges: Every finding, metric card, and telemetry stream carries explicit data source provenance (`LIVE`, `SIMULATED`, `IMPORTED`, or `NOT CONFIGURED`). Attack categories 2 through 16 are labeled as `NOT CONFIGURED (RULE DETECTOR PLANNED)` to prevent misrepresenting simulation as verified live detection.
+- Backend automated test suite: 51 automated test cases passing across health, OpenAPI docs, normalized event schemas, 9D feature extractor, Category 1 Brute-Force detector, session consistency, honest statuses, and honest source labels.
 
 ## 22. Current Implementation Status
 
-Implemented:
+### Verified and Fully Tested:
+- **Centralized Telemetry Session Manager (`session_manager.py`):**
+  - Manages a coherent, shared telemetry event buffer across Overview, Findings, CSPM, CIEM, and Attack Simulation.
+  - Ensures normal rescans evaluate existing buffer state without spawning unsolicited attacks.
+  - Exposes `POST /api/simulation/reset` to re-initialize environment to clean baseline noise on demand.
+- **Honest Remediation Engine (`remediation_engine.py`):**
+  - Returns `DRY-RUN COMPLETED` or `LIVE EXECUTION COMPLETED` in `overall_status` and `status` fields.
+  - Dry-run mode (`dry_run=True`) is enforced as default across all routes.
+  - UI Execution Outcome badges dynamically display exact outcome strings.
+- **Honest Provenance & Verification Labels (`finding.py`, `brute_force.py`, `App.jsx`, `AttackSimulationTab.jsx`):**
+  - Standardized `data_source` (`LIVE`, `SIMULATED`, `IMPORTED`, `NOT CONFIGURED`) and `verification_status` (`VERIFIED`, `SIMULATED_ONLY`, `NOT_CONFIGURED`) on all findings and metrics.
+  - Overview displays telemetry provenance tag (`TELEMETRY: LIVE` vs `TELEMETRY: SIMULATED`).
+  - Active Threats and Security Findings cards clearly differentiate verified Category 1 detections from simulated unconfigured categories.
+  - Attack Simulation tab explicitly flags simulated non-configured detectors.
+- **Category 1 (Brute-Force & Credential Abuse) Detector:**
+  - Standardized detection on `NormalizedEvent` schema with `PrincipalInfo` and `NetworkInfo`.
+  - Sliding time window (60s default) with configurable failure count threshold (>= 5).
+  - Strict `(identity, source_ip)` event grouping preventing cross-identity contamination.
+  - Breach detection escalation: transitions finding to `CRITICAL` severity and >= 0.95 confidence when a successful authentication follows failure burst.
+  - Structured `SecurityFinding` generation including `evidence.observed_facts`, `evidence.inferred_hypothesis`, `evidence.missing_evidence`, and `recommended_response` with dry-run support.
+  - Automated tests: 22 detector test cases in `test_brute_force_detector.py` (51 tests total in backend).
+- **Detection Registry and Endpoints:**
+  - `GET /api/detection/detectors` returning registered detector metadata.
+  - `GET /api/detection/findings` executing registry across active telemetry stream.
+  - `POST /api/detection/evaluate` evaluating arbitrary telemetry batches.
+- **Remediation Workflow & UI:**
+  - Dedicated safe dry-run endpoint `POST /api/remediation/dry-run/{attack_type}`.
+  - UI playbook selection enabling inspection of planned steps and execution of dry-run containment.
+  - Real execution result panel with execution ID, step timeline, duration, and pass/fail indicators.
+- **Frontend Findings Integration:**
+  - Dedicated Security Findings component in Overview with loading, error, empty, and success states.
+  - Clear display of severity, attack category, affected identity, source IP, timestamps, observed facts, inferred hypothesis, missing evidence, and recommended response.
+- **ML Compatibility Guards:**
+  - Explicit dimensional guard in `ml_engine.py` rejecting 9D vectors against legacy 3D/41D/78D models.
+  - `score_flow_features` returning `NOT CONFIGURED` status.
+  - UI banners in ML Comparison and Risk Score pages stating legacy benchmark status and that 9D operational models are not active.
+- **Core Platform Features:**
+  - FastAPI backend and React frontend (Vite).
+  - JWT authentication and RBAC (`admin`, `analyst`, `viewer`).
+  - SQLite persistence for users, posture scans, and risk scores.
+  - Comprehensive OpenAPI documentation and test coverage (51 passing backend tests, clean Vite production build).
 
-- FastAPI backend.
-- React frontend.
-- JWT authentication.
-- Role-based UI filtering.
-- SQLite persistence.
-- ML anomaly detection.
-- CSPM and CIEM engines.
-- Unified risk scoring.
-- Compliance mapping and reporting.
-- Remediation playbooks.
-- Attack simulation with intensity.
-- CSV exports.
-- WebSocket event streaming.
-- Minimalist UI theme with SVG icons.
+### Simulated / Synthetic Functionality:
+- **Cloud Infrastructure Mutation:** Containment actions (e.g. AWS Security Group IP blocking, IAM user locking) execute in non-destructive dry-run simulation mode.
+- **Wazuh Telemetry:** Background log generator writes simulated JSON alerts to `backend/data/alerts.json` simulating Wazuh agent telemetry.
+- **SOC Alerting:** SMTP alerting falls back to local logging when external mail servers are unconfigured.
+- **CSPM/CIEM Scans:** Evaluates audit telemetry or emulated LocalStack AWS environment rather than production cloud accounts.
 
-Partially simulated:
-
-- Cloud resource remediation.
-- SOC alerting when SMTP is not configured.
-- LocalStack-based AWS scans unless LocalStack is running.
-- Some ML datasets are synthetic approximations.
+### Unconfigured Integrations & Outstanding Work:
+- **Attack Categories 2 through 16:** Remain to be implemented sequentially following Category 1 verification.
+- **Operational 9D ML Flow Models:** Feature extraction pipeline is established, but dedicated operational model training on the 9 flow features is not yet configured.
+- **Live Cloud Action Hooks:** Cloud provider API credentials (AWS/Azure/GCP) for live (non-dry-run) remediation are intentionally unconfigured for safety.
 
 ## 23. Limitations
 
 - The system is a prototype and demonstration platform, not a production SOC product.
-- Some cloud actions are simulated instead of applied to real AWS.
+- Live cloud mutating actions are disabled; containment operates in verified dry-run mode.
 - Default credentials are included for demo purposes and must be changed in production.
 - JWT secret has a default value and should be moved to secure environment management.
 - Password hashing should use bcrypt or Argon2 in production.
+- The 9-dimensional operational ML models require retraining before deployment.
 - ML model pickle files can have version compatibility issues across scikit-learn versions.
 - The feature set for anomaly detection is limited to three numeric features.
 - Some compliance baseline controls are assumed for demonstration.
@@ -821,9 +856,22 @@ Recommended future work:
 - Add unit and integration tests.
 - Add CI/CD pipeline.
 
-## 25. Conclusion
+## 26. Complete UI Redesign (Branch: ui-design)
 
-Ram Antivirus Cloud Security AI Platform demonstrates a complete cloud security monitoring workflow from event ingestion to ML detection, posture analysis, identity risk analysis, risk scoring, remediation, and compliance reporting. The project is suitable as an academic or industry prototype because it shows how several security disciplines can be connected into one operational dashboard.
+In accordance with the Figma cloud security dashboard specification, the entire RAM Antivirus interface was redesigned with a consistent, production-grade visual design:
 
-The main strength of the project is integration. Instead of treating alerts, posture findings, identity risks, compliance, and remediation as separate modules, the platform links them into one workflow. This makes it useful for demonstrating how AI-assisted cloud security operations can reduce alert overload, improve visibility, and accelerate response.
+- **Application Shell & Navigation:** Redesigned sidebar featuring the official RAM Antivirus logo (`LOGO.png`), organized 10 distinct product modules, and added workspace metadata.
+- **Light & Dark Themes:** Implemented a comprehensive theming system with an obsidian dark theme (`#0b0c16`, `#131525`, `--accent-orange: #e8870e`) and a crisp light mode (`#f8fafc` background, `#ffffff` surface, `#0f172a` text). Toggling is accessible from both the header and Workspace Settings.
+- **Ten Product Modules:**
+  1. **Overview:** Executive threat metrics, ML anomaly score trajectory, active threats, detector registry, and posture cards.
+  2. **Alerts & Incidents:** Comprehensive findings queue with real-time text search, severity/provenance filters, and a forensic drawer showing observed facts, inferred hypothesis, and missing evidence.
+  3. **Risk Score:** Multi-dimensional breakdown of composite risk with clear labels when ML or factors are unconfigured.
+  4. **ML Comparison:** Dataset inspection and model benchmark cards without fabricated scores.
+  5. **Remediation:** Dual-column playbook directory and containment timeline distinguishing `DRY-RUN COMPLETED` from live mutations.
+  6. **Compliance:** Framework coverage for ISO 27001, SOC 2, and GDPR with passing/failing control audits.
+  7. **Attack Simulation:** Category scenario launcher displaying telemetry provenance and verified detector status.
+  8. **Users:** Role-based access directory managing permissions for Admin, Security Analyst, and Viewer.
+  9. **Data Sources:** Ingestion health monitor across Wazuh, CloudTrail/LocalStack, SQLite persistence, and PyOD models.
+  10. **Workspace Settings:** Detection sensitivity thresholds, theme toggle, and safety safeguard policies.
+- **Verification:** All 51 backend tests passed (`pytest backend/tests/ -v`), and the frontend production bundle built cleanly (`npm run build`). All changes kept strictly local on branch `ui-design` without any Git commits or pushes.
 

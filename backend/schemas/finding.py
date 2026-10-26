@@ -50,18 +50,21 @@ class SecurityFinding(BaseModel):
     category_index: Optional[int] = Field(default=None, ge=1, le=16, description="Index from the 16 attack taxonomy (1-16)")
     title: str = Field(..., description="Short, descriptive title of the finding")
     description: str = Field(default="", description="Detailed narrative of what was detected")
-    
+
     severity: str = Field(default="medium", description="critical, high, medium, low, info")
     confidence: float = Field(default=0.8, ge=0.0, le=1.0, description="Confidence in the detection [0.0, 1.0]")
     detection_method: str = Field(default="hybrid", description="rule_based, statistical_anomaly, hybrid, posture_policy")
     status: str = Field(default="open", description="open, investigating, contained, resolved, false_positive")
-    
+
     affected_resource: Optional[str] = Field(default=None, description="Cloud ARN, container ID, host, or IP address affected")
     affected_principal: Optional[str] = Field(default=None, description="Username or IAM identity involved")
-    
+
     evidence: FindingEvidence = Field(default_factory=FindingEvidence)
     recommended_response: RecommendedResponse = Field(default_factory=RecommendedResponse)
-    
+
+    data_source: str = Field(default="SIMULATED", description="Data provenance: LIVE, SIMULATED, IMPORTED, NOT CONFIGURED")
+    verification_status: str = Field(default="VERIFIED", description="Verification level: VERIFIED, SIMULATED_ONLY, NOT_CONFIGURED")
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Timestamp of finding creation in UTC")
     model_name: Optional[str] = Field(default=None, description="Specific ML model (if anomaly detection triggered finding)")
     raw_scores: Dict[str, float] = Field(default_factory=dict, description="Raw model anomaly scores or decision metrics")
@@ -98,3 +101,23 @@ class SecurityFinding(BaseModel):
             return max(0.0, min(1.0, val))
         except (ValueError, TypeError):
             return 0.8
+
+    @field_validator("data_source", mode="before")
+    @classmethod
+    def validate_data_source(cls, v: Any) -> str:
+        if not isinstance(v, str):
+            return "SIMULATED"
+        clean = v.strip().upper()
+        if clean in ("LIVE", "SIMULATED", "IMPORTED", "NOT CONFIGURED"):
+            return clean
+        return "SIMULATED"
+
+    @field_validator("verification_status", mode="before")
+    @classmethod
+    def validate_verification_status(cls, v: Any) -> str:
+        if not isinstance(v, str):
+            return "VERIFIED"
+        clean = v.strip().upper()
+        if clean in ("VERIFIED", "SIMULATED_ONLY", "NOT_CONFIGURED"):
+            return clean
+        return "VERIFIED"

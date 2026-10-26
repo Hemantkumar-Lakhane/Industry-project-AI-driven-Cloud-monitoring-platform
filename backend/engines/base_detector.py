@@ -90,6 +90,8 @@ class BaseDetector(ABC):
         action_summary: Optional[str] = None,
         playbook_id: Optional[str] = None,
         raw_scores: Optional[Dict[str, float]] = None,
+        data_source: str = "SIMULATED",
+        verification_status: str = "VERIFIED",
     ) -> SecurityFinding:
         """
         Factory helper ensuring all findings adhere strictly to SecurityFinding schema
@@ -98,6 +100,11 @@ class BaseDetector(ABC):
         # Resolve default playbook from taxonomy if not specified
         if not playbook_id and self.category_index in TAXONOMY_16:
             playbook_id = TAXONOMY_16[self.category_index].get("default_playbook")
+
+        if affected_principal is not None and not isinstance(affected_principal, str):
+            affected_principal = getattr(affected_principal, "identity", str(affected_principal))
+        if affected_resource is not None and not isinstance(affected_resource, str):
+            affected_resource = str(affected_resource)
 
         event_ids = [e.event_id for e in triggering_events if isinstance(e, NormalizedEvent)]
 
@@ -130,6 +137,8 @@ class BaseDetector(ABC):
             affected_principal=affected_principal,
             evidence=evidence,
             recommended_response=response,
+            data_source=data_source,
+            verification_status=verification_status,
             raw_scores=raw_scores or {}
         )
 

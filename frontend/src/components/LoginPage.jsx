@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Lock, User, Mail, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, Mail, KeyRound, Eye, EyeOff, Shield, Activity, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
 import { BrandMark } from './SharedComponents';
 import { API_URL } from '../config';
 
@@ -9,6 +9,7 @@ const LoginPage = ({ onLogin }) => {
   const [form, setForm] = useState({ username: '', password: '', email: '', role: 'viewer', full_name: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeDemo, setActiveDemo] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -31,13 +32,14 @@ const LoginPage = ({ onLogin }) => {
         onLogin(data.user, data.token);
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Authentication failed');
+      setError(err.response?.data?.detail || 'Authentication failed. Please check your credentials.');
     }
     setLoading(false);
   };
 
-  const demoLogin = async (username, password) => {
-    setForm({ ...form, username, password });
+  const demoLogin = async (roleName, username, password) => {
+    setActiveDemo(roleName);
+    setForm(f => ({ ...f, username, password }));
     setLoading(true);
     setError('');
     try {
@@ -47,36 +49,64 @@ const LoginPage = ({ onLogin }) => {
       localStorage.setItem('user', JSON.stringify(data.user));
       onLogin(data.user, data.token);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed');
+      setError(err.response?.data?.detail || 'Demo login failed');
     }
     setLoading(false);
+    setActiveDemo(null);
   };
 
   return (
     <div className="login-page">
-      <div className="login-container">
+      <div className="login-container animate-fade-in">
         <div className="login-header">
-          <BrandMark size={250} />
+          <div className="login-brand-wrapper">
+            <BrandMark size={76} />
+          </div>
           <h1>Ram Antivirus</h1>
-          <p className="text-muted">Cloud Security AI Platform</p>
+          <p className="login-subtitle">Cloud Security AI Platform</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
-          <h2>{isRegister ? 'Create Account' : 'Sign In'}</h2>
+          <div className="login-form-title-wrap">
+            <h2>{isRegister ? 'Create an Account' : 'Sign In'}</h2>
+            <p className="login-form-desc">
+              {isRegister ? 'Set up credentials for your workspace' : 'Enter your organization credentials'}
+            </p>
+          </div>
 
-          {error && <div className="login-error">{error}</div>}
+          {error && (
+            <div className="login-error animate-fade-in">
+              <span>{error}</span>
+            </div>
+          )}
 
           <div className="form-group">
             <User size={16} className="form-icon" />
-            <input type="text" placeholder="Username" value={form.username}
-              onChange={e => setForm({ ...form, username: e.target.value })} required />
+            <input
+              type="text"
+              placeholder="Username"
+              value={form.username}
+              onChange={e => setForm({ ...form, username: e.target.value })}
+              required
+              autoFocus
+            />
           </div>
 
           <div className="form-group">
             <Lock size={16} className="form-icon" />
-            <input type={showPassword ? 'text' : 'password'} placeholder="Password"
-              value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required />
-            <button type="button" className="toggle-pass" onClick={() => setShowPassword(!showPassword)}>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Password"
+              value={form.password}
+              onChange={e => setForm({ ...form, password: e.target.value })}
+              required
+            />
+            <button
+              type="button"
+              className="toggle-pass"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label="Toggle password visibility"
+            >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
@@ -85,48 +115,107 @@ const LoginPage = ({ onLogin }) => {
             <>
               <div className="form-group">
                 <Mail size={16} className="form-icon" />
-                <input type="email" placeholder="Email" value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })} required />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  required
+                />
               </div>
               <div className="form-group">
                 <User size={16} className="form-icon" />
-                <input type="text" placeholder="Full Name" value={form.full_name}
-                  onChange={e => setForm({ ...form, full_name: e.target.value })} />
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={form.full_name}
+                  onChange={e => setForm({ ...form, full_name: e.target.value })}
+                />
               </div>
               <div className="form-group">
                 <KeyRound size={16} className="form-icon" />
                 <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
-                  <option value="viewer">Viewer — Read Only</option>
-                  <option value="analyst">Analyst — View + Alerts</option>
-                  <option value="admin">Admin — Full Access</option>
+                  <option value="viewer">Viewer — Read-Only Executive</option>
+                  <option value="analyst">Analyst — SOC Operations</option>
+                  <option value="admin">Admin — Full Platform Access</option>
                 </select>
               </div>
             </>
           )}
 
-          <button type="submit" className="btn login-btn" disabled={loading}>
-            {loading ? 'Processing...' : isRegister ? 'Register' : 'Sign In'}
+          <button type="submit" className="login-btn-primary" disabled={loading}>
+            {loading && !activeDemo ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Authenticating...
+              </>
+            ) : (
+              <>
+                {isRegister ? 'Register Account' : 'Sign In'} <ArrowRight size={15} />
+              </>
+            )}
           </button>
 
-          <p className="toggle-mode">
-            {isRegister ? 'Already have an account?' : "Don't have an account?"}
-            <button type="button" onClick={() => { setIsRegister(!isRegister); setError(''); }}>
+          <div className="toggle-mode">
+            <span>{isRegister ? 'Already have an account?' : "Don't have an account?"}</span>
+            <button
+              type="button"
+              onClick={() => { setIsRegister(!isRegister); setError(''); }}
+              className="toggle-mode-btn"
+            >
               {isRegister ? 'Sign In' : 'Register'}
             </button>
-          </p>
+          </div>
         </form>
 
         <div className="demo-accounts">
-          <p className="text-xs text-muted">Quick Demo Login:</p>
+          <div className="demo-accounts-header">
+            <Sparkles size={14} className="demo-sparkle-icon" />
+            <span>Quick Demo Login</span>
+          </div>
           <div className="demo-btns">
-            <button className="btn btn-sm" onClick={() => demoLogin('admin', 'admin123')}>
-              <KeyRound size={12} /> Admin
+            <button
+              type="button"
+              className={`demo-role-card demo-admin ${activeDemo === 'admin' ? 'loading' : ''}`}
+              onClick={() => demoLogin('admin', 'admin', 'admin123')}
+              disabled={loading}
+            >
+              <div className="demo-role-icon">
+                {activeDemo === 'admin' ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
+              </div>
+              <div className="demo-role-info">
+                <span className="demo-role-name">Admin</span>
+                <span className="demo-role-sub">Full Access</span>
+              </div>
             </button>
-            <button className="btn btn-sm btn-outline" onClick={() => demoLogin('analyst1', 'analyst123')}>
-              <KeyRound size={12} /> Analyst
+
+            <button
+              type="button"
+              className={`demo-role-card demo-analyst ${activeDemo === 'analyst' ? 'loading' : ''}`}
+              onClick={() => demoLogin('analyst', 'analyst1', 'analyst123')}
+              disabled={loading}
+            >
+              <div className="demo-role-icon">
+                {activeDemo === 'analyst' ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
+              </div>
+              <div className="demo-role-info">
+                <span className="demo-role-name">Analyst</span>
+                <span className="demo-role-sub">SOC Team</span>
+              </div>
             </button>
-            <button className="btn btn-sm btn-outline" onClick={() => demoLogin('viewer1', 'viewer123')}>
-              <KeyRound size={12} /> Viewer
+
+            <button
+              type="button"
+              className={`demo-role-card demo-viewer ${activeDemo === 'viewer' ? 'loading' : ''}`}
+              onClick={() => demoLogin('viewer', 'viewer1', 'viewer123')}
+              disabled={loading}
+            >
+              <div className="demo-role-icon">
+                {activeDemo === 'viewer' ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
+              </div>
+              <div className="demo-role-info">
+                <span className="demo-role-name">Viewer</span>
+                <span className="demo-role-sub">Audit View</span>
+              </div>
             </button>
           </div>
         </div>
