@@ -27,11 +27,13 @@ import engines.detectors  # Ensures all 16 detectors register with detector_regi
 from engines.ml_engine import analyze_events
 from engines.cspm_engine import run_cspm_scan
 from engines.ciem_engine import run_ciem_scan
-from engines.db import save_cspm_scan, save_ciem_scan, save_findings_db, get_findings_db, get_findings_stats_db
+from engines.db import save_cspm_scan, save_ciem_scan, save_findings_db, get_findings_db, get_findings_stats_db, save_incidents_db, get_incidents_db
+from engines.correlation_engine import correlate_findings
 from engines.localstack_engine import is_localstack_running, run_cspm_scan_localstack, run_ciem_scan_localstack
 from simulator.wazuh_reader import get_wazuh_log_path
 
 TAXONOMY_SLUGS = {v["slug"] for v in TAXONOMY_16.values()}
+
 
 
 class ActiveTelemetrySession:
@@ -42,6 +44,7 @@ class ActiveTelemetrySession:
         self.events: List[Dict[str, Any]] = []
         self.analyzed_events: List[Dict[str, Any]] = []
         self.findings: List[Dict[str, Any]] = []
+        self.incidents: List[Dict[str, Any]] = []
         self.cspm_results: List[Dict[str, Any]] = []
         self.ciem_results: List[Dict[str, Any]] = []
         self.active_scenario: Optional[str] = None
@@ -102,6 +105,8 @@ class ActiveTelemetrySession:
                     "verification_status": "VERIFIED" if is_known_attack else "NOT_CONFIGURED"
                 })
 
+        open_inc_count = sum(1 for inc in self.incidents if inc.get("status") == "open") if self.incidents else len(self.findings)
+
         return {
             "session_id": self.session_id,
             "data_source": self.data_source,
@@ -114,7 +119,8 @@ class ActiveTelemetrySession:
                 "total_analyzed": len(self.events),
                 "detected_threats": sum(1 for e in self.analyzed_events if e.get("is_anomaly") or e.get("event_type") == "attack"),
                 "unique_findings": len(self.findings),
-                "open_incidents": sum(1 for f in self.findings if f.get("status") in ("open", "investigating", "New")),
+                "open_incidents": open_inc_count,
+                "total_incidents": len(self.incidents),
                 "detector_findings_count": len(self.findings)
             },
             "posture": {
@@ -125,6 +131,7 @@ class ActiveTelemetrySession:
             },
             "recent_critical_alerts": recent_alerts[:5]
         }
+
 
 
 class SessionManager:
@@ -177,8 +184,11 @@ class SessionManager:
             f["data_source"] = session.data_source
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
 
-        # Persist findings to SQLite
+        # Persist findings to SQLite and run incident correlation
         save_findings_db(session.findings)
+        incidents = correlate_findings(session.findings)
+        session.incidents = [inc.model_dump(mode="json") for inc in incidents]
+        save_incidents_db(session.incidents)
 
         # Posture scans on baseline
         if is_localstack_running():
@@ -215,15 +225,19 @@ class SessionManager:
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
 
         save_findings_db(session.findings)
+        incidents = correlate_findings(session.findings)
+        session.incidents = [inc.model_dump(mode="json") for inc in incidents]
+        save_incidents_db(session.incidents)
         session.generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._session = session
         return session
+
 
     def get_session(self) -> ActiveTelemetrySession:
         """Get the current active session. Refreshes if new logs arrived on disk."""
         if self._session is None:
             self._init_baseline_session()
-        elif is_wazuh_available():
+        elif is_wazuh_available() and getattr(self._session, "data_source", "SIMULATED") == "LIVE":
             log_path = get_wazuh_log_path()
             if os.path.exists(log_path):
                 mtime = os.path.getmtime(log_path)
@@ -258,6 +272,9 @@ class SessionManager:
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
 
         save_findings_db(session.findings)
+        incidents = correlate_findings(session.findings)
+        session.incidents = [inc.model_dump(mode="json") for inc in incidents]
+        save_incidents_db(session.incidents)
         session.analyzed_events = analyze_events(session.events)
 
         # Update posture scans
@@ -300,13 +317,33 @@ class SessionManager:
             f["data_source"] = "SIMULATED"
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
 
+        # Persist findings and run incident correlation
+        save_findings_db(session.findings)
+        incidents = correlate_findings(session.findings)
+        session.incidents = [inc.model_dump(mode="json") for inc in incidents]
+        save_incidents_db(session.incidents)
+
         # ML Anomaly scoring
         analyzed = analyze_events(combined_events)
         session.analyzed_events = analyzed
 
+
         # Posture scans
         session.cspm_results = run_cspm_scan(combined_events)
         session.ciem_results = run_ciem_scan(combined_events)
+
+        # Unified incident-aware risk calculation and persistence
+        from engines.risk_engine import calculate_unified_risk
+        from engines.db import save_risk_score
+        r = calculate_unified_risk(session.analyzed_events, session.cspm_results, session.ciem_results, incidents=session.incidents)
+        save_risk_score(
+            r["unified_risk_score"],
+            r["components"]["ml_anomaly_detection"]["score"],
+            r["components"]["cspm_posture"]["score"],
+            r["components"]["ciem_identity"]["score"],
+            r["unified_risk_level"],
+            incident=r["components"]["incident_correlation"]["score"]
+        )
 
         # Calculate detection metrics for AttackSimulationTab
         sim_ids = {e["id"] for e in attack_events}
@@ -335,6 +372,16 @@ class SessionManager:
                 "data_source": "SIMULATED",
                 "finding_id": matching_finding.get("finding_id") if matching_finding else None,
             },
+            "risk_score": {
+                "unified": r["unified_risk_score"],
+                "level": r["unified_risk_level"],
+                "components": {
+                    "incident_correlation": r["components"]["incident_correlation"]["score"],
+                    "ml_anomaly_detection": r["components"]["ml_anomaly_detection"]["score"],
+                    "cspm_posture": r["components"]["cspm_posture"]["score"],
+                    "ciem_identity": r["components"]["ciem_identity"]["score"],
+                }
+            },
             "sample_sim_events": attack_events[:5],
             "all_analyzed_events": analyzed
         }
@@ -362,16 +409,64 @@ class SessionManager:
             f["data_source"] = "SIMULATED"
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
 
+        save_findings_db(session.findings)
+        incidents = correlate_findings(session.findings)
+        session.incidents = [inc.model_dump(mode="json") for inc in incidents]
+        save_incidents_db(session.incidents)
+
         analyzed = analyze_events(combined_events)
         session.analyzed_events = analyzed
         session.cspm_results = run_cspm_scan(combined_events)
         session.ciem_results = run_ciem_scan(combined_events)
 
+        from engines.risk_engine import calculate_unified_risk
+        from engines.db import save_risk_score
+        r = calculate_unified_risk(session.analyzed_events, session.cspm_results, session.ciem_results, incidents=session.incidents)
+        save_risk_score(
+            r["unified_risk_score"],
+            r["components"]["ml_anomaly_detection"]["score"],
+            r["components"]["cspm_posture"]["score"],
+            r["components"]["ciem_identity"]["score"],
+            r["unified_risk_level"],
+            incident=r["components"]["incident_correlation"]["score"]
+        )
+
         return full_sim
 
-    def reset_to_baseline(self) -> ActiveTelemetrySession:
+    def reset_to_baseline(self, n_normal: int = 60) -> ActiveTelemetrySession:
         """Reset session to clean baseline noise (0 attacks)."""
-        self._init_baseline_session(n_normal=60)
+        session = ActiveTelemetrySession()
+        session.data_source = "SIMULATED"
+        session.cspm_source = "SIMULATED"
+        session.ciem_source = "SIMULATED"
+        if is_wazuh_available():
+            log_path = get_wazuh_log_path()
+            if os.path.exists(log_path):
+                session.last_log_mtime = os.path.getmtime(log_path)
+        raw_events = simulate_session(n_normal=n_normal, n_attacks=0)
+        session.events = raw_events
+        session.analyzed_events = analyze_events(raw_events)
+        norm_events = [normalize_event(e) for e in raw_events]
+        findings = detector_registry.run_all(norm_events)
+        session.findings = [f.model_dump(mode="json") for f in findings]
+        session.incidents = []
+        session.cspm_results = run_cspm_scan(raw_events)
+        session.ciem_results = run_ciem_scan(raw_events)
+        session.generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        from engines.risk_engine import calculate_unified_risk
+        from engines.db import save_risk_score
+        r = calculate_unified_risk(session.analyzed_events, session.cspm_results, session.ciem_results, incidents=session.incidents)
+        save_risk_score(
+            r["unified_risk_score"],
+            r["components"]["ml_anomaly_detection"]["score"],
+            r["components"]["cspm_posture"]["score"],
+            r["components"]["ciem_identity"]["score"],
+            r["unified_risk_level"],
+            incident=r["components"]["incident_correlation"]["score"]
+        )
+
+        self._session = session
         return self._session
 
 
