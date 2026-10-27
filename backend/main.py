@@ -2002,6 +2002,34 @@ def execute_remediation(
     return {"status": "success", "data": result}
 
 
+class RollbackRequest(BaseModel):
+    execution_id: str = Field(..., description="Unique remediation execution identifier to rollback", examples=["EXEC-8F3E2B1A"])
+
+
+@app.post(
+    "/api/remediation/rollback",
+    tags=["Remediation & Playbooks"],
+    summary="Rollback Executed Remediation Action",
+    description="Revert a previously executed remediation action and restore the targeted resource finding to its pre-remediation state.",
+    dependencies=[Depends(bearer_scheme)],
+    responses={
+        200: {"description": "Rollback completed successfully"},
+        404: {"description": "Execution ID not found"}
+    }
+)
+def api_rollback_remediation(
+    req: RollbackRequest,
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "remediation:execute", credentials)
+    res = rollback_remediation(req.execution_id)
+    if res.get("status") == "error":
+        raise HTTPException(status_code=404, detail=res.get("message"))
+    return {"status": "success", "data": res}
+
+
+
 @app.post(
     "/api/remediation/auto",
     tags=["Remediation & Playbooks"],

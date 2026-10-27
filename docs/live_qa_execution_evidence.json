@@ -1,0 +1,191 @@
+{
+  "TC-TNY-01": {
+    "status": "PASS",
+    "description": "Admin login & JWT issuance",
+    "latency_ms": 568.2,
+    "user": "admin",
+    "role": "admin",
+    "permissions_count": 17
+  },
+  "TC-TNY-02": {
+    "status": "PASS",
+    "description": "Viewer login & negative password rejection",
+    "negative_test_status_code": 401,
+    "negative_test_detail": "Invalid username or password"
+  },
+  "TC-TNY-03": {
+    "status": "PASS",
+    "description": "Registration endpoint lockdown (unauth=401, viewer=403)",
+    "unauth_code": 401,
+    "viewer_code": 403
+  },
+  "TC-TNY-04": {
+    "status": "PASS",
+    "description": "WebSocket ticket creation, handshake, event stream, and single-use exhaustion",
+    "ticket_prefix": "wstk_jQn8mc4",
+    "handshake_response": {
+      "type": "auth_ok",
+      "username": "admin",
+      "role": "admin"
+    },
+    "event_stream_total": 500
+  },
+  "TC-TNY-05": {
+    "status": "PASS",
+    "description": "Asset discovery and compute workload inventory",
+    "total_assets": 47,
+    "critical_risk_assets": 1,
+    "assets_by_type": {
+      "iam_role": 1,
+      "ec2_instance": 2,
+      "rds_database": 1,
+      "host_compute": 1,
+      "network_service": 36,
+      "web_service": 2,
+      "s3_bucket": 2,
+      "iam_user": 1,
+      "security_group": 1
+    }
+  },
+  "TC-TNY-06": {
+    "status": "PASS",
+    "description": "Connector health probe",
+    "connectors_detected": [
+      "localstack",
+      "aws",
+      "wazuh",
+      "host_workload"
+    ]
+  },
+  "TC-TNY-07": {
+    "status": "PASS",
+    "description": "Playbook execution, durable rollback, and 404 on invalid execution ID",
+    "executed_playbook": "brute_force",
+    "execution_id": "EXEC-AD8E9745",
+    "rollback_status": "success",
+    "invalid_rollback_code": 404
+  },
+  "TC-TNY-08": {
+    "status": "PASS",
+    "description": "Detector Group A (8 detectors) verified registered and responsive",
+    "detectors": [
+      "brute_force",
+      "account_takeover",
+      "iam_privilege_escalation",
+      "cloud_misconfiguration",
+      "network_scanning",
+      "ddos",
+      "supply_chain_compromise",
+      "defense_tampering"
+    ]
+  },
+  "TC-HMT-01": {
+    "status": "PASS",
+    "description": "8D Cloud behavioral feature extraction",
+    "feature_names": [
+      "payload_bytes",
+      "failed_auth_count",
+      "high_risk_action_flag",
+      "auth_anomaly_flag",
+      "distinct_targets_count",
+      "rule_severity_norm",
+      "error_status_flag",
+      "burst_velocity"
+    ],
+    "sample_vector": [
+      5000000.0,
+      10.0,
+      0.0,
+      1.0,
+      0.0,
+      0.25,
+      1.0,
+      1.0
+    ]
+  },
+  "TC-HMT-02": {
+    "status": "PASS",
+    "description": "ML specialist models and ensemble benchmark",
+    "models": [
+      "pretrained",
+      "training_mode",
+      "scoring_strategy",
+      "features",
+      "feature_dimension",
+      "feature_schema",
+      "cloud_features",
+      "cloud_feature_dimension",
+      "cloud_feature_schema",
+      "cloud_behavioral_analyzer",
+      "target_leakage_status",
+      "compatible_with_9d_extractor",
+      "models"
+    ],
+    "ensemble_total_analyzed": null
+  },
+  "TC-HMT-03": {
+    "status": "PASS",
+    "description": "CSPM scan and misconfiguration detection",
+    "findings_count": 7,
+    "source": "simulated"
+  },
+  "TC-HMT-04": {
+    "status": "PASS",
+    "description": "CIEM scan and identity entitlement risks",
+    "risks_count": 26,
+    "source": "simulated"
+  },
+  "TC-HMT-05": {
+    "status": "PASS",
+    "description": "Workload vulnerabilities and NIST NVD connector status",
+    "total_vulns": 8,
+    "mean_cvss": 8.46,
+    "nvd_base_url": "https://services.nvd.nist.gov/rest/json/cves/2.0",
+    "nvd_advisories": 8
+  },
+  "TC-HMT-06": {
+    "status": "PASS",
+    "description": "Incident correlation and attack campaign grouping",
+    "total_incidents": 19,
+    "stats": {
+      "total_incidents": 19,
+      "open_incidents": 19,
+      "critical": 12,
+      "high": 7,
+      "medium": 0,
+      "low": 0,
+      "avg_findings_per_incident": 6.2
+    }
+  },
+  "TC-HMT-07": {
+    "status": "PASS",
+    "description": "Unified dynamic risk scoring",
+    "risk_score": 80.0,
+    "risk_category": "critical",
+    "key_drivers_count": 3
+  },
+  "TC-HMT-08": {
+    "status": "PASS",
+    "description": "Compliance dashboard across CIS, NIST, ISO, GDPR",
+    "overall_score": 29.5,
+    "frameworks": [
+      "ISO27001",
+      "SOC2",
+      "GDPR"
+    ]
+  },
+  "TC-HMT-09": {
+    "status": "PASS",
+    "description": "Detector Group B (8 detectors) verified registered and responsive",
+    "detectors": [
+      "suspicious_api_activity",
+      "data_exfiltration",
+      "cryptomining",
+      "container_k8s_attacks",
+      "bola_ssrf",
+      "malware_ransomware",
+      "database_attacks",
+      "serverless_abuse"
+    ]
+  }
+}
