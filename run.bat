@@ -19,7 +19,7 @@ echo =====================================================================
 echo           RAM ANTIVIRUS - CLOUD SECURITY AI PLATFORM
 echo =====================================================================
 echo.
-echo [1/5] Checking environment prerequisites...
+echo [1/6] Checking environment prerequisites...
 
 where python >nul 2>&1
 if errorlevel 1 (
@@ -38,7 +38,7 @@ if errorlevel 1 (
 echo [OK] Python and Node.js detected.
 echo.
 
-echo [2/5] Checking Backend Python dependencies...
+echo [2/6] Checking Backend Python dependencies...
 cd /d "%BACKEND_DIR%"
 python -c "import fastapi, uvicorn, pyod, pandas, numpy, sklearn, jwt, websockets" >nul 2>&1
 if errorlevel 1 (
@@ -59,7 +59,7 @@ if not exist "%BACKEND_DIR%\models\iforest.pkl" (
 )
 
 echo.
-echo [4/6] Verifying Database & Telemetry Seeds...
+echo [4/6] Verifying Database and Telemetry Seeds...
 cd /d "%BACKEND_DIR%"
 python -c "import os, sys; sys.path.insert(0, '.'); from engines.auth_engine import _seed_defaults; _seed_defaults(); print('[OK] Default user accounts verified in security.db (admin, analyst1, viewer1).')"
 if not exist "%BACKEND_DIR%\data\alerts.json" (

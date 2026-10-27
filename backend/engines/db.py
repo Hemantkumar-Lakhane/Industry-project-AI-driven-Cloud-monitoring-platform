@@ -151,7 +151,6 @@ def init_db():
         );
 
         CREATE INDEX IF NOT EXISTS idx_findings_timestamp ON findings(timestamp DESC);
-        CREATE INDEX IF NOT EXISTS idx_incidents_last_seen ON incidents(last_seen DESC);
     """)
     try:
         conn.execute("ALTER TABLE risk_history ADD COLUMN incident_score REAL DEFAULT 0.0")
@@ -170,6 +169,10 @@ def init_db():
             conn.execute(f"ALTER TABLE incidents ADD COLUMN {col}")
         except Exception:
             pass
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_incidents_last_seen ON incidents(last_seen DESC)")
+    except Exception:
+        pass
     conn.commit()
     conn.close()
 
