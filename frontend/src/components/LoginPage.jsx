@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Lock, User, Mail, KeyRound, Eye, EyeOff, Shield, Activity, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import { Lock, User, Mail, KeyRound, Eye, EyeOff, Shield, Activity, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 import { BrandMark } from './SharedComponents';
 import { API_URL } from '../config';
 
@@ -49,7 +49,7 @@ const LoginPage = ({ onLogin }) => {
       localStorage.setItem('user', JSON.stringify(data.user));
       onLogin(data.user, data.token);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Demo login failed');
+      setError(err.response?.data?.detail || 'Sign in failed');
     }
     setLoading(false);
     setActiveDemo(null);
@@ -70,7 +70,7 @@ const LoginPage = ({ onLogin }) => {
           <div className="login-form-title-wrap">
             <h2>{isRegister ? 'Create an Account' : 'Sign In'}</h2>
             <p className="login-form-desc">
-              {isRegister ? 'Set up credentials for your workspace' : 'Enter your organization credentials'}
+              {isRegister ? 'Set up credentials for your account' : 'Enter your organization credentials'}
             </p>
           </div>
 
@@ -169,8 +169,8 @@ const LoginPage = ({ onLogin }) => {
 
         <div className="demo-accounts">
           <div className="demo-accounts-header">
-            <Sparkles size={14} className="demo-sparkle-icon" />
-            <span>Quick Demo Login</span>
+            <ShieldCheck size={14} style={{ color: 'var(--text-tertiary)' }} />
+            <span>Quick Role Sign-In</span>
           </div>
           <div className="demo-btns">
             <button

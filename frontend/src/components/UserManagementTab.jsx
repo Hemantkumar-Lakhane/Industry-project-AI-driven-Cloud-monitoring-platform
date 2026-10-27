@@ -134,7 +134,7 @@ const UserManagementTab = ({ token, showToast }) => {
       <div className="figma-card" style={{ padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Workspace directory
+            User directory
           </h3>
           <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
             {filtered.length} active entries

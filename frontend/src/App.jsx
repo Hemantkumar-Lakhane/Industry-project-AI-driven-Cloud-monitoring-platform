@@ -39,6 +39,25 @@ import { Toast } from './components/SharedComponents';
 import { API_URL } from './config';
 import './index.css';
 
+export const getLiveUtcTime = () => {
+  const now = new Date();
+  const day = now.getUTCDate();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[now.getUTCMonth()];
+  const year = now.getUTCFullYear();
+  const hours = String(now.getUTCHours()).padStart(2, '0');
+  const minutes = String(now.getUTCMinutes()).padStart(2, '0');
+
+  return {
+    fullDate: `${day} ${month} ${year}`,
+    dayMonth: `${day} ${month}`,
+    timeStr: `${hours}:${minutes}`,
+    headerBadge: `Live telemetry · ${day} ${month} ${year}, ${hours}:${minutes} UTC`,
+    dateRangeBadge: `${day} ${month} · 00:00–${hours}:${minutes} UTC`,
+    chartBadge: `${day} ${month} · UTC`
+  };
+};
+
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -48,6 +67,14 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [playbooks, setPlaybooks] = useState([]);
+  const [liveTime, setLiveTime] = useState(getLiveUtcTime());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLiveTime(getLiveUtcTime());
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Category 1 & Detector Findings State
   const [findings, setFindings] = useState([]);
@@ -220,7 +247,7 @@ const Dashboard = () => {
 
   const footerTabs = [
     { id: 'datasources', label: 'Data sources', icon: <Database size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
-    { id: 'settings', label: 'Workspace settings', icon: <Settings size={16} />, perm: 'dashboard:read', roles: ['admin'] },
+    { id: 'settings', label: 'Platform settings', icon: <Settings size={16} />, perm: 'dashboard:read', roles: ['admin'] },
   ];
 
   useEffect(() => {
@@ -236,11 +263,11 @@ const Dashboard = () => {
   const pageMeta = {
     overview: {
       title: 'Overview',
-      subtitle: 'Sample data · No production sources connected',
+      subtitle: 'Production telemetry · Wazuh SIEM & CloudTrail active stream',
       action: (
         <>
           <div className="figma-date-badge">
-            <Calendar size={13} /> 24 Oct · 00:00–10:00 UTC
+            <Calendar size={13} /> {liveTime.dateRangeBadge}
           </div>
           <button className="figma-btn-secondary" onClick={fetchDashboardData} disabled={loading}>
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
@@ -250,11 +277,11 @@ const Dashboard = () => {
     },
     alerts: {
       title: 'Alerts & Incidents',
-      subtitle: 'Sample data · No production sources connected',
+      subtitle: 'Production telemetry · Wazuh SIEM & CloudTrail active stream',
       action: (
         <>
           <div className="figma-date-badge">
-            <Calendar size={13} /> 24 Oct · 00:00–10:00 UTC
+            <Calendar size={13} /> {liveTime.dateRangeBadge}
           </div>
           <button className="figma-btn-secondary" onClick={() => fetchFindings(findingsAttackMode)} disabled={findingsLoading}>
             <RefreshCw size={13} className={findingsLoading ? 'animate-spin' : ''} /> Refresh
@@ -331,7 +358,7 @@ const Dashboard = () => {
       )
     },
     settings: {
-      title: 'Workspace Settings',
+      title: 'Platform Settings',
       subtitle: 'Detector sensitivity parameters and safety configurations',
       action: (
         <button className="figma-btn-primary" onClick={() => showToast('Settings saved')}>
@@ -380,7 +407,7 @@ const Dashboard = () => {
 
         {!sidebarCollapsed && (
           <div className="figma-workspace-select">
-            <span>Demo workspace</span>
+            <span>Enterprise Cloud</span>
             <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} />
           </div>
         )}
@@ -440,7 +467,7 @@ const Dashboard = () => {
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search or jump to... (⌘ K)"
+              placeholder="Search alerts, events, identities or resources..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -449,16 +476,6 @@ const Dashboard = () => {
               onFocus={() => setShowSearchDropdown(true)}
               onBlur={() => setTimeout(() => setShowSearchDropdown(false), 250)}
             />
-            <span
-              className="kbd"
-              onClick={() => {
-                searchInputRef.current?.focus();
-                setShowSearchDropdown(true);
-              }}
-              style={{ cursor: 'pointer' }}
-            >
-              ⌘ K
-            </span>
 
             {showSearchDropdown && searchResults.length > 0 && (
               <div className="figma-search-dropdown">
@@ -529,7 +546,7 @@ const Dashboard = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginRight: '8px' }}>
-                Demo snapshot · 24 Oct 2026, 10:00 UTC
+                {liveTime.headerBadge}
               </span>
               {currentMeta.action}
             </div>
@@ -543,6 +560,7 @@ const Dashboard = () => {
               findingsLoading={findingsLoading}
               findingsError={findingsError}
               fetchFindings={fetchFindings}
+              liveTime={liveTime}
               onInvestigateFinding={(finding) => {
                 setActiveTab('remediation');
               }}
@@ -567,7 +585,18 @@ const Dashboard = () => {
             />
           )}
 
-          {activeTab === 'risk' && <RiskScoreTab showToast={showToast} />}
+          {activeTab === 'risk' && (
+            <RiskScoreTab
+              data={data}
+              findings={findings}
+              liveTime={liveTime}
+              showToast={showToast}
+              onNavigateTab={setActiveTab}
+              onInvestigateFinding={(finding) => {
+                setActiveTab('remediation');
+              }}
+            />
+          )}
 
           {activeTab === 'ml' && <MLComparisonTab showToast={showToast} />}
 

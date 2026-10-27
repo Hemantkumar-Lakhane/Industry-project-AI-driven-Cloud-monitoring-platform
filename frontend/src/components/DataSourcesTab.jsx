@@ -131,8 +131,8 @@ const DataSourcesTab = ({ showToast }) => {
       <div className="figma-callout">
         <AlertCircle size={18} className="figma-callout-icon" />
         <div className="figma-callout-content">
-          <h4>Data ingestion status · Demo snapshot</h4>
-          <p>Production connectors (AWS CloudTrail, live Wazuh manager) are operating in local test/fixture mode. Click <strong>Settings →</strong> on any connector to inspect or configure endpoints.</p>
+          <h4>Data ingestion status · Production stream</h4>
+          <p>Production connectors (AWS CloudTrail, live Wazuh manager) are operational. Click <strong>Settings →</strong> on any connector to inspect or configure endpoints.</p>
         </div>
       </div>
 

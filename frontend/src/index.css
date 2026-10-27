@@ -289,8 +289,8 @@ body {
   background-color: var(--surface-muted);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  padding: 6px 12px;
-  width: 320px;
+  padding: 7px 14px;
+  width: 440px;
   color: var(--text-tertiary);
   font-size: 13px;
   transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -691,6 +691,92 @@ body {
   margin-top: 4px;
 }
 
+/* DONUT / PIE CHART COMPONENT STYLES */
+.donut-chart-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 180px;
+  padding: 6px 0;
+}
+
+.donut-svg-container {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donut-segment {
+  cursor: pointer;
+  transition: stroke-width 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, filter 0.2s ease;
+}
+
+.donut-segment:hover,
+.donut-segment.is-active {
+  stroke-width: 22 !important;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
+}
+
+.donut-legend-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.donut-legend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.donut-legend-item:hover,
+.donut-legend-item.is-active {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  transform: translateX(2px);
+}
+
+.donut-pill-toggle {
+  display: flex;
+  align-items: center;
+  background: var(--surface-muted);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--border-subtle);
+}
+
+.donut-pill-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.donut-pill-btn.active {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
 /* SIDE PANEL CARDS (Cloud & Identity, Data sources) */
 .figma-side-item {
   display: flex;
@@ -817,8 +903,38 @@ body {
   border-bottom: none;
 }
 
-.figma-table tr:hover td {
+.figma-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.figma-table tbody tr:hover td {
   background-color: var(--surface-hover);
+}
+
+.figma-table tbody tr.is-selected td {
+  background-color: var(--accent-orange-subtle);
+}
+
+.figma-ticker-interactive {
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.figma-ticker-interactive:hover {
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+.figma-ticker-interactive.is-active {
+  background: var(--surface-muted);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
 .figma-link-btn {
@@ -910,17 +1026,39 @@ body {
 }
 
 .figma-drawer-content {
-  width: 580px;
-  max-width: 90vw;
+  width: 680px;
+  max-width: 95vw;
   height: 100%;
   background-color: var(--surface-card);
   border-left: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
-  padding: 28px;
+  padding: 24px 28px;
   overflow-y: auto;
   animation: slideLeft 0.25s ease forwards;
+}
+
+.drawer-tab-btn {
+  border: none;
+  background: transparent;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.drawer-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.drawer-tab-btn.is-active {
+  color: var(--accent-orange);
+  font-weight: 600;
+  border-bottom-color: var(--accent-orange);
 }
 
 /* ANIMATIONS */
@@ -1243,48 +1381,52 @@ body {
   font-weight: 500;
 }
 
-/* Admin Role Style */
-.demo-role-card.demo-admin .demo-role-icon {
-  background-color: rgba(137, 87, 229, 0.15);
-  color: #8957e5;
+/* Enterprise Role Card Styling (Neutral Monochrome, Professional SecOps) */
+.demo-role-card .demo-role-icon {
+  background-color: var(--surface-muted);
+  color: var(--text-secondary);
 }
-.demo-role-card.demo-admin .demo-role-name {
-  color: #8957e5;
+.demo-role-card .demo-role-name {
+  color: var(--text-primary);
 }
-.demo-role-card.demo-admin:hover {
-  border-color: rgba(137, 87, 229, 0.4);
-  background-color: rgba(137, 87, 229, 0.05);
+.demo-role-card:hover {
+  border-color: var(--border-strong);
+  background-color: var(--surface-hover);
 }
-
-/* Analyst Role Style */
-.demo-role-card.demo-analyst .demo-role-icon {
-  background-color: rgba(37, 99, 235, 0.15);
-  color: #2563eb;
-}
-.demo-role-card.demo-analyst .demo-role-name {
-  color: #2563eb;
-}
-.demo-role-card.demo-analyst:hover {
-  border-color: rgba(37, 99, 235, 0.4);
-  background-color: rgba(37, 99, 235, 0.05);
+.demo-role-card:hover .demo-role-icon {
+  color: var(--text-primary);
 }
 
-/* Viewer Role Style */
-.demo-role-card.demo-viewer .demo-role-icon {
-  background-color: rgba(2, 122, 72, 0.15);
-  color: #027a48;
+/* OVERVIEW CLICKABLE METRIC PILLARS */
+.figma-metric-pillar {
+  padding: 14px 16px;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background-color: var(--surface-card);
+  transition: all 0.18s ease;
+  user-select: none;
+  position: relative;
 }
-.demo-role-card.demo-viewer .demo-role-name {
-  color: #027a48;
+.figma-metric-pillar:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
-.demo-role-card.demo-viewer:hover {
-  border-color: rgba(2, 122, 72, 0.4);
-  background-color: rgba(2, 122, 72, 0.05);
+.figma-metric-pillar.active {
+  border-color: var(--accent-orange);
+  background-color: var(--accent-orange-subtle);
+  box-shadow: 0 0 0 1px var(--accent-orange);
 }
-
-.theme-dark .demo-role-card.demo-admin .demo-role-name { color: #a371f7; }
-.theme-dark .demo-role-card.demo-analyst .demo-role-name { color: #58a6ff; }
-.theme-dark .demo-role-card.demo-viewer .demo-role-name { color: #3fb950; }
+.figma-metric-pillar .pillar-action-hint {
+  font-size: 11px;
+  color: var(--accent-orange);
+  font-weight: 600;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
 /* ══════════════════════════════════════════
    REMEDIATION DEDICATED 2-COLUMN GRID & TABLE

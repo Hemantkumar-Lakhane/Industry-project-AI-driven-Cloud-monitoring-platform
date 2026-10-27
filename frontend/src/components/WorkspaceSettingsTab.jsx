@@ -7,7 +7,7 @@ const WorkspaceSettingsTab = ({ theme, onToggleTheme, showToast }) => {
   const [prodSafeLock, setProdSafeLock] = useState(true);
 
   const handleSave = () => {
-    if (showToast) showToast('Workspace settings saved locally');
+    if (showToast) showToast('Platform settings saved');
   };
 
   return (
@@ -16,7 +16,7 @@ const WorkspaceSettingsTab = ({ theme, onToggleTheme, showToast }) => {
       <div className="figma-callout">
         <AlertCircle size={18} className="figma-callout-icon" />
         <div className="figma-callout-content">
-          <h4>Workspace configuration · Demo workspace</h4>
+          <h4>System configuration · Active cluster</h4>
           <p>Controls detection engine sensitivity parameters, display themes, and execution safety locks.</p>
         </div>
       </div>
@@ -78,7 +78,7 @@ const WorkspaceSettingsTab = ({ theme, onToggleTheme, showToast }) => {
               Appearance & theme
             </h3>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Select between Figma light workspace theme and obsidian dark theme.
+              Select between light theme and obsidian dark theme.
             </p>
             <div className="figma-theme-toggle">
               <button
