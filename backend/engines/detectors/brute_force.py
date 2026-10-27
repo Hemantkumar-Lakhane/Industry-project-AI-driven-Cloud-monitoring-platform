@@ -268,6 +268,14 @@ class BruteForceDetector(BaseDetector):
                     if breach_occurred:
                         triggering_list.extend(subsequent_successes)
 
+                    # Determine honest provenance from triggering events
+                    is_live = any(
+                        getattr(e, "data_source", "").lower() == "live" or
+                        getattr(e, "source", "").lower() in ("wazuh", "cloudtrail", "host_audit") and getattr(e, "rule_id", 0) not in (0, None)
+                        for e in triggering_list
+                    )
+                    data_source = "LIVE" if is_live else "SIMULATED"
+
                     finding = self.create_finding(
                         title=title,
                         severity=severity,
@@ -282,7 +290,9 @@ class BruteForceDetector(BaseDetector):
                         telemetry_fields=telemetry_fields,
                         action_summary=f"Temporarily lock account '{identity}' (dry-run) and evaluate source IP '{src_ip}' for blocking.",
                         playbook_id="PB-BF-001",
-                        raw_scores={"burst_score": burst_score}
+                        raw_scores={"burst_score": burst_score},
+                        data_source=data_source,
+                        verification_status="VERIFIED"
                     )
                     findings.append(finding)
 

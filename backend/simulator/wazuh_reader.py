@@ -15,10 +15,25 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Dict
 
-WAZUH_LOG_PATH = os.environ.get(
-    "WAZUH_LOG_PATH",
-    "/var/ossec/logs/alerts/alerts.json"
-)
+def get_wazuh_log_path() -> str:
+    env_path = os.environ.get("WAZUH_LOG_PATH")
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    candidates = [
+        os.path.join(base_dir, "data", "alerts.json"),
+        os.path.join(os.getcwd(), "backend", "data", "alerts.json"),
+        os.path.join(os.getcwd(), "data", "alerts.json"),
+        "/var/ossec/logs/alerts/alerts.json",
+        r"C:\Program Files (x86)\ossec-agent\logs\alerts.json"
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return env_path or "/var/ossec/logs/alerts/alerts.json"
+
+WAZUH_LOG_PATH = get_wazuh_log_path()
 
 # Wazuh rule ID → attack type mapping
 RULE_ATTACK_MAP = {
@@ -106,29 +121,31 @@ def read_wazuh_logs(max_events: int = 200) -> List[Dict]:
     Read real Wazuh alert logs from disk.
     Returns list of parsed events or empty list if file not found.
     """
-    if not os.path.exists(WAZUH_LOG_PATH):
+    path = get_wazuh_log_path()
+    if not os.path.exists(path):
         return []
 
     events = []
     try:
-        with open(WAZUH_LOG_PATH, "r", encoding="utf-8", errors="ignore") as f:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
 
-        # Wazuh writes one JSON object per line
-        for line in reversed(lines[-max_events * 2:]):
+        # Wazuh writes one JSON object per line - read up to max_events
+        slice_lines = reversed(lines[-max_events * 2:]) if max_events else reversed(lines)
+        for line in slice_lines:
             line = line.strip()
             if not line:
                 continue
             try:
                 raw = json.loads(line)
                 events.append(_parse_wazuh_alert(raw))
-                if len(events) >= max_events:
+                if max_events and len(events) >= max_events:
                     break
             except json.JSONDecodeError:
                 continue
 
     except Exception as e:
-        print(f"[Wazuh Reader] Error reading {WAZUH_LOG_PATH}: {e}")
+        print(f"[Wazuh Reader] Error reading {path}: {e}")
         return []
 
     return events
@@ -136,14 +153,15 @@ def read_wazuh_logs(max_events: int = 200) -> List[Dict]:
 
 def is_wazuh_available() -> bool:
     """Check if real Wazuh log file exists."""
-    return os.path.exists(WAZUH_LOG_PATH)
+    return os.path.exists(get_wazuh_log_path())
 
 
 def get_wazuh_status() -> Dict:
-    available = is_wazuh_available()
+    path = get_wazuh_log_path()
+    available = os.path.exists(path)
     return {
         "available": available,
-        "log_path": WAZUH_LOG_PATH,
+        "log_path": path,
         "mode": "real" if available else "simulated",
-        "message": f"Reading from {WAZUH_LOG_PATH}" if available else "Wazuh log not found — using simulator"
+        "message": f"Reading from {path}" if available else "Wazuh log not found — using simulator"
     }

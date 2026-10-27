@@ -36,6 +36,7 @@ node_modules/
 # Office / System temporary files & lock files
 ~$*
 *.tmp
+*.docx
 .DS_Store
 Thumbs.db
 
@@ -47,3 +48,4 @@ Thumbs.db
 
 # Local Documentation & Notes
 /local-project-notes/
+audit_tmp/

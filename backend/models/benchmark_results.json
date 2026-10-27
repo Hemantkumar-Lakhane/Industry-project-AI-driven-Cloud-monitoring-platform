@@ -1,0 +1,209 @@
+{
+  "Isolation Forest": {
+    "model_name": "Isolation Forest",
+    "paradigm": "Unsupervised Anomaly Detection",
+    "train_samples": 125973,
+    "test_samples": 22544,
+    "accuracy": 77.51,
+    "precision": 85.21,
+    "recall": 73.19,
+    "f1_score": 78.74,
+    "false_positive_rate": 16.8,
+    "roc_auc": 77.61,
+    "pr_auc": 83.42,
+    "confusion_matrix": {
+      "tp": 9393,
+      "fp": 1631,
+      "fn": 3440,
+      "tn": 8080
+    },
+    "timing": {
+      "fit_time_seconds": 2.504,
+      "inference_latency_ms_per_1k": 11.86
+    }
+  },
+  "HBOS": {
+    "model_name": "HBOS",
+    "paradigm": "Unsupervised Anomaly Detection",
+    "train_samples": 125973,
+    "test_samples": 22544,
+    "accuracy": 70.68,
+    "precision": 85.3,
+    "recall": 58.59,
+    "f1_score": 69.47,
+    "false_positive_rate": 13.35,
+    "roc_auc": 78.61,
+    "pr_auc": 82.7,
+    "confusion_matrix": {
+      "tp": 7519,
+      "fp": 1296,
+      "fn": 5314,
+      "tn": 8415
+    },
+    "timing": {
+      "fit_time_seconds": 6.242,
+      "inference_latency_ms_per_1k": 0.36
+    }
+  },
+  "KNN": {
+    "model_name": "KNN",
+    "paradigm": "Unsupervised Anomaly Detection",
+    "train_samples": 10000,
+    "test_samples": 22544,
+    "accuracy": 74.1,
+    "precision": 85.6,
+    "recall": 65.52,
+    "f1_score": 74.23,
+    "false_positive_rate": 14.56,
+    "roc_auc": 73.95,
+    "pr_auc": 81.85,
+    "confusion_matrix": {
+      "tp": 8408,
+      "fp": 1414,
+      "fn": 4425,
+      "tn": 8297
+    },
+    "timing": {
+      "fit_time_seconds": 0.541,
+      "inference_latency_ms_per_1k": 47.855
+    }
+  },
+  "Local Outlier Factor (LOF)": {
+    "model_name": "Local Outlier Factor (LOF)",
+    "paradigm": "Unsupervised Anomaly Detection",
+    "train_samples": 10000,
+    "test_samples": 22544,
+    "accuracy": 56.68,
+    "precision": 60.74,
+    "recall": 67.56,
+    "f1_score": 63.97,
+    "false_positive_rate": 57.71,
+    "roc_auc": 57.53,
+    "pr_auc": 63.3,
+    "confusion_matrix": {
+      "tp": 8670,
+      "fp": 5604,
+      "fn": 4163,
+      "tn": 4107
+    },
+    "timing": {
+      "fit_time_seconds": 0.578,
+      "inference_latency_ms_per_1k": 54.864
+    }
+  },
+  "One-Class SVM": {
+    "model_name": "One-Class SVM",
+    "paradigm": "Unsupervised Anomaly Detection",
+    "train_samples": 10000,
+    "test_samples": 22544,
+    "accuracy": 75.25,
+    "precision": 81.88,
+    "recall": 72.59,
+    "f1_score": 76.95,
+    "false_positive_rate": 21.23,
+    "roc_auc": 81.63,
+    "pr_auc": 82.01,
+    "confusion_matrix": {
+      "tp": 9315,
+      "fp": 2062,
+      "fn": 3518,
+      "tn": 7649
+    },
+    "timing": {
+      "fit_time_seconds": 12.484,
+      "inference_latency_ms_per_1k": 704.518
+    }
+  },
+  "Random Forest (Supervised)": {
+    "model_name": "Random Forest (Supervised)",
+    "paradigm": "Supervised",
+    "train_samples": 125973,
+    "test_samples": 22544,
+    "accuracy": 77.77,
+    "precision": 96.64,
+    "recall": 63.15,
+    "f1_score": 76.38,
+    "false_positive_rate": 2.9,
+    "roc_auc": 96.05,
+    "pr_auc": 95.95,
+    "confusion_matrix": {
+      "tp": 8104,
+      "fp": 282,
+      "fn": 4729,
+      "tn": 9429
+    },
+    "timing": {
+      "fit_time_seconds": 11.692,
+      "inference_latency_ms_per_1k": 10.103
+    }
+  },
+  "Logistic Regression (Supervised)": {
+    "model_name": "Logistic Regression (Supervised)",
+    "paradigm": "Supervised",
+    "train_samples": 125973,
+    "test_samples": 22544,
+    "accuracy": 74.15,
+    "precision": 93.39,
+    "recall": 58.75,
+    "f1_score": 72.12,
+    "false_positive_rate": 5.5,
+    "roc_auc": 77.76,
+    "pr_auc": 87.07,
+    "confusion_matrix": {
+      "tp": 7539,
+      "fp": 534,
+      "fn": 5294,
+      "tn": 9177
+    },
+    "timing": {
+      "fit_time_seconds": 0.379,
+      "inference_latency_ms_per_1k": 0.245
+    }
+  },
+  "Ensemble (Majority Voting)": {
+    "model_name": "Ensemble (Majority Voting)",
+    "paradigm": "Multi-Model Ensemble",
+    "train_samples": 125973,
+    "test_samples": 22544,
+    "accuracy": 75.71,
+    "precision": 86.58,
+    "recall": 67.84,
+    "f1_score": 76.07,
+    "false_positive_rate": 13.9,
+    "roc_auc": 80.38,
+    "pr_auc": 81.08,
+    "confusion_matrix": {
+      "tp": 8706,
+      "fp": 1350,
+      "fn": 4127,
+      "tn": 8361
+    },
+    "timing": {
+      "fit_time_seconds": 9.287,
+      "inference_latency_ms_per_1k": 60.075
+    }
+  },
+  "Ensemble (Max Recall / OR)": {
+    "model_name": "Ensemble (Max Recall / OR)",
+    "paradigm": "Multi-Model Ensemble",
+    "train_samples": 125973,
+    "test_samples": 22544,
+    "accuracy": 76.78,
+    "precision": 81.41,
+    "recall": 76.73,
+    "f1_score": 79.0,
+    "false_positive_rate": 23.15,
+    "roc_auc": 80.38,
+    "pr_auc": 81.08,
+    "confusion_matrix": {
+      "tp": 9847,
+      "fp": 2248,
+      "fn": 2986,
+      "tn": 7463
+    },
+    "timing": {
+      "fit_time_seconds": 9.287,
+      "inference_latency_ms_per_1k": 60.075
+    }
+  }
+}

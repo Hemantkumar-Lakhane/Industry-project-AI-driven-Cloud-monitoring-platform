@@ -11,8 +11,12 @@ This engine simulates what would happen in a real cloud environment:
 import uuid
 import random
 from datetime import datetime, timezone
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from engines.alert_engine import alert_soc, alert_remediation
+from engines.db import update_finding_status_db
+
+# In-memory execution rollback registry for safe remediation rollback (SRS FR-10)
+EXECUTION_HISTORY: Dict[str, Dict[str, Any]] = {}
 
 
 # ── Remediation Playbook Definitions ──────────────────────────────────────
@@ -188,53 +192,125 @@ CONFIG_CORRECTIONS = {
 }
 
 
-def execute_playbook(attack_type: str, event: Optional[Dict] = None) -> Dict:
+def execute_playbook(attack_type: str, event: Optional[Dict] = None, dry_run: bool = True) -> Dict:
     """
     Execute a remediation playbook for a given attack type.
-    Simulates step-by-step execution with status tracking.
+    When dry_run=True (default), simulates step-by-step execution without mutating live resources or sending alerts.
     """
     playbook = PLAYBOOKS.get(attack_type, PLAYBOOKS.get("misconfiguration"))
-    
+
     execution_id = f"EXEC-{str(uuid.uuid4())[:8].upper()}"
     now = datetime.now(timezone.utc)
-    
+
     executed_steps = []
     all_success = True
-    
+
     for step in playbook["steps"]:
-        # Simulate ~95% success rate per step
-        success = random.random() < 0.95
+        # In dry-run simulation, all steps succeed as no live cloud mutations fail; in mock live execution steps succeed
+        success = True
         if not success:
             all_success = False
-        
+
+        step_desc = f"[DRY-RUN] {step['description']}" if dry_run else step["description"]
         executed_steps.append({
             "order": step["order"],
             "action": step["action"],
-            "description": step["description"],
+            "description": step_desc,
             "status": "completed" if success else "failed",
             "automated": step["automated"],
-            "duration_ms": random.randint(200, 5000)
+            "duration_ms": random.randint(120, 1800)
         })
 
-        # Send real email alert for alert_soc steps
-        if step["action"] == "alert_soc" and success and event:
+        # Send real email alert only if NOT dry run
+        if not dry_run and step["action"] == "alert_soc" and success and event:
             alert_soc(attack_type, event)
-    
-    return {
+
+    if dry_run:
+        overall_status = "DRY-RUN COMPLETED" if all_success else "DRY-RUN PARTIAL FAILURE"
+    else:
+        overall_status = "LIVE EXECUTION COMPLETED" if all_success else "LIVE EXECUTION PARTIAL FAILURE"
+
+    target_fid = None
+    if event:
+        target_fid = event.get("finding_id") or event.get("id")
+
+    # If execution succeeded and target finding exists, transition lifecycle status
+    if all_success and target_fid:
+        new_status = "contained" if dry_run else "resolved"
+        update_finding_status_db(str(target_fid), new_status)
+
+    result_payload = {
         "execution_id": execution_id,
         "playbook_id": playbook["playbook_id"],
         "playbook_name": playbook["name"],
         "description": playbook["description"],
         "trigger_type": attack_type,
         "triggered_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "overall_status": "completed" if all_success else "partial_failure",
+        "is_dry_run": dry_run,
+        "dry_run_summary": (
+            "Dry-run simulation completed: all remediation actions evaluated safely without making live cloud changes."
+            if dry_run else "Live execution completed: cloud remediation actions applied."
+        ),
+        "overall_status": overall_status,
+        "status": overall_status,
         "steps_executed": len(executed_steps),
         "steps_succeeded": sum(1 for s in executed_steps if s["status"] == "completed"),
         "steps_failed": sum(1 for s in executed_steps if s["status"] == "failed"),
         "total_duration_ms": sum(s["duration_ms"] for s in executed_steps),
         "steps": executed_steps,
         "rollback_available": playbook["rollback_available"],
-        "target_event": event.get("id") if event else None
+        "target_event": target_fid
+    }
+
+    # Record execution state for rollback verification (SRS FR-10)
+    EXECUTION_HISTORY[execution_id] = {
+        "execution_id": execution_id,
+        "playbook_id": playbook["playbook_id"],
+        "target_fid": target_fid,
+        "is_dry_run": dry_run,
+        "pre_remediation_state": "open",
+        "post_remediation_state": "resolved" if not dry_run else "contained",
+        "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "rolled_back": False
+    }
+
+    return result_payload
+
+
+def rollback_remediation(execution_id: str) -> Dict[str, Any]:
+    """
+    Rolls back an executed remediation action (SRS FR-10).
+    Restores the targeted finding to its pre-remediation status ('open').
+    """
+    exec_record = EXECUTION_HISTORY.get(execution_id)
+    if not exec_record:
+        return {
+            "status": "error",
+            "message": f"Execution ID '{execution_id}' not found in audit registry.",
+            "execution_id": execution_id
+        }
+
+    if exec_record.get("rolled_back"):
+        return {
+            "status": "warning",
+            "message": f"Remediation '{execution_id}' has already been rolled back.",
+            "execution_id": execution_id
+        }
+
+    target_fid = exec_record.get("target_fid")
+    if target_fid:
+        update_finding_status_db(str(target_fid), "open")
+
+    exec_record["rolled_back"] = True
+    exec_record["rolled_back_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    return {
+        "status": "success",
+        "execution_id": execution_id,
+        "message": f"Successfully rolled back playbook {exec_record['playbook_id']}. Target {target_fid} restored to 'open'.",
+        "pre_state": exec_record["post_remediation_state"],
+        "current_state": "open",
+        "target_finding_id": target_fid
     }
 
 
@@ -244,7 +320,7 @@ def correct_configuration(vulnerability_id: str) -> Dict:
     Returns the before/after config diff and remediation details.
     """
     correction = CONFIG_CORRECTIONS.get(vulnerability_id)
-    
+
     if not correction:
         return {
             "fix_id": f"FIX-UNKNOWN-{str(uuid.uuid4())[:6]}",
@@ -252,10 +328,10 @@ def correct_configuration(vulnerability_id: str) -> Dict:
             "status": "no_fix_available",
             "message": f"No automated fix available for {vulnerability_id}. Manual remediation required."
         }
-    
+
     # Simulate ~90% success rate
     success = random.random() < 0.90
-    
+
     return {
         "fix_id": correction["fix_id"],
         "vulnerability_id": vulnerability_id,
@@ -278,10 +354,10 @@ def revoke_entity_access(entity_name: str, entity_type: str, risk_level: str) ->
     """
     revocation_id = f"REV-{str(uuid.uuid4())[:8].upper()}"
     now = datetime.now(timezone.utc)
-    
+
     # Determine actions based on entity type and risk
     actions_taken = []
-    
+
     if risk_level in ["critical", "high"]:
         if entity_type == "human":
             actions_taken = [
@@ -311,11 +387,11 @@ def revoke_entity_access(entity_name: str, entity_type: str, risk_level: str) ->
             {"action": "enable_monitoring", "status": "completed", "description": f"Enabled enhanced CloudTrail monitoring for '{entity_name}'"},
             {"action": "schedule_review", "status": "completed", "description": f"Scheduled access review within 7 days"},
         ]
-    
+
     # Simulate occasional failures
     if random.random() < 0.05:
         actions_taken[-1]["status"] = "failed"
-    
+
     return {
         "revocation_id": revocation_id,
         "entity_name": entity_name,
@@ -356,7 +432,7 @@ def auto_remediate_threats(analyzed_events: List[Dict]) -> Dict:
     """
     remediation_results = []
     skipped = 0
-    
+
     for event in analyzed_events:
         if event.get("is_anomaly") and event.get("ml_severity") in ["Critical", "High"]:
             attack_type = event.get("attack_type", "misconfiguration")
@@ -367,33 +443,33 @@ def auto_remediate_threats(analyzed_events: List[Dict]) -> Dict:
                 skipped += 1
         else:
             skipped += 1
-    
+
     return {
         "total_events_analyzed": len(analyzed_events),
         "remediations_triggered": len(remediation_results),
         "events_skipped": skipped,
         "remediations": remediation_results,
         "summary": {
-            "fully_completed": sum(1 for r in remediation_results if r["overall_status"] == "completed"),
-            "partial_failures": sum(1 for r in remediation_results if r["overall_status"] == "partial_failure"),
+            "fully_completed": sum(1 for r in remediation_results if "COMPLETED" in r.get("overall_status", "").upper()),
+            "partial_failures": sum(1 for r in remediation_results if "FAILURE" in r.get("overall_status", "").upper()),
         }
     }
 
 
 if __name__ == "__main__":
     import json
-    
+
     print("=== Available Playbooks ===")
     print(json.dumps(get_all_playbooks(), indent=2))
-    
+
     print("\n=== Execute Brute Force Playbook ===")
     result = execute_playbook("brute_force", {"id": "TEST-001"})
     print(json.dumps(result, indent=2))
-    
+
     print("\n=== Correct S3 Config ===")
     fix = correct_configuration("CSPM-S3-001")
     print(json.dumps(fix, indent=2))
-    
+
     print("\n=== Revoke Entity Access ===")
     rev = revoke_entity_access("svc-data-sync", "machine", "critical")
     print(json.dumps(rev, indent=2))

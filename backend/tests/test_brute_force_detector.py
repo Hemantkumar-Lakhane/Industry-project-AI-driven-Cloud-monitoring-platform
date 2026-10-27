@@ -333,28 +333,130 @@ def test_api_detection_evaluate_custom_batch():
 # 5. ML Inference Protection & Feature Dimension Guards
 # ══════════════════════════════════════════════════════════════════════════════
 
-def test_score_flow_features_returns_not_configured_for_9d():
+def test_score_flow_features_evaluates_9d():
     """
-    Verify that passing 9-dimensional flow features returns an explicit
-    'NOT CONFIGURED' status rather than crashing or using incompatible legacy models.
+    Verify that passing 9-dimensional flow features evaluates successfully
+    against calibrated models and reports CONFIGURED status.
     """
     X_9d = np.ones((10, 9), dtype=np.float64)
     res = score_flow_features(X_9d)
-    assert res["status"] == "NOT CONFIGURED"
-    assert res["compatible"] is False
+    assert res["status"] == "CONFIGURED"
+    assert res["compatible"] is True
     assert res["feature_dim"] == 9
+    assert res["active_models"] > 0
+    assert "iforest" in res["scores"]
 
 
 def test_ml_scale_for_rejects_incompatible_dimensions():
-    """Verify that _scale_for strictly rejects 9D input and raises ValueError."""
-    X_incompatible = np.ones((5, 9), dtype=np.float64)
+    """Verify that _scale_for strictly rejects invalid dimensions (e.g. 3D) and raises ValueError."""
+    X_incompatible = np.ones((5, 3), dtype=np.float64)
     with pytest.raises(ValueError, match="Incompatible feature dimension"):
         _scale_for("iforest", X_incompatible)
 
 
 def test_get_model_info_reports_feature_metadata():
-    """Verify get_model_info reports legacy 3D schema and compatibility status."""
+    """Verify get_model_info reports verified 9D flow schema and compatibility status."""
     info = get_model_info()
     if info.get("pretrained"):
-        assert info["feature_dimension"] == 3
-        assert info["compatible_with_9d_extractor"] is False
+        assert info["feature_dimension"] == 9
+        assert info["compatible_with_9d_extractor"] is True
+        assert info["target_leakage_status"] == "none_verified"
+        assert len(info["features"]) == 9
+
+
+def test_dry_run_remediation_endpoint():
+    """Verify POST /api/remediation/dry-run/{attack_type} executes safe simulation."""
+    response = client.post("/api/remediation/dry-run/brute_force")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    result = data["data"]
+    assert result["is_dry_run"] is True
+    assert result["playbook_id"] == "PB-BF-001"
+    assert "Dry-run simulation completed" in result["dry_run_summary"]
+    assert len(result["steps"]) > 0
+    assert all("[DRY-RUN]" in s["description"] for s in result["steps"])
+
+
+def test_get_findings_with_attacks_generates_finding():
+    """Verify GET /api/detection/findings?normal=30&attacks=10 produces at least 1 finding."""
+    response = client.get("/api/detection/findings?normal=30&attacks=10")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["count"] >= 1
+    finding = data["data"][0]
+    assert finding["attack_category"] == "brute_force"
+    assert finding["recommended_response"]["is_dry_run_supported"] is True
+
+
+def test_consistent_attack_counts_and_no_rogue_attacks_on_rescan():
+    """Verify Overview and Findings match 1:1 and normal rescan does NOT generate new attacks."""
+    # Reset to baseline noise
+    res_reset = client.post("/api/simulation/reset")
+    assert res_reset.status_code == 200
+
+    # Read dashboard summary
+    res_summary1 = client.get("/api/dashboard/summary")
+    assert res_summary1.status_code == 200
+    threats1 = res_summary1.json()["data"]["threats"]
+
+    # Read findings
+    res_findings1 = client.get("/api/detection/findings")
+    assert res_findings1.status_code == 200
+    findings1 = res_findings1.json()["data"]
+
+    # In baseline, detector findings must match count
+    assert len(findings1) == threats1["detector_findings_count"]
+
+    # Rescan again - counts MUST stay identical (no new attacks generated)
+    res_summary2 = client.get("/api/dashboard/summary")
+    assert res_summary2.status_code == 200
+    threats2 = res_summary2.json()["data"]["threats"]
+    assert threats2["detector_findings_count"] == threats1["detector_findings_count"]
+
+    # Now inject simulation scenario
+    res_sim = client.post("/api/simulation/run/brute_force?intensity=high")
+    assert res_sim.status_code == 200
+    sim_data = res_sim.json()["data"]
+    expected_finding_id = sim_data["simulation"]["finding_id"]
+    assert expected_finding_id is not None
+
+    # Overview and Findings MUST reflect the injected scenario with the exact same finding ID
+    res_summary3 = client.get("/api/dashboard/summary")
+    res_findings3 = client.get("/api/detection/findings")
+    findings3 = res_findings3.json()["data"]
+
+    assert any(f["finding_id"] == expected_finding_id for f in findings3)
+    recent_alert_ids = [a["id"] for a in res_summary3.json()["data"]["recent_critical_alerts"]]
+    assert expected_finding_id in recent_alert_ids
+
+
+def test_honest_remediation_status():
+    """Verify dry-run results are labeled 'DRY-RUN COMPLETED' and live execution 'LIVE EXECUTION COMPLETED'."""
+    res_dry = client.post("/api/remediation/dry-run/brute_force")
+    assert res_dry.status_code == 200
+    dry_data = res_dry.json()["data"]
+    assert dry_data["is_dry_run"] is True
+    assert dry_data["overall_status"] == "DRY-RUN COMPLETED"
+    assert dry_data["status"] == "DRY-RUN COMPLETED"
+
+    res_live = client.post("/api/remediation/execute/brute_force?dry_run=false")
+    assert res_live.status_code == 200
+    live_data = res_live.json()["data"]
+    assert live_data["is_dry_run"] is False
+    assert live_data["overall_status"] == "LIVE EXECUTION COMPLETED"
+    assert live_data["status"] == "LIVE EXECUTION COMPLETED"
+
+
+def test_honest_finding_sources():
+    """Verify findings and dashboard metrics contain honest provenance tags (LIVE, SIMULATED, NOT CONFIGURED)."""
+    # Trigger brute force scenario
+    client.post("/api/simulation/run/brute_force?intensity=high")
+    res_findings = client.get("/api/detection/findings")
+    data = res_findings.json()
+    assert data["source"] in ("LIVE", "SIMULATED", "real", "simulated")
+
+    for finding in data["data"]:
+        assert finding["data_source"] in ("LIVE", "SIMULATED", "IMPORTED", "NOT CONFIGURED")
+        assert finding["verification_status"] in ("VERIFIED", "SIMULATED_ONLY", "NOT_CONFIGURED")

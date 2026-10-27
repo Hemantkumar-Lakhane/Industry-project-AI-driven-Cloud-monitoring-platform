@@ -1,34 +1,121 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { Fingerprint, Activity, Server, RefreshCw, AlertTriangle, Zap, FileText, CheckCircle, XCircle, Play, Shield, Download, Lock, Unlock, Settings, BarChart3, ChevronRight, Cpu, Gauge, Crosshair, LogOut, User, Siren, ShieldCheck, TrendingUp, TrendingDown, Users, Database } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
-import { Badge, BrandMark, MetricCard, ScoreRing, SectionHeader, Toast } from './components/SharedComponents';
+import {
+  Shield,
+  AlertTriangle,
+  Gauge,
+  Cpu,
+  Wrench,
+  FileCheck2,
+  FlaskConical,
+  Users,
+  Database,
+  Settings,
+  ChevronDown,
+  RefreshCw,
+  Search,
+  Calendar,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Play,
+  Zap,
+  Terminal
+} from 'lucide-react';
+import logoUrl from './assets/LOGO.png';
 import LoginPage from './components/LoginPage';
-import AttackSimulationTab from './components/AttackSimulationTab';
+import OverviewTab from './components/OverviewTab';
+import AlertsIncidentsTab from './components/AlertsIncidentsTab';
 import RiskScoreTab from './components/RiskScoreTab';
 import MLComparisonTab from './components/MLComparisonTab';
+import RemediationTab from './components/RemediationTab';
+import ComplianceTab from './components/ComplianceTab';
+import AttackSimulationTab from './components/AttackSimulationTab';
+import LiveLogsTab from './components/LiveLogsTab';
 import UserManagementTab from './components/UserManagementTab';
+import DataSourcesTab from './components/DataSourcesTab';
+import WorkspaceSettingsTab from './components/WorkspaceSettingsTab';
+import { Toast } from './components/SharedComponents';
 import { API_URL } from './config';
 import './index.css';
+
+export const getLiveUtcTime = () => {
+  const now = new Date();
+  const day = now.getUTCDate();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[now.getUTCMonth()];
+  const year = now.getUTCFullYear();
+  const hours = String(now.getUTCHours()).padStart(2, '0');
+  const minutes = String(now.getUTCMinutes()).padStart(2, '0');
+
+  return {
+    fullDate: `${day} ${month} ${year}`,
+    dayMonth: `${day} ${month}`,
+    timeStr: `${hours}:${minutes}`,
+    headerBadge: `Live telemetry · ${day} ${month} ${year}, ${hours}:${minutes} UTC`,
+    dateRangeBadge: `${day} ${month} · 00:00–${hours}:${minutes} UTC`,
+    chartBadge: `${day} ${month} · UTC`
+  };
+};
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [data, setData] = useState({ summary: null, events: [], cspm: [], ciem: [] });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [playbooks, setPlaybooks] = useState([]);
-  const [remediationResult, setRemediationResult] = useState(null);
-  const [pipelineResult, setPipelineResult] = useState(null);
-  const [executing, setExecuting] = useState(false);
-  const [complianceDashboard, setComplianceDashboard] = useState(null);
-  const [complianceReport, setComplianceReport] = useState(null);
-  const [selectedFramework, setSelectedFramework] = useState(null);
+  const [liveTime, setLiveTime] = useState(getLiveUtcTime());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLiveTime(getLiveUtcTime());
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Category 1 & Detector Findings State
+  const [findings, setFindings] = useState([]);
+  const [findingsLoading, setFindingsLoading] = useState(false);
+  const [findingsError, setFindingsError] = useState(null);
+  const [findingsAttackMode, setFindingsAttackMode] = useState(0);
+
+  // Incident Correlation State
+  const [incidents, setIncidents] = useState([]);
+  const [incidentsLoading, setIncidentsLoading] = useState(false);
+  const [incidentsStats, setIncidentsStats] = useState(null);
+
+  // Figma Light/Dark theme (defaulting to light as in the wireframes, toggleable to dark)
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const toggleTheme = (newTheme) => {
+    const next = newTheme || (theme === 'light' ? 'dark' : 'light');
+    setTheme(next);
+    localStorage.setItem('theme', next);
+  };
 
   const showToast = useCallback((message, type = 'success') => setToast({ message, type }), []);
 
-  // Check saved auth on mount
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setShowSearchDropdown(true);
+      }
+      if (e.key === 'Escape') {
+        setShowSearchDropdown(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
@@ -38,265 +125,508 @@ const Dashboard = () => {
     }
   }, []);
 
-  const handleLogin = (userData, tokenData) => { setUser(userData); setToken(tokenData); };
-  const handleLogout = () => { setUser(null); setToken(null); localStorage.removeItem('token'); localStorage.removeItem('user'); };
-  const hasPermission = (perm) => user?.permissions?.includes(perm) ?? false;
-
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    try {
-      const [summaryRes, eventsRes, cspmRes, ciemRes] = await Promise.all([
-        axios.get(`${API_URL}/dashboard/summary`), axios.get(`${API_URL}/simulate/events?hours=6&normal=50&attacks=10`),
-        axios.get(`${API_URL}/cspm/scan`), axios.get(`${API_URL}/ciem/scan`)
-      ]);
-      setData({ summary: summaryRes.data.data, events: eventsRes.data.data, cspm: cspmRes.data.data, ciem: ciemRes.data.data });
-    } catch (error) { console.error("Error fetching data:", error); }
-    setLoading(false);
+  const handleLogin = (userData, tokenData) => {
+    setUser(userData);
+    setToken(tokenData);
   };
 
-  useEffect(() => { if (user) fetchDashboardData(); }, [user]);
+  const handleLogout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  };
 
-  const fetchPlaybooks = async () => { try { const res = await axios.get(`${API_URL}/remediation/playbooks`); setPlaybooks(res.data.data); } catch (err) { console.error(err); } };
-  const executePlaybook = async (attackType) => { setExecuting(true); try { const res = await axios.post(`${API_URL}/remediation/execute/${attackType}`); setRemediationResult(res.data.data); showToast(`Playbook "${res.data.data.playbook_name}" executed`); } catch (err) { showToast('Playbook failed', 'error'); } setExecuting(false); };
-  const runFullPipeline = async () => { setExecuting(true); try { const res = await axios.get(`${API_URL}/remediation/full-pipeline`); setPipelineResult(res.data.data); showToast('Full pipeline completed'); } catch (err) { showToast('Pipeline failed', 'error'); } setExecuting(false); };
-  const fixConfig = async (vulnId) => { try { const res = await axios.post(`${API_URL}/remediation/config-fix/${vulnId}`); showToast(`Config fix: ${res.data.data.description}`); } catch (err) { showToast('Fix failed', 'error'); } };
-  const revokeAccess = async (n, t, r) => { try { await axios.post(`${API_URL}/remediation/revoke-access?entity_name=${n}&entity_type=${t}&risk_level=${r}`); showToast(`Access revoked for "${n}"`); } catch (err) { showToast('Revocation failed', 'error'); } };
-  const fetchComplianceDashboard = async () => { try { const res = await axios.get(`${API_URL}/compliance/dashboard`); setComplianceDashboard(res.data.data); } catch (err) { console.error(err); } };
-  const fetchComplianceReport = async () => { try { const res = await axios.get(`${API_URL}/compliance/report?format=json`); setComplianceReport(res.data.data); showToast('Report generated'); } catch (err) { showToast('Report failed', 'error'); } };
-  const downloadCSVReport = async () => { try { const res = await axios.get(`${API_URL}/compliance/report?format=csv`, { responseType: 'blob' }); const url = window.URL.createObjectURL(new Blob([res.data])); const link = document.createElement('a'); link.href = url; link.setAttribute('download', 'compliance_report.csv'); document.body.appendChild(link); link.click(); link.remove(); showToast('CSV downloaded'); } catch (err) { showToast('Download failed', 'error'); } };
+  const hasPermission = (perm) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    return user.permissions?.includes(perm) ?? false;
+  };
+
+  const fetchFindings = async (attacks = 0, isPolling = false) => {
+    if (!isPolling) setFindingsLoading(true);
+    setFindingsError(null);
+    setFindingsAttackMode(attacks);
+    try {
+      const res = await axios.get(`${API_URL}/detection/findings?normal=50&attacks=${attacks}`);
+      setFindings(res.data.data || []);
+    } catch (err) {
+      console.error("Error fetching findings:", err);
+      setFindingsError(err.response?.data?.detail || err.message || "Failed to fetch security findings");
+    } finally {
+      if (!isPolling) setFindingsLoading(false);
+    }
+  };
+
+  const fetchIncidents = async (isPolling = false) => {
+    if (!isPolling) setIncidentsLoading(true);
+    try {
+      const [res, statsRes] = await Promise.all([
+        axios.get(`${API_URL}/incidents`),
+        axios.get(`${API_URL}/incidents/stats`)
+      ]);
+      setIncidents(res.data.data || []);
+      setIncidentsStats(statsRes.data.data || null);
+    } catch (err) {
+      console.error("Error fetching incidents:", err);
+    } finally {
+      if (!isPolling) setIncidentsLoading(false);
+    }
+  };
+
+  const fetchDashboardData = async (isPolling = false) => {
+    if (!isPolling) setLoading(true);
+    try {
+      const [summaryRes, eventsRes, cspmRes, ciemRes] = await Promise.all([
+        axios.get(`${API_URL}/dashboard/summary`),
+        axios.get(`${API_URL}/simulate/events?hours=6&normal=50&attacks=10`),
+        axios.get(`${API_URL}/cspm/scan`),
+        axios.get(`${API_URL}/ciem/scan`)
+      ]);
+      setData({
+        summary: summaryRes.data.data,
+        events: eventsRes.data.data,
+        cspm: cspmRes.data.data,
+        ciem: ciemRes.data.data
+      });
+      fetchFindings(findingsAttackMode, isPolling);
+      fetchIncidents(isPolling);
+      fetchPlaybooks();
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      if (!isPolling) setLoading(false);
+    }
+  };
+
+  const fetchPlaybooks = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/remediation/playbooks`);
+      setPlaybooks(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
-    if (activeTab === 'remediation') { fetchPlaybooks(); if (data.cspm.length === 0) fetchDashboardData(); }
-    if (activeTab === 'compliance') fetchComplianceDashboard();
-  }, [activeTab]);
+    if (!user) return;
+    fetchDashboardData(false);
+
+    // Auto-refresh every 5 seconds to ingest newly generated logs and update UI live
+    const interval = setInterval(() => {
+      fetchDashboardData(true);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const hasTabAccess = (tab) => {
+    if (!user) return false;
+    const role = user.role || 'viewer';
+    if (tab.roles) {
+      return tab.roles.includes(role);
+    }
+    return hasPermission(tab.perm);
+  };
+
+  // Role-tailored navigation tabs:
+  // - Viewer: Executive dashboards and compliance reports only (no ML training, no simulation, no admin configs)
+  // - Analyst: Investigation, ML Benchmarking, Attack Simulation, Compliance
+  // - Admin: Full suite + Live Log Generator daemon + User Management + Remediation
+  const navTabs = [
+    { id: 'overview', label: 'Overview', icon: <Shield size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
+    { id: 'alerts', label: 'Alerts & Incidents', icon: <AlertTriangle size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
+    { id: 'risk', label: 'Risk Score', icon: <Gauge size={16} />, perm: 'risk:read', roles: ['admin', 'analyst', 'viewer'] },
+    { id: 'remediation', label: 'Remediation', icon: <Wrench size={16} />, perm: 'remediation:read', roles: ['admin', 'analyst', 'viewer'] },
+    { id: 'compliance', label: 'Compliance', icon: <FileCheck2 size={16} />, perm: 'compliance:read', roles: ['admin', 'analyst', 'viewer'] },
+    { id: 'ml', label: 'ML Comparison', icon: <Cpu size={16} />, perm: 'ml:read', roles: ['admin', 'analyst'] },
+    { id: 'simulation', label: 'Attack Simulation', icon: <FlaskConical size={16} />, perm: 'simulation:read', roles: ['admin', 'analyst'] },
+    { id: 'livelogs', label: 'Live Log Stream', icon: <Terminal size={16} />, perm: 'admin', roles: ['admin'] },
+    { id: 'users', label: 'Users', icon: <Users size={16} />, perm: 'users:read', roles: ['admin'] },
+  ];
+
+  const footerTabs = [
+    { id: 'datasources', label: 'Data sources', icon: <Database size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
+    { id: 'settings', label: 'Platform settings', icon: <Settings size={16} />, perm: 'dashboard:read', roles: ['admin'] },
+  ];
+
+  useEffect(() => {
+    if (user) {
+      const allowed = [...navTabs, ...footerTabs].filter(hasTabAccess).map(t => t.id);
+      if (!allowed.includes(activeTab)) {
+        setActiveTab('overview');
+      }
+    }
+  }, [user, user?.role, activeTab]);
+
+  // Page header titles and actions according to Figma wireframes
+  const pageMeta = {
+    overview: {
+      title: 'Overview',
+      subtitle: 'Production telemetry · Wazuh SIEM & CloudTrail active stream',
+      action: (
+        <>
+          <div className="figma-date-badge">
+            <Calendar size={13} /> {liveTime.dateRangeBadge}
+          </div>
+          <button className="figma-btn-secondary" onClick={fetchDashboardData} disabled={loading}>
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
+        </>
+      )
+    },
+    alerts: {
+      title: 'Alerts & Incidents',
+      subtitle: 'Production telemetry · Wazuh SIEM & CloudTrail active stream',
+      action: (
+        <>
+          <div className="figma-date-badge">
+            <Calendar size={13} /> {liveTime.dateRangeBadge}
+          </div>
+          <button className="figma-btn-secondary" onClick={() => fetchFindings(findingsAttackMode)} disabled={findingsLoading}>
+            <RefreshCw size={13} className={findingsLoading ? 'animate-spin' : ''} /> Refresh
+          </button>
+        </>
+      )
+    },
+    risk: {
+      title: 'Risk Score',
+      subtitle: 'Real-time multi-dimensional risk posture engine',
+      action: (
+        <button className="figma-btn-primary" onClick={() => { setActiveTab('risk'); showToast('Risk score recomputed across all telemetry vectors'); }}>
+          <RefreshCw size={13} /> Recalculate risk
+        </button>
+      )
+    },
+    ml: {
+      title: 'ML Comparison',
+      subtitle: 'Specialist anomaly detection benchmarks & PyOD evaluation',
+      action: (
+        <button className="figma-btn-primary" onClick={() => { setActiveTab('ml'); showToast('ML comparison evaluation initiated'); }}>
+          <Play size={13} /> Run comparison
+        </button>
+      )
+    },
+    remediation: {
+      title: 'Remediation',
+      subtitle: 'Autonomous playbook execution & self-healing cloud configuration',
+      action: (
+        <div className="figma-date-badge">
+          <Shield size={13} style={{ color: 'var(--accent-orange)' }} /> Safe Dry-Run Mode
+        </div>
+      )
+    },
+    compliance: {
+      title: 'Compliance',
+      subtitle: 'Continuous framework auditing (SOC2, ISO 27001, GDPR)',
+      action: (
+        <button className="figma-btn-primary" onClick={() => { setActiveTab('compliance'); showToast('Compliance assessment refreshed'); }}>
+          <RefreshCw size={13} /> Re-audit frameworks
+        </button>
+      )
+    },
+    simulation: {
+      title: 'Attack Simulation',
+      subtitle: 'MITRE ATT&CK sandbox runner & adversary emulation',
+      action: (
+        <button className="figma-btn-primary" onClick={() => { setActiveTab('simulation'); }}>
+          <Play size={13} /> Run attack simulation
+        </button>
+      )
+    },
+    users: {
+      title: 'Users',
+      subtitle: 'User accounts and role-based access management',
+      action: (
+        <button className="figma-btn-primary" onClick={() => setActiveTab('users')}>
+          Invite user
+        </button>
+      )
+    },
+    livelogs: {
+      title: 'Live Log Stream',
+      subtitle: 'Real-time telemetry ingestion daemon · === Live Log Generator ===',
+      action: null
+    },
+    datasources: {
+      title: 'Data Sources',
+      subtitle: 'Telemetry connector directory and ingestion pipelines',
+      action: (
+        <button className="figma-btn-primary" onClick={() => setActiveTab('datasources')}>
+          Add source
+        </button>
+      )
+    },
+    settings: {
+      title: 'Platform Settings',
+      subtitle: 'Detector sensitivity parameters and safety configurations',
+      action: (
+        <button className="figma-btn-primary" onClick={() => showToast('Settings saved')}>
+          Save changes
+        </button>
+      )
+    }
+  };
+
+  const currentMeta = pageMeta[activeTab] || pageMeta.overview;
+
+  const searchResults = searchQuery.trim() === '' ? [] : [
+    ...navTabs.concat(footerTabs).filter(t => t.label.toLowerCase().includes(searchQuery.toLowerCase())).map(t => ({
+      type: 'Tab',
+      title: t.label,
+      subtitle: `Jump to ${t.label}`,
+      action: () => { setActiveTab(t.id); setSearchQuery(''); setShowSearchDropdown(false); }
+    })),
+    ...findings.filter(f =>
+      (f.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (f.finding_id?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (f.affected_principal?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+    ).slice(0, 5).map(f => ({
+      type: `Finding · ${f.severity?.toUpperCase() || 'INFO'}`,
+      title: `${f.finding_id}: ${f.title}`,
+      subtitle: f.affected_principal || f.affected_resource || 'Identity fixture',
+      action: () => {
+        setSelectedFinding(f);
+        setActiveTab('alerts');
+        setSearchQuery('');
+        setShowSearchDropdown(false);
+      }
+    }))
+  ];
 
   if (!user) return <LoginPage onLogin={handleLogin} />;
-  if (loading && !data.summary) return (
-    <div className="app-container flex flex-col justify-center items-center" style={{ minHeight: '100vh', gap: '20px' }}>
-      <RefreshCw size={48} className="animate-spin" style={{ color: 'var(--accent-blue)' }} />
-      <h2 className="animate-pulse">Initializing AI Cloud Security Platform...</h2>
-    </div>
-  );
-
-  const chartData = [...data.events].reverse().map(e => ({ time: e.timestamp.split('T')[1].substring(0, 5), score: e.ml_anomaly_score, isAttack: e.is_anomaly })).slice(0, 40);
-
-  const allTabs = [
-    { id: 'overview', label: 'Overview', icon: <BarChart3 size={16} />, perm: 'dashboard:read' },
-    { id: 'risk', label: 'Risk Score', icon: <Gauge size={16} />, perm: 'risk:read' },
-    { id: 'ml', label: 'ML Comparison', icon: <Cpu size={16} />, perm: 'ml:read' },
-    { id: 'remediation', label: 'Remediation', icon: <Zap size={16} />, perm: 'remediation:read' },
-    { id: 'compliance', label: 'Compliance', icon: <FileText size={16} />, perm: 'compliance:read' },
-    { id: 'simulation', label: 'Attack Sim', icon: <Crosshair size={16} />, perm: 'simulation:read' },
-    { id: 'users', label: 'Users', icon: <Users size={16} />, perm: 'users:read' },
-  ];
-  const tabs = allTabs.filter(t => hasPermission(t.perm));
-  const activeTabMeta = tabs.find(t => t.id === activeTab) || tabs[0];
 
   return (
-    <div className="app-container">
-      <header className="header">
-        <div className="brand-lockup">
-          <BrandMark size={64} />
-          <div>
-            <span className="eyebrow">Cloud Security AI</span>
-            <h1>Ram Antivirus</h1>
-          </div>
+    <div className={`figma-app-container ${theme === 'dark' ? 'theme-dark' : ''}`}>
+      {/* 1. LEFT SIDEBAR (EXACT 240px FIGMA SPEC) */}
+      <aside className={`figma-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="figma-sidebar-brand">
+          <img src={logoUrl} alt="RAM Antivirus Shield" />
+          {!sidebarCollapsed && <span>RAM Antivirus</span>}
         </div>
-        <div className="header-stats">
-          <div className="user-chip">
-            <User size={16} />
-            <div>
-              <strong>{user.username}</strong>
-              <Badge level={user.role === 'admin' ? 'critical' : user.role === 'analyst' ? 'medium' : 'low'}>{user.role}</Badge>
-            </div>
+
+        {!sidebarCollapsed && (
+          <div className="figma-workspace-select">
+            <span>Enterprise Cloud</span>
+            <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} />
           </div>
-          <button className="btn" onClick={fetchDashboardData} disabled={loading}><RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Re-scan</button>
-          <button className="icon-btn" onClick={handleLogout} title="Logout" aria-label="Logout"><LogOut size={18} /></button>
+        )}
+
+        <nav className="figma-nav-list" aria-label="Main Navigation">
+          {navTabs.filter(hasTabAccess).map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                className={`figma-nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+                title={sidebarCollapsed ? tab.label : undefined}
+              >
+                {tab.icon}
+                {!sidebarCollapsed && <span>{tab.label}</span>}
+              </button>
+            );
+          })}
+
+          <div className="figma-nav-divider" />
+
+          {footerTabs.filter(hasTabAccess).map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                className={`figma-nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+                title={sidebarCollapsed ? tab.label : undefined}
+              >
+                {tab.icon}
+                {!sidebarCollapsed && <span>{tab.label}</span>}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="figma-sidebar-footer">
+          <button
+            className="figma-nav-item"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            {!sidebarCollapsed && <span>Collapse sidebar</span>}
+          </button>
         </div>
-      </header>
+      </aside>
 
-      <div className="app-shell">
-        <aside className="sidebar">
-          <nav className="tabs-nav" aria-label="Dashboard sections">
-            {tabs.map(tab => (<button key={tab.id} className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>{tab.icon} <span>{tab.label}</span></button>))}
-          </nav>
-        </aside>
+      {/* 2. MAIN LAYOUT SHELL */}
+      <div className="figma-main-layout">
+        {/* TOP HEADER (SEARCH + USER CHIP + LIGHT/DARK TOGGLE) */}
+        <header className="figma-top-header">
+          <div className="figma-header-search" style={{ position: 'relative' }}>
+            <Search size={15} style={{ color: 'var(--text-tertiary)' }} />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search alerts, events, identities or resources..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSearchDropdown(true);
+              }}
+              onFocus={() => setShowSearchDropdown(true)}
+              onBlur={() => setTimeout(() => setShowSearchDropdown(false), 250)}
+            />
 
-        <main className="content-shell">
-          <div className="page-intro">
-            <div>
-              <span className="eyebrow">Workspace</span>
-              <h2>{activeTabMeta?.label || 'Dashboard'}</h2>
+            {showSearchDropdown && searchResults.length > 0 && (
+              <div className="figma-search-dropdown">
+                {searchResults.map((res, i) => (
+                  <div key={i} className="figma-search-result-item" onMouseDown={res.action}>
+                    <div>
+                      <span className="search-result-title">{res.title}</span>
+                      <span className="search-result-subtitle">{res.subtitle}</span>
+                    </div>
+                    <span className="search-result-type">{res.type}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="figma-header-right">
+            <div className="figma-user-profile" title={`Role: ${user?.role || 'Admin'} (@${user?.username})`}>
+              <div className="figma-avatar">
+                {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : (user?.username || 'U').substring(0, 2).toUpperCase()}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span className="figma-user-name">{user?.full_name || user?.username || 'Authenticated User'}</span>
+                <span className={`figma-role-badge role-${user?.role || 'viewer'}`}>
+                  {(user?.role || 'viewer').toUpperCase()}
+                </span>
+              </div>
+              <ChevronDown size={13} style={{ color: 'var(--text-tertiary)' }} />
             </div>
-            <div className="page-actions">
-              <span className="status-dot"></span>
-              <span>Backend connected</span>
+
+            {/* Segmented Light/Dark control from Figma header */}
+            <div className="figma-theme-toggle">
+              <button
+                className={theme === 'light' ? 'active' : ''}
+                onClick={() => toggleTheme('light')}
+              >
+                Light
+              </button>
+              <button
+                className={theme === 'dark' ? 'active' : ''}
+                onClick={() => toggleTheme('dark')}
+              >
+                Dark
+              </button>
+            </div>
+
+            <button
+              className="figma-btn-secondary"
+              style={{ padding: '6px 10px' }}
+              onClick={handleLogout}
+              title="Logout"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        </header>
+
+        {/* PAGE CONTENT CONTAINER */}
+        <main className="figma-content-area">
+          {/* HEADER ROW WITH UTC SNAPSHOT & PRIMARY ACTION */}
+          <div className="figma-page-header">
+            <div className="figma-page-title-group">
+              <h1>{currentMeta.title}</h1>
+              <div className="figma-page-subtitle">
+                <span>{currentMeta.subtitle}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginRight: '8px' }}>
+                {liveTime.headerBadge}
+              </span>
+              {currentMeta.action}
             </div>
           </div>
 
-      {/* OVERVIEW TAB */}
-      {activeTab === 'overview' && (
-        <div className="dashboard-grid animate-fade-in">
-          <div className="col-span-12 metric-grid">
-            <MetricCard icon={Siren} tone="critical" label="Critical threats" value={data.summary?.threats.critical ?? 0} detail={`${data.summary?.threats.total_analyzed ?? 0} events analyzed`} />
-            <MetricCard icon={AlertTriangle} tone="warning" label="High alerts" value={data.summary?.threats.high ?? 0} detail="ML severity queue" />
-            <MetricCard icon={ShieldCheck} tone="warning" label="CSPM issues" value={data.summary?.posture.cspm_open_issues ?? 0} detail="Open posture findings" />
-            <MetricCard icon={Fingerprint} tone="info" label="CIEM risks" value={data.summary?.posture.ciem_open_risks ?? 0} detail="Identity risk findings" />
-          </div>
-          <div className="panel col-span-8">
-            <SectionHeader icon={Activity} title="ML Anomaly Trend" subtitle="Recent event anomaly scores from the detection pipeline" />
-            <div style={{ height: '300px', width: '100%' }}>
-              <ResponsiveContainer><AreaChart data={chartData}>
-                <defs><linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
-                <XAxis dataKey="time" stroke="#8b949e" tick={{fontSize: 12}} /><YAxis stroke="#8b949e" domain={[0, 1]} tick={{fontSize: 12}} />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(26,26,46,0.98)', border: '1px solid #e8870e', borderRadius: '12px', color: '#ffffff', boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }} />
-                <Area type="monotone" dataKey="score" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorScore)" />
-              </AreaChart></ResponsiveContainer>
-            </div>
-          </div>
-          <div className="panel col-span-4" style={{ overflowY: 'auto', maxHeight: '400px' }}>
-            <SectionHeader icon={AlertTriangle} title="Active Threats" subtitle="Highest severity findings" />
-            <div className="data-list">
-              {data.summary?.recent_critical_alerts.map((alert, i) => (
-                <div key={i} className="data-item">
-                  <div className="item-header"><span className="item-title">{alert.attack_type?.replace('_', ' ')}</span><Badge level={alert.ml_severity}>{alert.ml_severity}</Badge></div>
-                  <div className="text-sm text-muted mb-4">{alert.description}</div>
-                  <div className="flex-between text-xs"><span>User: <strong>{alert.user}</strong></span><span>IP: {alert.src_ip}</span></div>
-                  <div className="score-track mt-4"><div className={`score-fill ${alert.ml_severity.toLowerCase()}`} style={{ width: `${alert.ml_anomaly_score * 100}%` }}></div></div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="panel col-span-6">
-            <SectionHeader icon={Server} title="CSPM Misconfigurations" subtitle="Posture findings derived from logs" />
-            <div className="data-list">{data.cspm.map((issue, i) => (
-              <div key={i} className="data-item"><div className="item-header"><span className="item-title">{issue.title}</span><Badge level={issue.severity}>{issue.severity}</Badge></div>
-              <p className="text-sm text-muted">{issue.description}</p>
-              <div className="finding-note mt-4"><strong>Remediation:</strong> {issue.remediation}</div></div>
-            ))}</div>
-          </div>
-          <div className="panel col-span-6">
-            <SectionHeader icon={Fingerprint} title="CIEM Identity Risk" subtitle="Risky identities and access patterns" />
-            <div className="data-list">{data.ciem.map((risk, i) => (
-              <div key={i} className="data-item"><div className="item-header"><span className="item-title">{risk.title}</span><Badge level={risk.risk_level}>{risk.risk_level}</Badge></div>
-              <div className="flex-between text-sm mt-4 mb-4"><span>Entity: <strong>{risk.entity_name}</strong></span><span style={{ color: 'var(--text-secondary)'}}>{risk.entity_type}</span></div>
-              <div className="finding-note"><strong>Remediation:</strong> {risk.remediation}</div></div>
-            ))}</div>
-          </div>
-        </div>
-      )}
-
-      {/* RISK SCORE TAB */}
-      {activeTab === 'risk' && <RiskScoreTab showToast={showToast} />}
-
-      {/* ML COMPARISON TAB */}
-      {activeTab === 'ml' && <MLComparisonTab showToast={showToast} />}
-
-      {/* REMEDIATION TAB */}
-      {activeTab === 'remediation' && (
-        <div className="dashboard-grid animate-fade-in">
-          <div className="panel col-span-12">
-            <div className="flex-between"><div><h2 className="section-title" style={{ marginBottom: 4 }}><Zap /> Full Auto-Remediation Pipeline</h2><p className="text-sm text-muted">Simulate → ML Analyze → CSPM/CIEM → Auto-Remediate → Config Fix</p></div>
-            {hasPermission('remediation:execute') && <button className="btn btn-success" onClick={runFullPipeline} disabled={executing}>{executing ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} />}{executing ? 'Executing...' : 'Run Full Pipeline'}</button>}
-            </div>
-            {pipelineResult && (<div className="mt-4 animate-slide-up"><div className="flex gap-4 flex-wrap mt-4">
-              <div className="stat-pill"><Cpu size={14} style={{color: 'var(--accent-purple)'}} />{pipelineResult.ml_analysis.total_events} Events</div>
-              <div className="stat-pill"><AlertTriangle size={14} style={{color: 'var(--critical-color)'}} />{pipelineResult.ml_analysis.anomalies_detected} Anomalies</div>
-              <div className="stat-pill"><Zap size={14} style={{color: 'var(--accent-green)'}} />{pipelineResult.threat_remediation.remediations_triggered} Playbooks</div>
-              <div className="stat-pill"><Settings size={14} style={{color: 'var(--accent-blue)'}} />{pipelineResult.config_fixes.length} Fixes</div>
-              <div className="stat-pill"><Lock size={14} style={{color: 'var(--high-color)'}} />{pipelineResult.access_revocations.length} Revocations</div>
-            </div></div>)}
-          </div>
-          <div className="panel col-span-6">
-            <h2 className="section-title"><Shield /> Playbooks</h2>
-            <div className="data-list">{playbooks.map((pb, i) => (
-              <div key={i} className="data-item"><div className="item-header"><span className="item-title">{pb.name}</span><Badge level={pb.severity_trigger}>{pb.severity_trigger}</Badge></div>
-              <p className="text-sm text-muted mb-2">{pb.description}</p>
-              <div className="flex-between mt-2"><div className="flex gap-3 text-xs text-muted"><span>{pb.num_steps} steps</span><span>~{pb.estimated_time_seconds}s</span></div>
-              {hasPermission('remediation:execute') && <button className="btn btn-sm" onClick={() => executePlaybook(pb.attack_type)} disabled={executing}><Play size={12} /> Execute</button>}</div></div>
-            ))}</div>
-          </div>
-          <div className="panel col-span-6">
-            <h2 className="section-title"><CheckCircle /> Execution Result</h2>
-            {remediationResult ? (<div className="animate-slide-up">
-              <div className="item-header mb-4"><span className="item-title">{remediationResult.playbook_name}</span><Badge level={remediationResult.overall_status}>{remediationResult.overall_status}</Badge></div>
-              <div className="flex gap-3 text-xs text-muted mb-4"><span>ID: {remediationResult.execution_id}</span><span>{remediationResult.total_duration_ms}ms</span><span>{remediationResult.steps_succeeded}/{remediationResult.steps_executed} passed</span></div>
-              <div className="step-timeline">{remediationResult.steps.map((step, i) => (
-                <div key={i} className="step-item"><div className={`step-dot ${step.status}`}></div><div style={{ flex: 1 }}><div className="flex-between"><span className="text-sm" style={{ fontWeight: 500 }}>{step.description}</span><span className="text-xs text-muted">{step.duration_ms}ms</span></div><span className="text-xs text-muted">{step.action}</span></div></div>
-              ))}</div>
-            </div>) : (<div className="empty-state"><Play size={40} /><p>Execute a playbook to see results</p></div>)}
-          </div>
-          <div className="panel col-span-6">
-            <h2 className="section-title"><Settings /> CSPM Config Correction</h2>
-            <div className="data-list">{data.cspm.map((issue, i) => (
-              <div key={i} className="data-item"><div className="item-header"><span className="item-title">{issue.title}</span><Badge level={issue.severity}>{issue.severity}</Badge></div>
-              <p className="text-sm text-muted mb-2">{issue.description}</p>
-              <div className="flex-between mt-2"><span className="text-xs" style={{ color: 'var(--accent-cyan)' }}>{issue.vulnerability_id}</span>
-              {hasPermission('remediation:execute') && <button className="btn btn-sm btn-success" onClick={() => fixConfig(issue.vulnerability_id)}><Settings size={12} /> Auto-Fix</button>}</div></div>
-            ))}</div>
-          </div>
-          <div className="panel col-span-6">
-            <h2 className="section-title"><Lock /> CIEM Access Revocation</h2>
-            <div className="data-list">{data.ciem.map((risk, i) => (
-              <div key={i} className="data-item"><div className="item-header"><span className="item-title">{risk.title}</span><Badge level={risk.risk_level}>{risk.risk_level}</Badge></div>
-              <div className="flex-between text-sm mt-2 mb-2"><span>Entity: <strong>{risk.entity_name}</strong></span><span className="text-xs text-muted">{risk.entity_type}</span></div>
-              <div className="flex-between mt-2"><span className="text-xs text-muted">{risk.description}</span>
-              {hasPermission('remediation:execute') && <button className="btn btn-sm btn-danger" onClick={() => revokeAccess(risk.entity_name, risk.entity_type, risk.risk_level)}><Unlock size={12} /> Revoke</button>}</div></div>
-            ))}</div>
-          </div>
-        </div>
-      )}
-
-      {/* COMPLIANCE TAB */}
-      {activeTab === 'compliance' && (
-        <div className="dashboard-grid animate-fade-in">
-          <div className="panel col-span-12">
-            <div className="flex-between mb-4"><h2 className="section-title" style={{ marginBottom: 0 }}><Shield /> Compliance Dashboard</h2>
-            <div className="flex gap-2"><button className="btn" onClick={fetchComplianceDashboard}><RefreshCw size={16} /> Refresh</button>
-            {hasPermission('compliance:generate') && <button className="btn btn-success" onClick={fetchComplianceReport}><FileText size={16} /> Generate Report</button>}
-            <button className="btn btn-outline" onClick={downloadCSVReport}><Download size={16} /> CSV</button></div></div>
-            {complianceDashboard && (<div>
-            <div className="flex items-center gap-4 mb-4" style={{ justifyContent: 'center' }}><ScoreRing score={complianceDashboard.overall_score} size={140} label="Overall Compliance" />
-              <div className="ml-2 flex-col gap-2"><div className="stat-pill">{complianceDashboard.trend?.direction === 'improving' ? <TrendingUp size={14} style={{ color: 'var(--success-color)' }} /> : <TrendingDown size={14} style={{ color: 'var(--critical-color)' }} />}{complianceDashboard.trend?.change_7d > 0 ? '+' : ''}{complianceDashboard.trend?.change_7d}% (7d)</div></div></div>
-              <div className="dashboard-grid" style={{ gap: '16px' }}>{Object.entries(complianceDashboard.frameworks).map(([key, fw]) => (
-                <div key={key} className="framework-card col-span-4" onClick={() => setSelectedFramework(selectedFramework === key ? null : key)} style={{ cursor: 'pointer' }}>
-                <ScoreRing score={fw.score} size={100} label={fw.name} /><Badge level={fw.status}>{fw.status.replace('_', ' ')}</Badge>
-                <div className="framework-stats"><div className="framework-stat"><div className="stat-val text-success">{fw.passing}</div><div className="stat-label">Passing</div></div>
-                <div className="framework-stat"><div className="stat-val" style={{ color: 'var(--critical-color)' }}>{fw.failing}</div><div className="stat-label">Failing</div></div>
-                <div className="framework-stat"><div className="stat-val">{fw.total}</div><div className="stat-label">Total</div></div></div></div>
-              ))}</div>
-            </div>)}
-          </div>
-          {selectedFramework && complianceDashboard?.frameworks[selectedFramework] && (
-            <div className="panel col-span-12 animate-slide-up"><h2 className="section-title"><ChevronRight /> {complianceDashboard.frameworks[selectedFramework].name} — Controls</h2>
-            {complianceDashboard.frameworks[selectedFramework].critical_gaps.length > 0 && (<>
-              <h3 className="text-sm mb-2 mt-4" style={{ color: 'var(--critical-color)', fontWeight: 600 }}><XCircle size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> Failing Controls</h3>
-              <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden' }}>{complianceDashboard.frameworks[selectedFramework].critical_gaps.map((gap, i) => (
-                <div key={i} className="control-row"><span className="control-id">{gap.control}</span><span className="control-name">{gap.name}</span><Badge level="fail">FAIL</Badge><span className="text-xs text-muted ml-2">{gap.source}</span></div>
-              ))}</div></>)}
-            </div>
+          {/* PAGE ROUTING (ALL 10 FIGMA MODULES) */}
+          {activeTab === 'overview' && (
+            <OverviewTab
+              data={data}
+              findings={findings}
+              findingsLoading={findingsLoading}
+              findingsError={findingsError}
+              fetchFindings={fetchFindings}
+              liveTime={liveTime}
+              onInvestigateFinding={(finding) => {
+                setActiveTab('remediation');
+              }}
+              onNavigateTab={(tabId) => setActiveTab(tabId)}
+            />
           )}
-          {complianceDashboard && (<div className="panel col-span-6"><h2 className="section-title"><BarChart3 /> Framework Comparison</h2><div style={{ height: '300px' }}>
-            <ResponsiveContainer><BarChart data={Object.entries(complianceDashboard.frameworks).map(([key, fw]) => ({ name: key, Passing: fw.passing, Failing: fw.failing }))}>
-            <XAxis dataKey="name" stroke="#8b949e" tick={{ fontSize: 12 }} /><YAxis stroke="#8b949e" tick={{ fontSize: 12 }} />
-            <Tooltip contentStyle={{ backgroundColor: 'rgba(26,26,46,0.98)', border: '1px solid #e8870e', borderRadius: '12px', color: '#ffffff', boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }} /><Legend />
-            <Bar dataKey="Passing" fill="#10b981" radius={[4, 4, 0, 0]} /><Bar dataKey="Failing" fill="#ef4444" radius={[4, 4, 0, 0]} />
-            </BarChart></ResponsiveContainer></div></div>)}
-          <div className="panel col-span-6"><h2 className="section-title"><FileText /> Report Preview</h2>
-          {complianceReport ? (<div className="animate-slide-up"><div className="data-item mb-4"><div className="item-header mb-2"><span className="text-xs text-muted">Report ID</span><span className="text-sm" style={{ fontFamily: 'monospace', color: 'var(--accent-cyan)' }}>{complianceReport.report_id}</span></div>
-          <div className="flex-col gap-3"><div className="flex-between"><span className="text-sm">Overall</span><strong style={{ color: complianceReport.executive_summary.overall_compliance_score >= 80 ? 'var(--success-color)' : 'var(--high-color)' }}>{complianceReport.executive_summary.overall_compliance_score}%</strong></div>
-          <div className="flex-between"><span className="text-sm">Total Findings</span><strong>{complianceReport.executive_summary.total_findings}</strong></div>
-          <div className="flex-between"><span className="text-sm">Critical</span><strong style={{ color: 'var(--critical-color)' }}>{complianceReport.executive_summary.critical_findings}</strong></div>
-          <div className="flex-between"><span className="text-sm">ML Anomalies</span><strong style={{ color: 'var(--accent-purple)' }}>{complianceReport.executive_summary.ml_anomalies_detected}</strong></div></div></div></div>
-          ) : (<div className="empty-state"><FileText size={40} /><p>Generate a report to preview</p></div>)}</div>
-        </div>
-      )}
 
-      {/* ATTACK SIMULATION TAB */}
-      {activeTab === 'simulation' && <AttackSimulationTab showToast={showToast} />}
+          {activeTab === 'alerts' && (
+            <AlertsIncidentsTab
+              findings={findings}
+              findingsLoading={findingsLoading}
+              findingsError={findingsError}
+              findingsAttackMode={findingsAttackMode}
+              fetchFindings={fetchFindings}
+              incidents={incidents}
+              incidentsLoading={incidentsLoading}
+              incidentsStats={incidentsStats}
+              fetchIncidents={fetchIncidents}
+              onInvestigateFinding={(finding) => {
+                setActiveTab('remediation');
+              }}
+            />
+          )}
 
-      {activeTab === 'users' && <UserManagementTab token={token} showToast={showToast} />}
+          {activeTab === 'risk' && (
+            <RiskScoreTab
+              data={data}
+              findings={findings}
+              liveTime={liveTime}
+              showToast={showToast}
+              onNavigateTab={setActiveTab}
+              onInvestigateFinding={(finding) => {
+                setActiveTab('remediation');
+              }}
+            />
+          )}
 
+          {activeTab === 'ml' && <MLComparisonTab showToast={showToast} />}
+
+          {activeTab === 'remediation' && (
+            <RemediationTab
+              playbooks={playbooks}
+              showToast={showToast}
+              cspm={data.cspm}
+              ciem={data.ciem}
+              findings={findings}
+            />
+          )}
+
+          {activeTab === 'compliance' && <ComplianceTab showToast={showToast} />}
+
+          {activeTab === 'simulation' && <AttackSimulationTab showToast={showToast} />}
+
+          {activeTab === 'livelogs' && <LiveLogsTab showToast={showToast} />}
+
+          {activeTab === 'users' && <UserManagementTab token={token} showToast={showToast} />}
+
+          {activeTab === 'datasources' && <DataSourcesTab showToast={showToast} />}
+
+          {activeTab === 'settings' && (
+            <WorkspaceSettingsTab
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              showToast={showToast}
+            />
+          )}
         </main>
       </div>
 
