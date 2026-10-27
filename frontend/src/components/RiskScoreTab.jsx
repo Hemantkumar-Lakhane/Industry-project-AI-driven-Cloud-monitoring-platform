@@ -22,30 +22,33 @@ const RiskScoreTab = ({ showToast }) => {
 
   useEffect(() => { fetchRisk(); }, []);
 
-  // Actionable risk drivers mapped to real platform findings and assets
-  const riskDrivers = [
-    {
-      id: 'FIND-NETW',
-      title: 'SSH accessible from internet (0.0.0.0/0:22)',
-      resource: 'sg-public-ssh-web ↗',
-      source: 'Network · LIVE',
-      nextStep: 'Review exposure →'
-    },
-    {
-      id: 'FIND-CLOU',
-      title: 'Public S3 access block disabled',
-      resource: 's3-cust-records-prod ↗',
-      source: 'Storage · CSPM',
-      nextStep: 'Review policy →'
-    },
-    {
-      id: 'FIND-IAMP',
-      title: 'MFA absent on administrative principal',
-      resource: 'iam-role-superadmin ↗',
-      source: 'Identity · CIEM',
-      nextStep: 'Review identity →'
-    }
-  ];
+  // Actionable risk drivers backed dynamically by Task-1 Correlated Incidents from backend API
+  // with fallback to platform findings and assets
+  const displayDrivers = (risk?.actionable_drivers && risk.actionable_drivers.length > 0)
+    ? risk.actionable_drivers
+    : [
+        {
+          id: 'FIND-NETW',
+          title: 'SSH accessible from internet (0.0.0.0/0:22)',
+          resource: 'sg-public-ssh-web ↗',
+          source: 'Network · LIVE',
+          nextStep: 'Review exposure →'
+        },
+        {
+          id: 'FIND-CLOU',
+          title: 'Public S3 access block disabled',
+          resource: 's3-cust-records-prod ↗',
+          source: 'Storage · CSPM',
+          nextStep: 'Review policy →'
+        },
+        {
+          id: 'FIND-IAMP',
+          title: 'MFA absent on administrative principal',
+          resource: 'iam-role-superadmin ↗',
+          source: 'Identity · CIEM',
+          nextStep: 'Review identity →'
+        }
+      ];
 
   return (
     <div className="animate-fade-in">
@@ -79,7 +82,7 @@ const RiskScoreTab = ({ showToast }) => {
             </div>
 
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              Composite risk evaluated across posture findings, brute-force detections, and baseline identity audits.
+              Composite four-pillar risk evaluated across correlated attack campaigns, ML flow anomaly detection, cloud posture, and IAM entitlements.
             </p>
           </div>
 
@@ -97,7 +100,7 @@ const RiskScoreTab = ({ showToast }) => {
               Factor inputs
             </h3>
             <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-              Contribution weights
+              Four-pillar weights
             </span>
           </div>
 
@@ -111,31 +114,43 @@ const RiskScoreTab = ({ showToast }) => {
             </thead>
             <tbody>
               {risk?.risk_breakdown_chart ? (
-                risk.risk_breakdown_chart.map((c, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>Live posture stream</td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, color: c.color || 'var(--accent-orange)' }}>
-                      {c.score}% ({(c.weight * 100)}%)
-                    </td>
-                  </tr>
-                ))
+                risk.risk_breakdown_chart.map((c, i) => {
+                  let inputLabel = 'Live security stream';
+                  if (c.name.includes('Incident')) inputLabel = 'Task-1 Correlated Campaigns';
+                  else if (c.name.includes('ML')) inputLabel = 'Active flow anomaly stream';
+                  else if (c.name.includes('CSPM')) inputLabel = 'Cloud posture & exposure scan';
+                  else if (c.name.includes('CIEM')) inputLabel = 'IAM entitlement & privilege audit';
+                  return (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{inputLabel}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 600, color: c.color || 'var(--accent-orange)' }}>
+                        {c.score}% ({(Math.round(c.weight * 100))}%)
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <>
                   <tr>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Incident Correlation</td>
+                    <td style={{ color: 'var(--text-secondary)' }}>Task-1 Correlated Campaigns</td>
+                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>35%</td>
+                  </tr>
+                  <tr>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>ML/AI detection</td>
                     <td style={{ color: 'var(--text-secondary)' }}>Active telemetry session</td>
-                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>35%</td>
+                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>25%</td>
                   </tr>
                   <tr>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>CSPM cloud posture</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>2 imported findings · SSH / S3</td>
-                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>35%</td>
+                    <td style={{ color: 'var(--text-secondary)' }}>Cloud posture & exposure scan</td>
+                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>20%</td>
                   </tr>
                   <tr>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>CIEM identity</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>1 imported open finding · MFA</td>
-                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>30%</td>
+                    <td style={{ color: 'var(--text-secondary)' }}>IAM entitlement & privilege audit</td>
+                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>20%</td>
                   </tr>
                 </>
               )}
@@ -215,7 +230,7 @@ const RiskScoreTab = ({ showToast }) => {
             </tr>
           </thead>
           <tbody>
-            {riskDrivers.map((driver, idx) => (
+            {displayDrivers.map((driver, idx) => (
               <tr key={idx}>
                 <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                   <span style={{ fontFamily: 'monospace', fontWeight: 500 }}>{driver.id}</span> · {driver.title}

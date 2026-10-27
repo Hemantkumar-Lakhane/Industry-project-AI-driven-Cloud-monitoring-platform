@@ -249,10 +249,10 @@ const OverviewTab = ({
             Open Incidents
           </div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--sev-crit)', marginTop: '4px' }}>
-            {data?.summary?.incidents?.open_incidents ?? (totalFindings - resolvedCount)}
+            {data?.summary?.threats?.open_incidents ?? data?.summary?.incidents?.open_incidents ?? (totalFindings - resolvedCount)}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-            Unresolved active alerts
+            Correlated attack campaigns
           </div>
         </div>
       </div>

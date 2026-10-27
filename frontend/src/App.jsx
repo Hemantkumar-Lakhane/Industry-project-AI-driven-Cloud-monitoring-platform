@@ -55,6 +55,11 @@ const Dashboard = () => {
   const [findingsError, setFindingsError] = useState(null);
   const [findingsAttackMode, setFindingsAttackMode] = useState(0);
 
+  // Incident Correlation State
+  const [incidents, setIncidents] = useState([]);
+  const [incidentsLoading, setIncidentsLoading] = useState(false);
+  const [incidentsStats, setIncidentsStats] = useState(null);
+
   // Figma Light/Dark theme (defaulting to light as in the wireframes, toggleable to dark)
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const toggleTheme = (newTheme) => {
@@ -126,6 +131,22 @@ const Dashboard = () => {
     }
   };
 
+  const fetchIncidents = async (isPolling = false) => {
+    if (!isPolling) setIncidentsLoading(true);
+    try {
+      const [res, statsRes] = await Promise.all([
+        axios.get(`${API_URL}/incidents`),
+        axios.get(`${API_URL}/incidents/stats`)
+      ]);
+      setIncidents(res.data.data || []);
+      setIncidentsStats(statsRes.data.data || null);
+    } catch (err) {
+      console.error("Error fetching incidents:", err);
+    } finally {
+      if (!isPolling) setIncidentsLoading(false);
+    }
+  };
+
   const fetchDashboardData = async (isPolling = false) => {
     if (!isPolling) setLoading(true);
     try {
@@ -142,6 +163,7 @@ const Dashboard = () => {
         ciem: ciemRes.data.data
       });
       fetchFindings(findingsAttackMode, isPolling);
+      fetchIncidents(isPolling);
       fetchPlaybooks();
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -535,6 +557,10 @@ const Dashboard = () => {
               findingsError={findingsError}
               findingsAttackMode={findingsAttackMode}
               fetchFindings={fetchFindings}
+              incidents={incidents}
+              incidentsLoading={incidentsLoading}
+              incidentsStats={incidentsStats}
+              fetchIncidents={fetchIncidents}
               onInvestigateFinding={(finding) => {
                 setActiveTab('remediation');
               }}
