@@ -44,8 +44,9 @@ from engines.db import (
     save_cspm_scan, save_ciem_scan, get_alert_log,
     save_compliance_score, get_compliance_trend_db,
     save_findings_db, get_findings_db, get_findings_stats_db,
+    save_incidents_db, get_incidents_db, get_incident_by_id_db, get_incidents_stats_db,
     update_finding_status_db, update_incident_status_db,
-    get_cloud_assets_db, get_vulnerabilities_db, get_incidents_db
+    get_cloud_assets_db, get_vulnerabilities_db
 )
 from engines.asset_engine import discover_assets, get_asset_inventory, check_connectors
 from engines.vulnerability_engine import run_vulnerability_scan, get_vulnerability_summary
@@ -53,6 +54,7 @@ from engines.correlation_engine import correlate_findings, get_correlated_incide
 from engines.alert_engine import send_alert_email
 from schemas.event import NormalizedEvent, normalize_event
 from schemas.finding import SecurityFinding
+from schemas.incident import SecurityIncident
 from engines.base_detector import detector_registry
 from engines.detectors.brute_force import brute_force_detector
 from simulator.session_manager import session_manager
@@ -105,10 +107,15 @@ tags_metadata = [
         "description": "Incident alerting pipelines, email notification testing, and historical alert dispatch logs."
     },
     {
+        "name": "Incident Correlation & Investigation",
+        "description": "Multi-signal deterministic correlation layer grouping related atomic findings into higher-level attack campaigns."
+    },
+    {
         "name": "Real-Time Streaming",
         "description": "WebSocket live stream delivering continuous security telemetry, anomaly metrics, and critical alert updates."
     }
 ]
+
 
 app = FastAPI(
     title="Advanced Cloud Security API",
@@ -1387,16 +1394,83 @@ def update_finding_status(
     }
 
 
-# ── Incident Correlation (SRS FR-08) ──────────────────────────────────────────
+# ── Incident Correlation & Investigation ──────────────────────────────────────
 
 @app.get(
     "/api/incidents",
     tags=["Incident Correlation & Management"],
     summary="Get Correlated Security Incidents",
-    description="Retrieve incidents synthesized across the 16 attack category detectors using kill-chain correlation."
+    description="""
+Retrieve deterministic, multi-signal security incidents correlated from atomic findings.
+Groups related findings sharing identical principal identity, source IP, or cloud resource within a sliding temporal window (default 15 minutes / 900 seconds).
+""",
+    response_description="Array of correlated security incidents with member finding summaries and correlation evidence.",
+    responses={
+        200: {
+            "description": "Correlated security incidents retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "count": 2,
+                        "total": 2,
+                        "data": []
+                    }
+                }
+            }
+        }
+    }
 )
-def get_incidents_list(limit: int = Query(100, ge=1, le=500)):
-    return get_correlated_incidents()
+def get_correlated_incidents(
+    status: Optional[str] = Query(None, description="Filter by incident status: 'open', 'resolved', 'investigating'"),
+    severity: Optional[str] = Query(None, description="Filter by severity: 'critical', 'high', 'medium', 'low'"),
+    limit: int = Query(100, ge=1, le=500, description="Max incidents to return")
+):
+    session = session_manager.get_session()
+    incidents = []
+    if session and session.incidents:
+        incidents = session.incidents
+    else:
+        persisted = get_incidents_db(limit=limit, status=status, severity=severity)
+        if persisted:
+            incidents = persisted
+        else:
+            current_findings = session.findings if session and session.findings else get_findings_db(limit=200)
+            if current_findings:
+                corr_incidents = correlate_findings(current_findings)
+                incidents = [inc.model_dump(mode="json") if hasattr(inc, "model_dump") else inc for inc in corr_incidents]
+                if session:
+                    session.incidents = incidents
+                try:
+                    save_incidents_db(incidents)
+                except Exception:
+                    pass
+
+    filtered = incidents
+    if status and status.lower() != "all":
+        filtered = [inc for inc in filtered if (inc.get("status") or "").lower() == status.lower()]
+    if severity and severity.lower() != "all":
+        filtered = [inc for inc in filtered if (inc.get("severity") or "").lower() == severity.lower()]
+
+    open_cnt = sum(1 for inc in incidents if (inc.get("status") or "").lower() == "open")
+    contained_cnt = sum(1 for inc in incidents if (inc.get("status") or "").lower() == "contained")
+    resolved_cnt = sum(1 for inc in incidents if (inc.get("status") or "").lower() == "resolved")
+    crit_cnt = sum(1 for inc in incidents if (inc.get("severity") or "").lower() == "critical")
+    high_cnt = sum(1 for inc in incidents if (inc.get("severity") or "").lower() == "high")
+
+    return {
+        "status": "success",
+        "count": len(filtered[:limit]),
+        "total": len(incidents),
+        "total_incidents": len(incidents),
+        "open_incidents": open_cnt,
+        "contained_incidents": contained_cnt,
+        "resolved_incidents": resolved_cnt,
+        "critical_incidents": crit_cnt,
+        "high_incidents": high_cnt,
+        "data": filtered[:limit],
+        "incidents": filtered[:limit]
+    }
 
 
 @app.post(
@@ -1406,12 +1480,21 @@ def get_incidents_list(limit: int = Query(100, ge=1, le=500)):
     description="Re-run correlation engine across current findings to synthesize updated incidents."
 )
 def trigger_incident_correlation():
-    findings = get_findings_db(limit=500)
-    incidents = correlate_findings(findings)
+    session = session_manager.get_session()
+    current_findings = session.findings if session and session.findings else get_findings_db(limit=500)
+    corr_incidents = correlate_findings(current_findings)
+    incidents_data = [inc.model_dump(mode="json") if hasattr(inc, "model_dump") else inc for inc in corr_incidents]
+    if session:
+        session.incidents = incidents_data
+    try:
+        save_incidents_db(incidents_data)
+    except Exception:
+        pass
     return {
         "status": "success",
-        "incidents_created": len(incidents),
-        "data": incidents
+        "incidents_created": len(incidents_data),
+        "data": incidents_data,
+        "incidents": incidents_data
     }
 
 
@@ -1430,11 +1513,87 @@ def update_incident_status(
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of {valid_statuses}")
 
     updated = update_incident_status_db(incident_id, payload.status.lower(), payload.notes)
+    session = session_manager.get_session()
+    if session and session.incidents:
+        for inc in session.incidents:
+            if inc.get("incident_id") == incident_id or inc.get("id") == incident_id:
+                inc["status"] = payload.status.lower()
+                if payload.notes:
+                    inc["resolution_notes"] = payload.notes
+                break
     return {
         "status": "success",
         "incident_id": incident_id,
         "new_status": payload.status.lower(),
         "updated": updated
+    }
+
+
+@app.get(
+    "/api/incidents/stats",
+    tags=["Incident Correlation & Investigation"],
+    summary="Get Incident Correlation Metrics",
+    description="Retrieve aggregate metrics across correlated incidents, including total incidents, open count, severity breakdown, and average findings per incident.",
+    response_description="Incident correlation statistics object.",
+)
+def get_incident_stats():
+    session = session_manager.get_session()
+    incidents = session.incidents if session and session.incidents else get_incidents_db(limit=200)
+
+    total = len(incidents)
+    open_cnt = sum(1 for inc in incidents if (inc.get("status") or "").lower() == "open")
+    critical = sum(1 for inc in incidents if (inc.get("severity") or "").lower() == "critical")
+    high = sum(1 for inc in incidents if (inc.get("severity") or "").lower() == "high")
+    medium = sum(1 for inc in incidents if (inc.get("severity") or "").lower() == "medium")
+    low = sum(1 for inc in incidents if (inc.get("severity") or "").lower() == "low")
+    avg_findings = round(sum(inc.get("finding_count", 1) for inc in incidents) / total, 1) if total > 0 else 1.0
+
+    return {
+        "status": "success",
+        "data": {
+            "total_incidents": total,
+            "open_incidents": open_cnt,
+            "critical": critical,
+            "high": high,
+            "medium": medium,
+            "low": low,
+            "avg_findings_per_incident": avg_findings
+        }
+    }
+
+
+@app.get(
+    "/api/incidents/{incident_id}",
+    tags=["Incident Correlation & Investigation"],
+    summary="Get Specific Incident Details with Member Findings",
+    description="Retrieve full forensic details for a correlated incident, including all individual security findings attached to it.",
+    response_description="Detailed incident record with full member findings array.",
+    responses={
+        200: {
+            "description": "Incident details retrieved successfully"
+        },
+        404: {
+            "description": "Incident not found"
+        }
+    }
+)
+def get_incident_detail(
+    incident_id: str = Path(..., description="Unique deterministic incident identifier (e.g. 'INC-A1B2C3D4')")
+):
+    session = session_manager.get_session()
+    incident = None
+    if session and session.incidents:
+        incident = next((inc for inc in session.incidents if inc.get("incident_id") == incident_id or inc.get("id") == incident_id), None)
+
+    if not incident:
+        incident = get_incident_by_id_db(incident_id)
+
+    if not incident:
+        raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found")
+
+    return {
+        "status": "success",
+        "data": incident
     }
 
 
@@ -1528,7 +1687,6 @@ def rollback_executed_remediation(execution_id: str = Path(..., description="Rem
     if result.get("status") == "error":
         raise HTTPException(status_code=404, detail=result["message"])
     return result
-
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2069,17 +2227,27 @@ Saves the computed score into the SQLite risk history database and computes the 
     }
 )
 def get_risk_score():
-    events = _get_events(80, 15)
-    analyzed = analyze_events(events)
-    cspm_findings = _get_cspm(events)
-    ciem_findings = _get_ciem(events)
-    risk = calculate_unified_risk(analyzed, cspm_findings, ciem_findings)
+    session = session_manager.get_session()
+    if session and session.analyzed_events:
+        analyzed = session.analyzed_events
+        cspm_findings = session.cspm_results if session.cspm_results is not None else _get_cspm(session.events)
+        ciem_findings = session.ciem_results if session.ciem_results is not None else _get_ciem(session.events)
+        incidents = session.incidents if session.incidents is not None else get_incidents_db(limit=50)
+    else:
+        events = _get_events(80, 15)
+        analyzed = analyze_events(events)
+        cspm_findings = _get_cspm(events)
+        ciem_findings = _get_ciem(events)
+        incidents = get_incidents_db(limit=50)
+
+    risk = calculate_unified_risk(analyzed, cspm_findings, ciem_findings, incidents=incidents)
     save_risk_score(
         risk["unified_risk_score"],
         risk["components"]["ml_anomaly_detection"]["score"],
         risk["components"]["cspm_posture"]["score"],
         risk["components"]["ciem_identity"]["score"],
-        risk["unified_risk_level"]
+        risk["unified_risk_level"],
+        incident=risk["components"]["incident_correlation"]["score"]
     )
     risk["trend"] = get_risk_trend(risk["unified_risk_score"])
     return {"status": "success", "data": risk}
@@ -2254,7 +2422,8 @@ def run_full_attack_simulation(
     detection_rate = len(detected) / len(all_sim_events) * 100 if all_sim_events else 0
     cspm = session.cspm_results
     ciem = session.ciem_results
-    risk = calculate_unified_risk(analyzed, cspm, ciem)
+    incidents = session.incidents if session.incidents is not None else get_incidents_db(limit=50)
+    risk = calculate_unified_risk(analyzed, cspm, ciem, incidents=incidents)
     remediation = auto_remediate_threats(analyzed)
     return {
         "status": "success",
