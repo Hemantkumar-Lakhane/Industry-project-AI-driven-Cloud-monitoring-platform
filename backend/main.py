@@ -1,20 +1,28 @@
+import sys
+import os
+
+# Ensure backend, pylibs, and workspace root are in sys.path
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_ROOT_DIR = os.path.dirname(_CURRENT_DIR)
+_PYLIBS_DIR = os.path.join(_ROOT_DIR, "pylibs")
+
+for _d in (_PYLIBS_DIR, _CURRENT_DIR, _ROOT_DIR):
+    if os.path.exists(_d) and _d not in sys.path:
+        sys.path.insert(0, _d)
+
 from fastapi import FastAPI, Header, HTTPException, Request, Depends, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse, JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.websockets import WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import uvicorn
 from typing import Optional, List, Dict, Any
 import asyncio
 import json
 import csv
 import io
-import sys
-import os
 import traceback
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from simulator.wazuh_simulator import simulate_session
 from simulator.wazuh_reader import read_wazuh_logs, get_wazuh_status, is_wazuh_available
@@ -255,6 +263,18 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # ── Pydantic Request Models ───────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "username": "analyst_jane",
+                "password": "SecurePass123!",
+                "email": "analyst_jane@ramantivirus.com",
+                "role": "analyst",
+                "full_name": "Jane Doe"
+            }
+        }
+    )
+
     username: str = Field(
         ...,
         min_length=3,
@@ -283,19 +303,17 @@ class RegisterRequest(BaseModel):
         examples=["Jane Doe"]
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "username": "analyst_jane",
-                "password": "SecurePass123!",
-                "email": "analyst_jane@ramantivirus.com",
-                "role": "analyst",
-                "full_name": "Jane Doe"
-            }
-        }
-
 
 class LoginRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "username": "admin",
+                "password": "admin123"
+            }
+        }
+    )
+
     username: str = Field(
         ...,
         description="Registered account username",
@@ -306,14 +324,6 @@ class LoginRequest(BaseModel):
         description="Account password",
         examples=["admin123"]
     )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "username": "admin",
-                "password": "admin123"
-            }
-        }
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

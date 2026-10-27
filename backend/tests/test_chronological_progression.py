@@ -5,6 +5,19 @@ Verifies that the incident risk engine evaluates true chronological kill-chain
 attack-path progression, distinguishing forward progression from reversed,
 duplicate, non-monotonic, and isolated attack patterns.
 """
+import sys
+import os
+
+# Ensure backend, pylibs, and workspace root are in sys.path
+_TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.dirname(_TEST_DIR)
+_ROOT_DIR = os.path.dirname(_BACKEND_DIR)
+_PYLIBS_DIR = os.path.join(_ROOT_DIR, "pylibs")
+
+for _d in (_PYLIBS_DIR, _BACKEND_DIR, _ROOT_DIR):
+    if os.path.exists(_d) and _d not in sys.path:
+        sys.path.insert(0, _d)
+
 import pytest
 from datetime import datetime, timezone, timedelta
 from engines.risk_engine import (
@@ -278,3 +291,8 @@ def test_j_real_task1_correlated_multi_stage_campaign():
     risk_res = calculate_incident_risk([inc])
     assert risk_res["score"] >= 75.0
     assert risk_res["level"] == "critical"
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__, "-v"]))
+
