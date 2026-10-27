@@ -40,11 +40,10 @@ echo.
 
 echo [2/6] Checking Backend Python dependencies...
 cd /d "%BACKEND_DIR%"
-python -c "import fastapi, uvicorn, pyod, pandas, numpy, sklearn, jwt, websockets" >nul 2>&1
+python -c "import fastapi, uvicorn, pyod, pandas, numpy, sklearn, jwt, websockets, bcrypt" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Installing required backend Python packages...
     pip install -r requirements.txt
-    pip install pyod
 ) else (
     echo [OK] Backend dependencies verified.
 )

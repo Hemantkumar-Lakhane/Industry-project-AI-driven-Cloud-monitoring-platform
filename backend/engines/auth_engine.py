@@ -8,7 +8,12 @@ import os
 import secrets
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Optional, List, Tuple, Any
-import bcrypt
+try:
+    import bcrypt
+    _BCRYPT_AVAILABLE = True
+except ImportError:
+    bcrypt = None
+    _BCRYPT_AVAILABLE = False
 from engines.db import get_conn, init_db
 
 JWT_SECRET = os.environ.get("JWT_SECRET")
@@ -21,24 +26,41 @@ JWT_EXPIRATION_HOURS = 24
 
 
 def _hash_password(password: str) -> str:
-    """Hash password using bcrypt with a cryptographically secure per-user salt."""
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    """Hash password using bcrypt with a cryptographically secure per-user salt, falling back to PBKDF2 if bcrypt is not installed."""
+    if _BCRYPT_AVAILABLE and bcrypt is not None:
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    # Resilient standard-library fallback: PBKDF2-HMAC-SHA256 with per-user salt
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
+    return f"$pbkdf2${salt}${dk.hex()}"
 
 
 def _verify_password(password: str, stored_hash: str) -> bool:
     """
-    Verify password with backward-compatible support for legacy static-salted SHA-256 hashes.
+    Verify password with backward-compatible support for bcrypt, pbkdf2, and legacy static-salted SHA-256 hashes.
     """
     if not stored_hash:
         return False
     if stored_hash.startswith("$2b$") or stored_hash.startswith("$2a$"):
+        if _BCRYPT_AVAILABLE and bcrypt is not None:
+            try:
+                return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8"))
+            except Exception:
+                return False
+        return False
+    if stored_hash.startswith("$pbkdf2$"):
         try:
-            return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8"))
+            parts = stored_hash.split("$")
+            if len(parts) == 4:
+                salt, expected_hex = parts[2], parts[3]
+                dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
+                return secrets.compare_digest(dk.hex(), expected_hex)
         except Exception:
             return False
     # Legacy SHA-256 backward compatibility
     legacy_hash = hashlib.sha256(f"ram-av-salt{password}".encode("utf-8")).hexdigest()
     return legacy_hash == stored_hash
+
 
 
 def _row_to_user(row) -> Dict:
