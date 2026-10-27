@@ -187,3 +187,159 @@ def validate_feature_vector(vec: np.ndarray) -> bool:
         if vec[idx] < 0.0 or vec[idx] > 1.0:
             return False
     return True
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Cloud-Native Audit Telemetry Feature Extraction (Task HMT-01)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Cloud-native feature schema derived strictly from observable audit telemetry
+# Completely avoids raw userAgent strings, post-classification leakage, and constant default degradation.
+CLOUD_FEATURE_NAMES: List[str] = [
+    "payload_bytes",           # Combined inbound + outbound bytes / payload size
+    "failed_auth_count",       # Consecutive failed authentication / authorization attempts
+    "high_risk_action_flag",   # 1.0 if API action is destructive / privileged, else 0.0
+    "auth_anomaly_flag",       # 1.0 if status indicates failure/denied/unauthorized, else 0.0
+    "distinct_targets_count",  # Target resource complexity indicator
+    "rule_severity_norm",      # SIEM / baseline rule severity normalized to [0.0, 1.0]
+    "error_status_flag",       # 1.0 if status is error/failure, else 0.0
+    "burst_velocity",          # Sliding window event count / connection burst
+]
+
+CLOUD_FEATURE_DIM: int = len(CLOUD_FEATURE_NAMES)  # 8
+
+HIGH_RISK_ACTION_VERBS = {
+    "deletebucket", "putbucketpolicy", "putbucketacl", "attachrolepolicy",
+    "putuserpolicy", "createrole", "createaccesskey", "assumerole",
+    "authorizesecuritygroupingress", "revokesecuritygroupingress",
+    "modifyinstanceattribute", "stopinstances", "terminateinstances",
+    "droptable", "altertable", "grant", "revoke", "elevateprivilege",
+    "disablelogging", "deletetrail", "stoplogging", "deactivatemfa"
+}
+
+SEVERITY_WEIGHT_MAP = {
+    "info": 0.1,
+    "low": 0.25,
+    "medium": 0.5,
+    "high": 0.75,
+    "critical": 1.0
+}
+
+
+def extract_cloud_features(event: Union[NormalizedEvent, Dict[str, Any]]) -> np.ndarray:
+    """
+    Extracts an 8-dimensional cloud-native feature vector from an audit event.
+    
+    Guarantees:
+    - Shape (8,) with dtype float64
+    - Handles both NormalizedEvent objects and legacy dictionary structures
+    - Zero userAgent string leakage or synthetic target leakage
+    - Non-constant, behavioral discrimination across attack scenarios
+    """
+    if isinstance(event, NormalizedEvent):
+        # Bytes transferred
+        payload_bytes = float(event.src_bytes + event.dst_bytes)
+        
+        # Failed attempts
+        failed_count = float(event.failed_attempts)
+        
+        # High risk action check
+        action_clean = (event.action or "").lower().replace(":", "").replace("_", "").replace("-", "")
+        is_high_risk = 1.0 if any(verb in action_clean for verb in HIGH_RISK_ACTION_VERBS) else 0.0
+        
+        # Status checks
+        status_clean = (event.status or "").lower()
+        is_error = 1.0 if status_clean in ("failed", "failure", "error", "denied", "blocked") else 0.0
+        is_auth_anomaly = 1.0 if (is_error == 1.0 or failed_count > 0) else 0.0
+        
+        # Target resource indicator
+        targets = 1.0 if event.target_resource else 0.0
+        
+        # Severity normalized
+        rule_sev = SEVERITY_WEIGHT_MAP.get((event.severity or "low").lower(), 0.25)
+        
+        # Burst velocity
+        burst = float(max(event.count, event.srv_count, 1))
+        
+    elif isinstance(event, dict):
+        raw = event
+        src_b = _safe_float(raw.get("src_bytes") if raw.get("src_bytes") is not None else raw.get("bytes_transferred"), 0.0, 0.0)
+        dst_b = _safe_float(raw.get("dst_bytes"), 0.0, 0.0)
+        payload_bytes = src_b + dst_b
+        
+        failed_count = _safe_float(raw.get("failed_attempts") if raw.get("failed_attempts") is not None else raw.get("failed_count"), 0.0, 0.0)
+        
+        action_str = str(raw.get("action") or raw.get("api_call") or raw.get("event_type") or "").lower().replace(":", "").replace("_", "").replace("-", "")
+        is_high_risk = 1.0 if any(verb in action_str for verb in HIGH_RISK_ACTION_VERBS) else 0.0
+        
+        status_str = str(raw.get("status") or "").lower()
+        is_error = 1.0 if status_str in ("failed", "failure", "error", "denied", "blocked") else 0.0
+        is_auth_anomaly = 1.0 if (is_error == 1.0 or failed_count > 0) else 0.0
+        
+        target_val = raw.get("target_resource") or raw.get("resource") or raw.get("bucket_name")
+        targets = 1.0 if target_val else 0.0
+        
+        sev_str = str(raw.get("severity") or "low").lower()
+        rule_sev = SEVERITY_WEIGHT_MAP.get(sev_str, 0.25)
+        
+        cnt = _safe_float(raw.get("count"), 1.0, 1.0)
+        srv_cnt = _safe_float(raw.get("srv_count"), 1.0, 1.0)
+        burst = max(cnt, srv_cnt)
+    else:
+        # Fallback for unexpected inputs
+        return np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 1.0], dtype=np.float64)
+
+    return np.array([
+        payload_bytes,
+        failed_count,
+        is_high_risk,
+        is_auth_anomaly,
+        targets,
+        rule_sev,
+        is_error,
+        burst
+    ], dtype=np.float64)
+
+
+def extract_cloud_feature_matrix(events: List[Union[NormalizedEvent, Dict[str, Any]]]) -> np.ndarray:
+    """
+    Batch extracts the 8-dimensional cloud-native feature matrix.
+    
+    Returns:
+        np.ndarray of shape (N, 8) with dtype float64.
+        Returns shape (0, 8) if events list is empty.
+    """
+    if not events:
+        return np.empty((0, CLOUD_FEATURE_DIM), dtype=np.float64)
+
+    matrix = np.zeros((len(events), CLOUD_FEATURE_DIM), dtype=np.float64)
+    for idx, e in enumerate(events):
+        matrix[idx] = extract_cloud_features(e)
+
+    return matrix
+
+
+def validate_cloud_feature_vector(vec: np.ndarray) -> bool:
+    """
+    Verifies that a cloud feature vector conforms to:
+    - Shape (8,)
+    - No NaN or Inf values
+    - Binary flags are 0.0 or 1.0
+    - Rule severity is bounded between 0.0 and 1.0
+    - Non-negative counts and payload bytes
+    """
+    if not isinstance(vec, np.ndarray) or vec.shape != (CLOUD_FEATURE_DIM,):
+        return False
+    if np.any(np.isnan(vec)) or np.any(np.isinf(vec)):
+        return False
+    if np.any(vec < 0.0):
+        return False
+    # Check binary flags: is_high_risk (idx 2), is_auth_anomaly (idx 3), is_error (idx 6)
+    for idx in (2, 3, 6):
+        if vec[idx] not in (0.0, 1.0):
+            return False
+    # Check rule severity bound (idx 5)
+    if vec[5] < 0.0 or vec[5] > 1.0:
+        return False
+    return True
+

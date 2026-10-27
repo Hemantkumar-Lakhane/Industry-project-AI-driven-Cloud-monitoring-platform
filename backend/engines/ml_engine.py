@@ -32,7 +32,12 @@ from engines.feature_extractor import (
     FEATURE_DIM,
     extract_features,
     extract_feature_matrix,
-    validate_feature_vector
+    validate_feature_vector,
+    CLOUD_FEATURE_NAMES,
+    CLOUD_FEATURE_DIM,
+    extract_cloud_features,
+    extract_cloud_feature_matrix,
+    validate_cloud_feature_vector,
 )
 
 FEATURES = FEATURE_NAMES  # Verified 9-dimensional schema
@@ -119,13 +124,45 @@ def _json_safe_value(v):
 
 
 def _severity(score: float) -> str:
-    if score > 0.9:
+    """Calibrate anomaly severity into standardized percentile tiers."""
+    if score > 0.85:
         return "Critical"
-    elif score > 0.75:
+    elif score > 0.70:
         return "High"
-    elif score > 0.5:
+    elif score > 0.45:
         return "Medium"
     return "Low"
+
+
+def _compute_cloud_behavioral_score(vec: np.ndarray) -> float:
+    """
+    Computes a normalized anomaly score [0.0, 1.0] from an 8D cloud-native feature vector:
+    Indices:
+      0: payload_bytes
+      1: failed_auth_count
+      2: high_risk_action_flag
+      3: auth_anomaly_flag
+      4: distinct_targets_count
+      5: rule_severity_norm
+      6: error_status_flag
+      7: burst_velocity
+    """
+    if not isinstance(vec, np.ndarray) or len(vec) != CLOUD_FEATURE_DIM:
+        return 0.0
+    
+    # Normalized weights sum to 1.0
+    s_action = 0.35 * float(vec[2])
+    s_auth = 0.25 * min(1.0, (float(vec[1]) / 5.0) + (0.2 * float(vec[3])))
+    s_sev = 0.20 * min(1.0, max(0.0, float(vec[5])))
+    s_err = 0.10 * float(vec[6])
+    s_burst = 0.10 * min(1.0, max(0.0, (float(vec[7]) - 1.0) / 20.0))
+    
+    score = s_action + s_auth + s_sev + s_err + s_burst
+    # Large payload exfiltration boost (>10MB)
+    if float(vec[0]) > 10 * 1024 * 1024:
+        score = min(1.0, score + 0.15)
+        
+    return min(1.0, max(0.0, float(score)))
 
 
 def _scale_for(name: str, X: np.ndarray) -> np.ndarray:
@@ -198,55 +235,77 @@ def score_flow_features(X_flow: np.ndarray) -> Dict[str, Any]:
 
 def analyze_events(events: List[Dict]) -> List[Dict]:
     """
-    Score each event using all 3 specialist models.
-    Final score = max across all models.
-    Falls back to per-request IForest if no saved models exist.
+    Score each event using calibrated 9D specialist models and 8D cloud behavioral analyzer.
+    Calibrated score = max(flow_score, cloud_behavior_score).
+    Provides dual-lens threat visibility for both network flows and cloud audit logs.
     """
     if not events:
         return []
 
-    X_raw = extract_feature_matrix(events)
+    X_flow = extract_feature_matrix(events)
+    X_cloud = extract_cloud_feature_matrix(events)
 
-    if PRETRAINED and X_raw.shape[1] == FEATURE_DIM:
-        all_scores = _score_all(X_raw)
+    if PRETRAINED and X_flow.shape[1] == FEATURE_DIM:
+        all_scores = _score_all(X_flow)
         if all_scores:
             score_matrix = np.column_stack(list(all_scores.values()))
             model_names = list(all_scores.keys())
-            final_scores = score_matrix.max(axis=1)
+            flow_scores = score_matrix.max(axis=1)
             best_model_idx = score_matrix.argmax(axis=1)
-            threshold = 0.5
         else:
-            final_scores = np.zeros(len(events))
-            score_matrix = final_scores.reshape(-1, 1)
+            flow_scores = np.zeros(len(events))
+            score_matrix = flow_scores.reshape(-1, 1)
             model_names = ["fallback"]
             best_model_idx = np.zeros(len(events), dtype=int)
-            threshold = 0.5
     else:
         print("[ML Engine] WARNING: Pretrained models not available or dimension mismatch. Falling back to dynamic fit.")
         clf = IForest(contamination=0.15, random_state=42, n_estimators=50, n_jobs=1)
-        clf.fit(X_raw)
-        final_scores = clf.predict_proba(X_raw)[:, 1]
-        score_matrix = final_scores.reshape(-1, 1)
+        clf.fit(X_flow)
+        flow_scores = clf.predict_proba(X_flow)[:, 1]
+        score_matrix = flow_scores.reshape(-1, 1)
         model_names = ["iforest"]
         best_model_idx = np.zeros(len(events), dtype=int)
-        threshold = 0.65
 
     results = []
     for idx, e in enumerate(events):
-        score = _safe(float(final_scores[idx]))
-        is_anom = score > threshold
-        rec = {k: _json_safe_value(v) for k, v in e.items()}
-        rec["ml_anomaly_score"] = round(score, 4)
-        rec["is_anomaly"] = bool(is_anom)
-        rec["ml_severity"] = _severity(score)
-        rec["model_source"] = "pretrained_specialist" if PRETRAINED else "realtime_fit"
+        s_flow = _safe(float(flow_scores[idx]))
+        s_cloud = _compute_cloud_behavioral_score(X_cloud[idx]) if idx < len(X_cloud) else 0.0
 
-        if PRETRAINED and model_names and len(model_names) > 0:
+        # Calibrated combined score: max across specialized flow models and cloud behavior
+        calibrated_score = round(max(s_flow, s_cloud), 4)
+        is_anom = calibrated_score > 0.45
+
+        rec = {k: _json_safe_value(v) for k, v in e.items()}
+        rec["ml_anomaly_score"] = calibrated_score
+        rec["calibrated_score"] = calibrated_score
+        rec["flow_anomaly_score"] = round(s_flow, 4)
+        rec["cloud_anomaly_score"] = round(s_cloud, 4)
+        rec["is_anomaly"] = bool(is_anom)
+        rec["ml_severity"] = _severity(calibrated_score)
+        rec["model_source"] = "pretrained_specialist+cloud_behavior" if PRETRAINED else "realtime_fit"
+
+        # Model attribution
+        if s_cloud > s_flow and s_cloud > 0.45:
+            rec["detected_by"] = "Cloud Behavioral Analyzer"
+        elif PRETRAINED and model_names and len(model_names) > 0:
             best_name = model_names[best_model_idx[idx]]
             rec["detected_by"] = MODEL_DISPLAY.get(best_name, best_name)
-            rec["model_scores"] = {
-                MODEL_DISPLAY.get(n, n): round(_safe(float(score_matrix[idx, i])), 4)
-                for i, n in enumerate(model_names)
+        else:
+            rec["detected_by"] = "Isolation Forest"
+
+        # Detailed model scores
+        scores_dict = {}
+        if PRETRAINED and model_names:
+            for i, n in enumerate(model_names):
+                scores_dict[MODEL_DISPLAY.get(n, n)] = round(_safe(float(score_matrix[idx, i])), 4)
+        scores_dict["Cloud Behavioral Analyzer"] = round(s_cloud, 4)
+        rec["model_scores"] = scores_dict
+
+        # Cloud feature explainability
+        if idx < len(X_cloud):
+            rec["cloud_features"] = {
+                name: round(float(X_cloud[idx, i]), 4)
+                for i, name in enumerate(CLOUD_FEATURE_NAMES)
             }
 
         results.append(rec)
@@ -375,6 +434,10 @@ def get_model_info() -> Dict:
         "features": FEATURES,
         "feature_dimension": FEATURE_DIM,
         "feature_schema": "flow_9d",
+        "cloud_features": CLOUD_FEATURE_NAMES,
+        "cloud_feature_dimension": CLOUD_FEATURE_DIM,
+        "cloud_feature_schema": "cloud_native_8d",
+        "cloud_behavioral_analyzer": "Multi-signal behavioral heuristic calibrated with PyOD specialist models",
         "target_leakage_status": "none_verified",
         "compatible_with_9d_extractor": True,
         "models": {

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import List, Dict, Optional
 from io import StringIO
 import csv
+from engines.db import save_compliance_score, get_compliance_trend_db
 
 
 # ── Compliance Framework Definitions ─────────────────────────────────────────
@@ -319,11 +320,15 @@ def get_compliance_dashboard(cspm_findings: List[Dict], ciem_findings: List[Dict
             ]
         }
     
-    # Calculate risk trend (simulated — in production, you'd store historical data)
-    summary["trend"] = {
-        "direction": "improving" if summary["overall_score"] > 75 else "declining",
-        "change_7d": round(summary["overall_score"] - 72.5, 1),  # Simulated comparison
-    }
+    # Calculate risk trend and save current score snapshot to SQLite (SRS FR-12)
+    try:
+        save_compliance_score(summary["overall_score"])
+        summary["trend"] = get_compliance_trend_db(summary["overall_score"])
+    except Exception:
+        summary["trend"] = {
+            "direction": "improving" if summary["overall_score"] > 75 else "declining",
+            "change_7d": 0.0,
+        }
     
     return summary
 

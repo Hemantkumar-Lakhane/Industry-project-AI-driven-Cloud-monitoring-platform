@@ -168,7 +168,96 @@ def check_connectors() -> Dict[str, Any]:
         "source_path": wazuh_path
     }
 
+    # 4. Host Workload Connector (psutil)
+    try:
+        import psutil
+        connectors["host_workload"] = {
+            "name": "Host Workload & Daemon Monitor",
+            "status": "CONNECTED",
+            "mode": "LIVE_SYSTEM_INSPECTION",
+            "cpu_cores": psutil.cpu_count(logical=True),
+            "platform": os.name
+        }
+    except Exception:
+        connectors["host_workload"] = {
+            "name": "Host Workload & Daemon Monitor",
+            "status": "NOT_AVAILABLE",
+            "mode": "UNSUPPORTED"
+        }
+
     return connectors
+
+
+def discover_local_workload_assets() -> List[Dict[str, Any]]:
+    """
+    Discovers genuine local workload computing assets from the host OS:
+    - Active network listening services (HTTP, HTTPS, SSH, Databases)
+    - Security-relevant system processes and daemons
+    Returns structured asset dictionaries labeled with provenance: 'LIVE_HOST_WORKLOAD'.
+    """
+    local_assets: List[Dict[str, Any]] = []
+    now_str = datetime.now(timezone.utc).isoformat()
+    try:
+        import psutil
+        import socket
+        hostname = socket.gethostname()
+        
+        # 1. Host Compute Asset
+        local_assets.append({
+            "asset_id": f"host-{hostname.lower()}",
+            "name": f"host-workload-{hostname.lower()}",
+            "asset_type": "host_compute",
+            "provider": "local_workload",
+            "region": "local-node",
+            "account_id": "workload-host",
+            "status": "running",
+            "connector_status": "LIVE_HOST_WORKLOAD",
+            "tags": {"Environment": "host-workload", "ManagedBy": "ram-agent", "Hostname": hostname},
+            "os": f"{os.name} (cores: {psutil.cpu_count()})",
+            "ip_address": "127.0.0.1",
+            "public_ip": None,
+            "discovered_at": now_str,
+            "provenance": "LIVE_HOST_WORKLOAD"
+        })
+
+        # 2. Listening Services & Ports (Web server, databases, node services)
+        seen_ports = set()
+        for conn in psutil.net_connections(kind="inet"):
+            if conn.status == psutil.CONN_LISTEN and conn.laddr:
+                port = conn.laddr.port
+                if port not in seen_ports and port < 60000:
+                    seen_ports.add(port)
+                    # Resolve process name if available
+                    proc_name = "unknown_service"
+                    if conn.pid:
+                        try:
+                            proc = psutil.Process(conn.pid)
+                            proc_name = proc.name()
+                        except Exception:
+                            pass
+                    service_type = "web_service" if port in (80, 443, 3000, 5173, 8000, 8080) else "network_service"
+                    local_assets.append({
+                        "asset_id": f"srv-{hostname.lower()}-{port}",
+                        "name": f"{proc_name}-port-{port}",
+                        "asset_type": service_type,
+                        "provider": "local_workload",
+                        "region": "local-node",
+                        "account_id": "workload-host",
+                        "status": "listening",
+                        "connector_status": "LIVE_HOST_WORKLOAD",
+                        "tags": {"Port": str(port), "PID": str(conn.pid or "n/a"), "Process": proc_name},
+                        "os": proc_name,
+                        "ip_address": conn.laddr.ip or "0.0.0.0",
+                        "public_ip": None,
+                        "discovered_at": now_str,
+                        "provenance": "LIVE_HOST_WORKLOAD"
+                    })
+                    if len(local_assets) >= 12:  # Cap at top 12 active services to maintain clean inventory
+                        break
+    except Exception as e:
+        print(f"[Asset Engine] Host discovery error: {e}")
+
+    return local_assets
 
 
 def discover_assets(force_rescan: bool = False) -> List[Dict[str, Any]]:
@@ -180,7 +269,11 @@ def discover_assets(force_rescan: bool = False) -> List[Dict[str, Any]]:
     now_str = datetime.now(timezone.utc).isoformat()
     discovered: List[Dict[str, Any]] = []
 
-    # If LocalStack is running, attempt discovery from LocalStack
+    # 1. Discover actual local workload compute assets & listening services
+    host_workloads = discover_local_workload_assets()
+    discovered.extend(host_workloads)
+
+    # 2. If LocalStack is running, attempt discovery from LocalStack
     if connectors["localstack"]["status"] == "CONNECTED":
         try:
             # S3 buckets from LocalStack
@@ -193,10 +286,10 @@ def discover_assets(force_rescan: bool = False) -> List[Dict[str, Any]]:
                 item["connector_status"] = "LOCALSTACK_CONNECTED"
                 discovered.append(item)
         except Exception:
-            discovered = [dict(a) for a in SANDBOX_ASSETS]
+            discovered.extend([dict(a) for a in SANDBOX_ASSETS])
     else:
-        # Fallback to sandbox baseline with honest status
-        discovered = [dict(a) for a in SANDBOX_ASSETS]
+        # Include cloud baseline assets with clear SANDBOX_VERIFIED provenance
+        discovered.extend([dict(a) for a in SANDBOX_ASSETS])
 
     # Correlate with existing findings from SQLite
     existing_findings = get_findings_db(limit=300)

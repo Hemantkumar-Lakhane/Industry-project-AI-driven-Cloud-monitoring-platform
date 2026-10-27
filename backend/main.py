@@ -40,7 +40,8 @@ from engines.compliance_engine import (
 )
 from engines.auth_engine import (
     register_user, login_user, verify_token, check_permission,
-    get_all_users, deactivate_user, reactivate_user, get_role_info, ROLE_PERMISSIONS
+    get_all_users, deactivate_user, reactivate_user, get_role_info, ROLE_PERMISSIONS,
+    create_ws_ticket, redeem_ws_ticket, validate_ws_auth
 )
 from engines.risk_engine import calculate_unified_risk, get_risk_trend
 from engines.localstack_engine import (
@@ -57,7 +58,10 @@ from engines.db import (
     get_cloud_assets_db, get_vulnerabilities_db
 )
 from engines.asset_engine import discover_assets, get_asset_inventory, check_connectors
-from engines.vulnerability_engine import run_vulnerability_scan, get_vulnerability_summary
+from engines.vulnerability_engine import (
+    run_vulnerability_scan, get_vulnerability_summary,
+    sync_nvd_advisories, get_nvd_connector_status
+)
 from engines.correlation_engine import correlate_findings, get_correlated_incidents
 from engines.alert_engine import send_alert_email
 from schemas.event import NormalizedEvent, normalize_event
@@ -470,7 +474,12 @@ Register a new user account with role-based access control (RBAC).
         }
     }
 )
-def api_register(req: RegisterRequest):
+def api_register(
+    req: RegisterRequest,
+    authorization: Optional[str] = Header(None, description="Admin Bearer token (`Bearer <jwt_token>`)"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "users:manage", credentials)
     result = register_user(req.username, req.password, req.email, req.role, req.full_name)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -588,6 +597,49 @@ def api_get_me(
     if not user:
         raise HTTPException(status_code=401, detail="Invalid or missing token")
     return {"status": "success", "data": user}
+
+
+@app.post(
+    "/api/auth/ws-ticket",
+    tags=["Authentication & Access Control"],
+    summary="Issue Single-Use WebSocket Ticket",
+    description="""
+Issue a cryptographically random, single-use, short-lived ticket (60s TTL) for secure WebSocket handshakes.
+Avoids passing long-lived credentials in URLs or connection query parameters.
+Requires `dashboard:read` permission.
+""",
+    dependencies=[Depends(bearer_scheme)],
+    responses={
+        200: {
+            "description": "WebSocket ticket issued successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "ticket": "wstk_8f3e2b1a9c4d4e5fb6a70d1e2f3a4b5c",
+                        "expires_in": 60,
+                        "type": "ticket"
+                    }
+                }
+            }
+        },
+        401: {"description": "Missing or invalid token"},
+        403: {"description": "Forbidden (requires dashboard:read)"}
+    }
+)
+def api_create_ws_ticket(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    user = _require_permission(authorization, "dashboard:read", credentials)
+    ticket = create_ws_ticket(user, ttl_seconds=60)
+    return {
+        "status": "success",
+        "ticket": ticket,
+        "expires_in": 60,
+        "type": "ticket"
+    }
+
 
 
 @app.get(
@@ -1048,6 +1100,117 @@ def get_dashboard_summary():
     }
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# CLOUD ASSET INVENTORY & CONNECTOR MANAGEMENT (FR-01)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get(
+    "/api/assets",
+    tags=["Cloud Assets & Inventory (FR-01)"],
+    summary="Get Cloud & Workload Asset Inventory",
+    description="Retrieve the unified inventory of cloud resources (virtual machines, S3 buckets, IAM roles) and local host compute daemons.",
+)
+def api_get_assets():
+    return get_asset_inventory()
+
+
+@app.post(
+    "/api/assets/discover",
+    tags=["Cloud Assets & Inventory (FR-01)"],
+    summary="Trigger Cloud & Workload Asset Discovery Scan",
+    description="Execute automated asset discovery across LocalStack, live AWS connectors, local host workload processes, and sandbox baselines.",
+    dependencies=[Depends(bearer_scheme)],
+)
+def api_discover_assets(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "cspm:read", credentials)
+    discovered = discover_assets()
+    return {
+        "status": "success",
+        "count": len(discovered),
+        "assets": discovered
+    }
+
+
+@app.get(
+    "/api/assets/connectors",
+    tags=["Cloud Assets & Inventory (FR-01)"],
+    summary="Probe Telemetry & Cloud Connector Health",
+    description="Check the connectivity and operational state of Wazuh SIEM, AWS CloudTrail/Config, LocalStack, and Host Workload connectors.",
+)
+def api_get_connectors():
+    return {
+        "status": "success",
+        "connectors": check_connectors()
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# WORKLOAD VULNERABILITY MANAGEMENT & NVD SYNC (FR-05)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get(
+    "/api/vulnerabilities",
+    tags=["Workload Vulnerability Management (FR-05)"],
+    summary="Get Workload Vulnerability Posture & Findings",
+    description="Retrieve all prioritized CVE vulnerability findings across application dependencies and monitored workload service daemons.",
+)
+def api_get_vulnerabilities():
+    return get_vulnerability_summary()
+
+
+@app.post(
+    "/api/vulnerabilities/scan",
+    tags=["Workload Vulnerability Management (FR-05)"],
+    summary="Run Workload Vulnerability Assessment Scan",
+    description="Scan active binaries and package manifests against known security advisories, scoring severity via CVSS v3.1.",
+    dependencies=[Depends(bearer_scheme)],
+)
+def api_run_vulnerability_scan(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "dashboard:read", credentials)
+    findings = run_vulnerability_scan()
+    return {
+        "status": "success",
+        "count": len(findings),
+        "vulnerabilities": findings
+    }
+
+
+@app.post(
+    "/api/vulnerabilities/nvd/sync",
+    tags=["Workload Vulnerability Management (FR-05)"],
+    summary="Synchronize Security Advisories with NIST NVD API v2.0",
+    description="Ingest latest verified CVE records from the official NIST National Vulnerability Database API with rate limiting and outage fallback.",
+    dependencies=[Depends(bearer_scheme)],
+)
+def api_sync_nvd(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "users:manage", credentials)
+    res = sync_nvd_advisories()
+    return res
+
+
+@app.get(
+    "/api/vulnerabilities/nvd/status",
+    tags=["Workload Vulnerability Management (FR-05)"],
+    summary="Get NIST NVD Connector Status",
+    description="Check configuration parameters, API key presence, cache count, and last synchronization result for NIST NVD API.",
+)
+def api_get_nvd_status():
+    return {
+        "status": "success",
+        "data": get_nvd_connector_status()
+    }
+
+
+
 @app.get(
     "/api/simulate/attack",
     tags=["ML Detection & Analytics"],
@@ -1360,7 +1523,12 @@ def get_detected_findings(
         }
     }
 )
-def evaluate_custom_events(payload: EvaluateEventsRequest):
+def evaluate_custom_events(
+    payload: EvaluateEventsRequest,
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "ml:execute", credentials)
     norm_events = [normalize_event(e) for e in payload.events]
     findings = detector_registry.run_all(norm_events)
     return {
@@ -1380,8 +1548,11 @@ def evaluate_custom_events(payload: EvaluateEventsRequest):
 )
 def update_finding_status(
     finding_id: str = Path(..., description="The unique finding ID"),
-    payload: UpdateFindingStatusRequest = None
+    payload: UpdateFindingStatusRequest = None,
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "remediation:execute", credentials)
     valid_statuses = {"open", "investigating", "contained", "resolved"}
     if not payload or payload.status.lower() not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of {valid_statuses}")
@@ -1489,7 +1660,11 @@ def get_correlated_incidents(
     summary="Trigger Cross-Detector Incident Correlation",
     description="Re-run correlation engine across current findings to synthesize updated incidents."
 )
-def trigger_incident_correlation():
+def trigger_incident_correlation(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "dashboard:read", credentials)
     session = session_manager.get_session()
     current_findings = session.findings if session and session.findings else get_findings_db(limit=500)
     corr_incidents = correlate_findings(current_findings)
@@ -1516,8 +1691,11 @@ def trigger_incident_correlation():
 )
 def update_incident_status(
     incident_id: str = Path(..., description="The unique incident ID"),
-    payload: UpdateIncidentStatusRequest = None
+    payload: UpdateIncidentStatusRequest = None,
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "remediation:execute", credentials)
     valid_statuses = {"open", "investigating", "contained", "resolved"}
     if not payload or payload.status.lower() not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of {valid_statuses}")
@@ -1692,7 +1870,12 @@ def run_vulnerabilities_scan():
     summary="Rollback Executed Remediation Action",
     description="Roll back an automated remediation action and restore the targeted entity to its previous security state (SRS FR-10)."
 )
-def rollback_executed_remediation(execution_id: str = Path(..., description="Remediation execution ID")):
+def rollback_executed_remediation(
+    execution_id: str = Path(..., description="Remediation execution ID"),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "remediation:execute", credentials)
     result = rollback_remediation(execution_id)
     if result.get("status") == "error":
         raise HTTPException(status_code=404, detail=result["message"])
@@ -1766,8 +1949,11 @@ def list_playbooks():
     }
 )
 def dry_run_remediation(
-    attack_type: str = Path(..., description="Attack category playbook to dry-run", openapi_examples={"default": {"value": "brute_force"}})
+    attack_type: str = Path(..., description="Attack category playbook to dry-run", openapi_examples={"default": {"value": "brute_force"}}),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "remediation:read", credentials)
     result = execute_playbook(attack_type, dry_run=True)
     return {"status": "success", "data": result}
 
@@ -1807,8 +1993,11 @@ Supports safe dry-run execution (default) to avoid destructive cloud mutations u
 )
 def execute_remediation(
     attack_type: str = Path(..., description="Attack category to remediate (e.g., 'brute_force', 'data_exfiltration', 'privilege_escalation')", openapi_examples={"default": {"value": "brute_force"}}),
-    dry_run: bool = Query(True, description="When true (default), executes in dry-run mode without mutating live cloud resources")
+    dry_run: bool = Query(True, description="When true (default), executes in dry-run mode without mutating live cloud resources"),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "remediation:execute", credentials)
     result = execute_playbook(attack_type, dry_run=dry_run)
     return {"status": "success", "data": result}
 
@@ -1847,7 +2036,11 @@ def execute_remediation(
         }
     }
 )
-def auto_remediate():
+def auto_remediate(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "remediation:execute", credentials)
     events = _get_events(100, 20)
     analyzed = analyze_events(events)
     return {"status": "success", "data": auto_remediate_threats(analyzed)}
@@ -1881,8 +2074,11 @@ def auto_remediate():
     }
 )
 def fix_configuration(
-    vulnerability_id: str = Path(..., description="Vulnerability finding ID to fix (e.g., 'CSPM-S3-001', 'CSPM-EC2-002', 'CSPM-IAM-003')", openapi_examples={"default": {"value": "CSPM-S3-001"}})
+    vulnerability_id: str = Path(..., description="Vulnerability finding ID to fix (e.g., 'CSPM-S3-001', 'CSPM-EC2-002', 'CSPM-IAM-003')", openapi_examples={"default": {"value": "CSPM-S3-001"}}),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "remediation:execute", credentials)
     return {"status": "success", "data": correct_configuration(vulnerability_id)}
 
 
@@ -1920,8 +2116,11 @@ def fix_configuration(
 def revoke_access(
     entity_name: str = Query(..., description="Identity name or IAM role ARN to revoke", openapi_examples={"default": {"value": "developer-service-role"}}),
     entity_type: str = Query("human", description="Type of entity: 'human' or 'machine'", openapi_examples={"default": {"value": "machine"}}),
-    risk_level: str = Query("high", description="Assessed risk level: 'critical', 'high', 'medium', or 'low'", openapi_examples={"default": {"value": "high"}})
+    risk_level: str = Query("high", description="Assessed risk level: 'critical', 'high', 'medium', or 'low'", openapi_examples={"default": {"value": "high"}}),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "remediation:execute", credentials)
     return {"status": "success", "data": revoke_entity_access(entity_name, entity_type, risk_level)}
 
 
@@ -2362,8 +2561,11 @@ Adversary events are blended into normal telemetry noise and passed through the 
 )
 def run_simulation(
     scenario: str = Path(..., description="Simulation scenario ID: 'brute_force', 'privilege_escalation', 'data_exfiltration', or 'abnormal_access'", openapi_examples={"default": {"value": "brute_force"}}),
-    intensity: str = Query("high", description="Simulation intensity: 'low', 'medium', 'high', or 'extreme'", openapi_examples={"default": {"value": "high"}})
+    intensity: str = Query("high", description="Simulation intensity: 'low', 'medium', 'high', or 'extreme'", openapi_examples={"default": {"value": "high"}}),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "simulation:execute", credentials)
     if scenario not in SCENARIOS:
         raise HTTPException(status_code=400, detail=f"Unknown scenario '{scenario}'. Valid: {list(SCENARIOS.keys())}")
     result = session_manager.inject_scenario(scenario, intensity)
@@ -2420,8 +2622,11 @@ Measures overall ensemble detection rate, re-calculates unified risk score under
     }
 )
 def run_full_attack_simulation(
-    intensity: str = Query("high", description="Simulation intensity: 'low', 'medium', 'high', or 'extreme'", openapi_examples={"default": {"value": "high"}})
+    intensity: str = Query("high", description="Simulation intensity: 'low', 'medium', 'high', or 'extreme'", openapi_examples={"default": {"value": "high"}}),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "simulation:execute", credentials)
     full_sim = session_manager.inject_full_simulation(intensity)
     all_sim_events = [e for s in full_sim["scenarios"] for e in s["events"]]
     session = session_manager.get_session()
@@ -2482,7 +2687,11 @@ def run_full_attack_simulation(
         }
     }
 )
-def reset_simulation_session():
+def reset_simulation_session(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "simulation:execute", credentials)
     session = session_manager.reset_to_baseline()
     return {
         "status": "success",
@@ -2792,10 +3001,54 @@ def test_alert(
 @app.websocket("/ws/events")
 async def websocket_events(websocket: WebSocket):
     """
-    WebSocket endpoint — pushes new analyzed events every 10 seconds.
-    Frontend connects once and receives live updates automatically.
+    Authenticated WebSocket endpoint — pushes new analyzed events every 10 seconds.
+    Authenticates via:
+      1. Single-use short-lived ticket in query param (?ticket=wstk_...) or token (?token=...)
+      2. Initial JSON authentication handshake frame within 5 seconds:
+         {"type": "auth", "token": "<bearer_token>"} or {"type": "auth", "ticket": "<ticket>"}
+    Rejects unauthenticated or unauthorized clients with policy violation / 4401 / 4403.
     """
     await websocket.accept()
+    raw_auth = websocket.query_params.get("ticket") or websocket.query_params.get("token")
+    if not raw_auth:
+        try:
+            raw_msg = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+            parsed = json.loads(raw_msg)
+            raw_auth = parsed.get("token") or parsed.get("ticket")
+        except Exception:
+            try:
+                await websocket.send_text(json.dumps({
+                    "type": "auth_error",
+                    "detail": "Authentication timed out or invalid handshake frame"
+                }))
+                await websocket.close(code=4401)
+            except Exception:
+                pass
+            return
+
+    auth_res = validate_ws_auth(raw_auth)
+    if not auth_res.get("authorized"):
+        try:
+            err_msg = auth_res.get("error", "Unauthorized")
+            await websocket.send_text(json.dumps({
+                "type": "auth_error",
+                "detail": err_msg
+            }))
+            await websocket.close(code=4403 if ("Forbidden" in err_msg or "Insufficient" in err_msg) else 4401)
+        except Exception:
+            pass
+        return
+
+    # Handshake successful
+    try:
+        await websocket.send_text(json.dumps({
+            "type": "auth_ok",
+            "username": auth_res["user"]["username"],
+            "role": auth_res["user"]["role"]
+        }))
+    except Exception:
+        return
+
     try:
         while True:
             events = _get_events(30, 5)
@@ -2810,6 +3063,8 @@ async def websocket_events(websocket: WebSocket):
             }))
             await asyncio.sleep(10)
     except WebSocketDisconnect:
+        pass
+    except Exception:
         pass
 
 
