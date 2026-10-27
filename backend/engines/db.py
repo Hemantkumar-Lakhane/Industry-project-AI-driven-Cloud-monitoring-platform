@@ -150,7 +150,20 @@ def init_db():
             resolution_notes TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS remediation_history (
+            execution_id TEXT PRIMARY KEY,
+            playbook_id TEXT NOT NULL,
+            target_fid TEXT,
+            is_dry_run INTEGER DEFAULT 1,
+            pre_remediation_state TEXT DEFAULT 'open',
+            post_remediation_state TEXT DEFAULT 'contained',
+            timestamp TEXT NOT NULL,
+            rolled_back INTEGER DEFAULT 0,
+            rolled_back_at TEXT
+        );
+
         CREATE INDEX IF NOT EXISTS idx_findings_timestamp ON findings(timestamp DESC);
+        CREATE INDEX IF NOT EXISTS idx_remediation_timestamp ON remediation_history(timestamp DESC);
     """)
     try:
         conn.execute("ALTER TABLE risk_history ADD COLUMN incident_score REAL DEFAULT 0.0")
@@ -750,6 +763,59 @@ def update_incident_status_db(incident_id: str, status: str, notes: str = None) 
         SET status = ?, updated_at = ?, resolved_at = CASE WHEN ? = 'resolved' THEN ? ELSE resolved_at END, resolution_notes = ?
         WHERE incident_id = ?
     """, (status.lower(), now_str, status.lower(), now_str, notes, incident_id))
+    conn.commit()
+    updated = cur.rowcount > 0
+    conn.close()
+    return updated
+
+
+def save_remediation_record_db(record: dict) -> bool:
+    """Save an executed remediation record to SQLite for durable rollback across backend reboots."""
+    if not record or not record.get("execution_id"):
+        return False
+    conn = get_conn()
+    cur = conn.execute("""
+        INSERT OR REPLACE INTO remediation_history 
+        (execution_id, playbook_id, target_fid, is_dry_run, pre_remediation_state, post_remediation_state, timestamp, rolled_back, rolled_back_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        record["execution_id"],
+        record["playbook_id"],
+        record.get("target_fid"),
+        1 if record.get("is_dry_run", True) else 0,
+        record.get("pre_remediation_state", "open"),
+        record.get("post_remediation_state", "contained"),
+        record.get("timestamp", datetime.now(timezone.utc).isoformat()),
+        1 if record.get("rolled_back", False) else 0,
+        record.get("rolled_back_at")
+    ))
+    conn.commit()
+    success = cur.rowcount > 0
+    conn.close()
+    return success
+
+
+def get_remediation_record_db(execution_id: str) -> Optional[dict]:
+    """Retrieve an executed remediation record by execution_id from SQLite."""
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM remediation_history WHERE execution_id = ?", (execution_id,)).fetchone()
+    conn.close()
+    if not row:
+        return None
+    d = dict(row)
+    d["is_dry_run"] = bool(d["is_dry_run"])
+    d["rolled_back"] = bool(d["rolled_back"])
+    return d
+
+
+def update_remediation_rollback_db(execution_id: str, rolled_back_at: str) -> bool:
+    """Mark a remediation record as rolled back in SQLite."""
+    conn = get_conn()
+    cur = conn.execute("""
+        UPDATE remediation_history 
+        SET rolled_back = 1, rolled_back_at = ?
+        WHERE execution_id = ?
+    """, (rolled_back_at, execution_id))
     conn.commit()
     updated = cur.rowcount > 0
     conn.close()

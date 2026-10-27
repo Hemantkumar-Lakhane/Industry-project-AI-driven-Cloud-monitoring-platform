@@ -43,8 +43,18 @@ from engines.ml_engine import (
     get_model_info,
     FEATURES
 )
+from engines.auth_engine import login_user
 
 client = TestClient(app)
+
+_admin_token = None
+
+def get_admin_headers():
+    global _admin_token
+    if not _admin_token:
+        res = login_user("admin", "admin123")
+        _admin_token = res["token"]
+    return {"Authorization": f"Bearer {_admin_token}"}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -318,7 +328,7 @@ def test_api_detection_evaluate_custom_batch():
         }
         for i in range(6)
     ]
-    response = client.post("/api/detection/evaluate", json={"events": events})
+    response = client.post("/api/detection/evaluate", json={"events": events}, headers=get_admin_headers())
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
@@ -366,7 +376,7 @@ def test_get_model_info_reports_feature_metadata():
 
 def test_dry_run_remediation_endpoint():
     """Verify POST /api/remediation/dry-run/{attack_type} executes safe simulation."""
-    response = client.post("/api/remediation/dry-run/brute_force")
+    response = client.post("/api/remediation/dry-run/brute_force", headers=get_admin_headers())
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
@@ -393,7 +403,7 @@ def test_get_findings_with_attacks_generates_finding():
 def test_consistent_attack_counts_and_no_rogue_attacks_on_rescan():
     """Verify Overview and Findings match 1:1 and normal rescan does NOT generate new attacks."""
     # Reset to baseline noise
-    res_reset = client.post("/api/simulation/reset")
+    res_reset = client.post("/api/simulation/reset", headers=get_admin_headers())
     assert res_reset.status_code == 200
 
     # Read dashboard summary
@@ -416,7 +426,7 @@ def test_consistent_attack_counts_and_no_rogue_attacks_on_rescan():
     assert threats2["detector_findings_count"] == threats1["detector_findings_count"]
 
     # Now inject simulation scenario
-    res_sim = client.post("/api/simulation/run/brute_force?intensity=high")
+    res_sim = client.post("/api/simulation/run/brute_force?intensity=high", headers=get_admin_headers())
     assert res_sim.status_code == 200
     sim_data = res_sim.json()["data"]
     expected_finding_id = sim_data["simulation"]["finding_id"]
@@ -434,14 +444,14 @@ def test_consistent_attack_counts_and_no_rogue_attacks_on_rescan():
 
 def test_honest_remediation_status():
     """Verify dry-run results are labeled 'DRY-RUN COMPLETED' and live execution 'LIVE EXECUTION COMPLETED'."""
-    res_dry = client.post("/api/remediation/dry-run/brute_force")
+    res_dry = client.post("/api/remediation/dry-run/brute_force", headers=get_admin_headers())
     assert res_dry.status_code == 200
     dry_data = res_dry.json()["data"]
     assert dry_data["is_dry_run"] is True
     assert dry_data["overall_status"] == "DRY-RUN COMPLETED"
     assert dry_data["status"] == "DRY-RUN COMPLETED"
 
-    res_live = client.post("/api/remediation/execute/brute_force?dry_run=false")
+    res_live = client.post("/api/remediation/execute/brute_force?dry_run=false", headers=get_admin_headers())
     assert res_live.status_code == 200
     live_data = res_live.json()["data"]
     assert live_data["is_dry_run"] is False
@@ -449,10 +459,11 @@ def test_honest_remediation_status():
     assert live_data["status"] == "LIVE EXECUTION COMPLETED"
 
 
+
 def test_honest_finding_sources():
     """Verify findings and dashboard metrics contain honest provenance tags (LIVE, SIMULATED, NOT CONFIGURED)."""
     # Trigger brute force scenario
-    client.post("/api/simulation/run/brute_force?intensity=high")
+    client.post("/api/simulation/run/brute_force?intensity=high", headers=get_admin_headers())
     res_findings = client.get("/api/detection/findings")
     data = res_findings.json()
     assert data["source"] in ("LIVE", "SIMULATED", "real", "simulated")

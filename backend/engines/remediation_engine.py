@@ -13,9 +13,14 @@ import random
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
 from engines.alert_engine import alert_soc, alert_remediation
-from engines.db import update_finding_status_db
+from engines.db import (
+    update_finding_status_db,
+    save_remediation_record_db,
+    get_remediation_record_db,
+    update_remediation_rollback_db
+)
 
-# In-memory execution rollback registry for safe remediation rollback (SRS FR-10)
+# In-memory execution rollback registry cache with SQLite persistence (SRS FR-10)
 EXECUTION_HISTORY: Dict[str, Dict[str, Any]] = {}
 
 
@@ -263,7 +268,7 @@ def execute_playbook(attack_type: str, event: Optional[Dict] = None, dry_run: bo
     }
 
     # Record execution state for rollback verification (SRS FR-10)
-    EXECUTION_HISTORY[execution_id] = {
+    rec_data = {
         "execution_id": execution_id,
         "playbook_id": playbook["playbook_id"],
         "target_fid": target_fid,
@@ -273,6 +278,11 @@ def execute_playbook(attack_type: str, event: Optional[Dict] = None, dry_run: bo
         "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "rolled_back": False
     }
+    EXECUTION_HISTORY[execution_id] = rec_data
+    try:
+        save_remediation_record_db(rec_data)
+    except Exception:
+        pass
 
     return result_payload
 
@@ -281,8 +291,16 @@ def rollback_remediation(execution_id: str) -> Dict[str, Any]:
     """
     Rolls back an executed remediation action (SRS FR-10).
     Restores the targeted finding to its pre-remediation status ('open').
+    Survives backend process reboots via SQLite remediation_history table.
     """
     exec_record = EXECUTION_HISTORY.get(execution_id)
+    if not exec_record:
+        # Check durable SQLite persistence
+        db_record = get_remediation_record_db(execution_id)
+        if db_record:
+            exec_record = db_record
+            EXECUTION_HISTORY[execution_id] = exec_record
+
     if not exec_record:
         return {
             "status": "error",
@@ -301,8 +319,13 @@ def rollback_remediation(execution_id: str) -> Dict[str, Any]:
     if target_fid:
         update_finding_status_db(str(target_fid), "open")
 
+    rolled_back_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     exec_record["rolled_back"] = True
-    exec_record["rolled_back_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    exec_record["rolled_back_at"] = rolled_back_at
+    try:
+        update_remediation_rollback_db(execution_id, rolled_back_at)
+    except Exception:
+        pass
 
     return {
         "status": "success",

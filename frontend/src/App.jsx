@@ -36,8 +36,20 @@ import UserManagementTab from './components/UserManagementTab';
 import DataSourcesTab from './components/DataSourcesTab';
 import WorkspaceSettingsTab from './components/WorkspaceSettingsTab';
 import { Toast } from './components/SharedComponents';
-import { API_URL } from './config';
+import { API_URL, WS_URL } from './config';
 import './index.css';
+
+// Centralized Axios interceptor attaching Bearer token for all authenticated requests
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 export const getLiveUtcTime = () => {
   const now = new Date();
@@ -68,6 +80,7 @@ const Dashboard = () => {
   const [toast, setToast] = useState(null);
   const [playbooks, setPlaybooks] = useState([]);
   const [liveTime, setLiveTime] = useState(getLiveUtcTime());
+  const [wsConnected, setWsConnected] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -177,17 +190,19 @@ const Dashboard = () => {
   const fetchDashboardData = async (isPolling = false) => {
     if (!isPolling) setLoading(true);
     try {
-      const [summaryRes, eventsRes, cspmRes, ciemRes] = await Promise.all([
+      const [summaryRes, eventsRes, cspmRes, ciemRes, vulnsRes] = await Promise.all([
         axios.get(`${API_URL}/dashboard/summary`),
         axios.get(`${API_URL}/simulate/events?hours=6&normal=50&attacks=10`),
         axios.get(`${API_URL}/cspm/scan`),
-        axios.get(`${API_URL}/ciem/scan`)
+        axios.get(`${API_URL}/ciem/scan`),
+        axios.get(`${API_URL}/vulnerabilities`)
       ]);
       setData({
         summary: summaryRes.data.data,
         events: eventsRes.data.data,
         cspm: cspmRes.data.data,
-        ciem: ciemRes.data.data
+        ciem: ciemRes.data.data,
+        vulnerabilities: vulnsRes.data.vulnerabilities || []
       });
       fetchFindings(findingsAttackMode, isPolling);
       fetchIncidents(isPolling);
@@ -198,6 +213,42 @@ const Dashboard = () => {
       if (!isPolling) setLoading(false);
     }
   };
+
+  const handleScanVulnerabilities = async () => {
+    try {
+      showToast('Initiating workload vulnerability scan...', 'info');
+      const res = await axios.post(`${API_URL}/vulnerabilities/scan`);
+      const count = res.data.count || 0;
+      showToast(`Scan complete: ${count} vulnerabilities detected and prioritized.`, 'success');
+      const refreshed = await axios.get(`${API_URL}/vulnerabilities`);
+      setData(prev => ({
+        ...prev,
+        vulnerabilities: refreshed.data.vulnerabilities || []
+      }));
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to run vulnerability scan', 'error');
+    }
+  };
+
+  const handleSyncNvd = async () => {
+    try {
+      showToast('Connecting to NIST National Vulnerability Database API...', 'info');
+      const res = await axios.post(`${API_URL}/vulnerabilities/nvd/sync`);
+      const synced = res.data.synced_count ?? 0;
+      const mode = res.data.mode === 'nvd_live' ? 'Live NVD feed' : 'Cached fallback retained';
+      showToast(`NVD Sync: ${synced} advisories synced (${mode})`, 'success');
+      const refreshed = await axios.get(`${API_URL}/vulnerabilities`);
+      setData(prev => ({
+        ...prev,
+        vulnerabilities: refreshed.data.vulnerabilities || []
+      }));
+    } catch (err) {
+      console.error(err);
+      showToast('NVD sync failed; retained cached advisories', 'warning');
+    }
+  };
+
 
   const fetchPlaybooks = async () => {
     try {
@@ -212,12 +263,87 @@ const Dashboard = () => {
     if (!user) return;
     fetchDashboardData(false);
 
-    // Auto-refresh every 5 seconds to ingest newly generated logs and update UI live
+    // Auto-refresh every 5 seconds as fallback / baseline sync
     const interval = setInterval(() => {
       fetchDashboardData(true);
     }, 5000);
 
     return () => clearInterval(interval);
+  }, [user]);
+
+  // WebSocket Live Streaming Integration (TNY-05)
+  useEffect(() => {
+    if (!user) return;
+    let ws = null;
+    let reconnectTimer = null;
+    let isCancelled = false;
+
+    const connectWs = () => {
+      try {
+        ws = new WebSocket(WS_URL);
+        ws.onopen = () => {
+          if (!isCancelled) {
+            const currentToken = localStorage.getItem('token');
+            if (currentToken) {
+              ws.send(JSON.stringify({ type: 'auth', token: currentToken }));
+            }
+            console.log('[WebSocket] Stream opened, dispatching auth handshake:', WS_URL);
+          }
+        };
+        ws.onmessage = (event) => {
+          if (isCancelled) return;
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'auth_ok') {
+              setWsConnected(true);
+              console.log('[WebSocket] Stream authenticated for user:', msg.username);
+            } else if (msg.type === 'auth_error') {
+              console.warn('[WebSocket] Authentication rejected:', msg.detail);
+              setWsConnected(false);
+            } else if (msg.type === 'events_update') {
+              setData((prev) => ({
+                ...prev,
+                events: msg.latest_events && msg.latest_events.length > 0 ? msg.latest_events : prev.events,
+                summary: prev.summary ? {
+                  ...prev.summary,
+                  threats: {
+                    ...prev.summary.threats,
+                    critical_threats_count: msg.critical ?? prev.summary.threats.critical_threats_count,
+                    anomalies_detected_count: msg.anomalies ?? prev.summary.threats.anomalies_detected_count,
+                  }
+                } : prev.summary
+              }));
+            }
+          } catch (e) {
+            console.error('[WebSocket] Message parse error:', e);
+          }
+        };
+        ws.onerror = (err) => {
+          console.warn('[WebSocket] Stream error, falling back to HTTP polling:', err);
+          if (!isCancelled) setWsConnected(false);
+        };
+        ws.onclose = () => {
+          if (!isCancelled) {
+            setWsConnected(false);
+            reconnectTimer = setTimeout(connectWs, 5000);
+          }
+        };
+      } catch (err) {
+        console.warn('[WebSocket] Init failed:', err);
+        if (!isCancelled) {
+          setWsConnected(false);
+          reconnectTimer = setTimeout(connectWs, 5000);
+        }
+      }
+    };
+
+    connectWs();
+
+    return () => {
+      isCancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) ws.close();
+    };
   }, [user]);
 
   const hasTabAccess = (tab) => {
@@ -545,8 +671,29 @@ const Dashboard = () => {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginRight: '8px' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginRight: '4px' }}>
                 {liveTime.headerBadge}
+              </span>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '11px',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                background: wsConnected ? 'rgba(16, 185, 129, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+                color: wsConnected ? '#10b981' : '#3b82f6',
+                border: `1px solid ${wsConnected ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+                fontWeight: 500
+              }}>
+                <span style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: wsConnected ? '#10b981' : '#3b82f6',
+                  boxShadow: wsConnected ? '0 0 6px #10b981' : 'none'
+                }}></span>
+                {wsConnected ? 'WebSocket Live' : 'HTTP Poll (5s)'}
               </span>
               {currentMeta.action}
             </div>
@@ -579,6 +726,9 @@ const Dashboard = () => {
               incidentsLoading={incidentsLoading}
               incidentsStats={incidentsStats}
               fetchIncidents={fetchIncidents}
+              vulnerabilities={data.vulnerabilities || []}
+              onScanVulnerabilities={handleScanVulnerabilities}
+              onSyncNVD={handleSyncNvd}
               onInvestigateFinding={(finding) => {
                 setActiveTab('remediation');
               }}

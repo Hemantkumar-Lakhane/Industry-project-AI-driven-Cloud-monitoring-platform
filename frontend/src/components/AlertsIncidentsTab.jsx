@@ -27,9 +27,12 @@ const AlertsIncidentsTab = ({
   incidentsLoading = false,
   incidentsStats = null,
   fetchIncidents,
+  vulnerabilities = [],
+  onScanVulnerabilities,
+  onSyncNVD,
   onInvestigateFinding
 }) => {
-  const [viewMode, setViewMode] = useState('incidents'); // 'incidents' | 'findings'
+  const [viewMode, setViewMode] = useState('incidents'); // 'incidents' | 'findings' | 'vulnerabilities'
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -355,6 +358,26 @@ const AlertsIncidentsTab = ({
             <Tag size={14} />
             Atomic Findings ({findings.length})
           </button>
+          <button
+            style={{
+              padding: '6px 14px',
+              fontSize: '13px',
+              fontWeight: 600,
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: viewMode === 'vulnerabilities' ? 'var(--surface-card)' : 'transparent',
+              color: viewMode === 'vulnerabilities' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              boxShadow: viewMode === 'vulnerabilities' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+            }}
+            onClick={() => setViewMode('vulnerabilities')}
+          >
+            <AlertTriangle size={14} style={{ color: viewMode === 'vulnerabilities' ? '#ef4444' : 'inherit' }} />
+            Vulnerabilities ({vulnerabilities.length})
+          </button>
         </div>
 
         {/* Search */}
@@ -617,6 +640,122 @@ const AlertsIncidentsTab = ({
                     </tr>
                   );
                 })
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* 3C. WORKLOAD VULNERABILITY ANALYSIS VIEW (SRS FR-05) */}
+      {viewMode === 'vulnerabilities' && (
+        <div className="figma-table-container">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--surface-sunken)', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Shield size={16} style={{ color: 'var(--accent-primary)' }} />
+              <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>
+                Workload CVE Vulnerability Posture ({vulnerabilities.length} active advisories)
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {onSyncNVD && (
+                <button
+                  className="figma-btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)' }}
+                  onClick={onSyncNVD}
+                  title="Synchronize CVE records from NIST National Vulnerability Database"
+                >
+                  <Globe size={12} />
+                  Sync NIST NVD
+                </button>
+              )}
+              {onScanVulnerabilities && (
+                <button
+                  className="figma-btn-primary"
+                  style={{ padding: '6px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  onClick={onScanVulnerabilities}
+                >
+                  <RefreshCw size={12} />
+                  Rescan Host Manifests
+                </button>
+              )}
+            </div>
+          </div>
+          <table className="figma-table">
+            <thead>
+              <tr>
+                <th style={{ width: '110px' }}>CVSS & Severity</th>
+                <th style={{ width: '140px' }}>CVE ID</th>
+                <th>Advisory & Title</th>
+                <th>Affected Package</th>
+                <th>Installed vs Fixed</th>
+                <th>Host Asset</th>
+                <th style={{ textAlign: 'right' }}>Remediation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vulnerabilities.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                    No vulnerabilities detected. Click 'Rescan Host Manifests' to scan active workload packages.
+                  </td>
+                </tr>
+              ) : (
+                vulnerabilities
+                  .filter(v => {
+                    const matchSearch = !searchTerm ||
+                      v.cve_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      v.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      v.package_name?.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchSev = severityFilter === 'All' || (v.severity || '').toLowerCase() === severityFilter.toLowerCase();
+                    return matchSearch && matchSev;
+                  })
+                  .map((vuln, idx) => {
+                    const sev = (vuln.severity || 'high').toLowerCase();
+                    const cvss = vuln.cvss_score ? Number(vuln.cvss_score).toFixed(1) : '7.5';
+
+                    return (
+                      <tr key={idx}>
+                        <td>
+                          <span className={`figma-dot-badge ${sev}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <strong>{cvss}</strong> {sev.toUpperCase()}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {vuln.cve_id}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{vuln.title}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {vuln.description}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="figma-resource-tag">
+                            {vuln.package_name}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
+                            <span style={{ color: 'var(--sev-crit)' }}>{vuln.installed_version}</span>
+                            {' → '}
+                            <span style={{ color: '#10b981' }}>{vuln.fixed_version}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {vuln.affected_asset_id}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', maxWidth: '220px', marginLeft: 'auto' }}>
+                            {vuln.remediation}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
               )}
             </tbody>
           </table>

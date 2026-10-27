@@ -5,17 +5,41 @@ import jwt
 import hashlib
 import uuid
 import os
+import secrets
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple, Any
+import bcrypt
 from engines.db import get_conn, init_db
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "ram-antivirus-cloud-security-super-secret-key-2026")
+JWT_SECRET = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    JWT_SECRET = "ram-antivirus-cloud-security-super-secret-key-2026"
+    print("[AUTH] Operational Notice: Using development JWT_SECRET. In production, configure JWT_SECRET environment variable.")
+
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
+
 def _hash_password(password: str) -> str:
-    salt = "ram-av-salt"
-    return hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
+    """Hash password using bcrypt with a cryptographically secure per-user salt."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def _verify_password(password: str, stored_hash: str) -> bool:
+    """
+    Verify password with backward-compatible support for legacy static-salted SHA-256 hashes.
+    """
+    if not stored_hash:
+        return False
+    if stored_hash.startswith("$2b$") or stored_hash.startswith("$2a$"):
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8"))
+        except Exception:
+            return False
+    # Legacy SHA-256 backward compatibility
+    legacy_hash = hashlib.sha256(f"ram-av-salt{password}".encode("utf-8")).hexdigest()
+    return legacy_hash == stored_hash
+
 
 def _row_to_user(row) -> Dict:
     if row is None:
@@ -27,11 +51,13 @@ def _row_to_user(row) -> Dict:
         "is_active": bool(row["is_active"])
     }
 
+
 def _get_user(username: str) -> Optional[Dict]:
     conn = get_conn()
     row = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
     conn.close()
     return _row_to_user(row)
+
 
 def _save_user(user: Dict):
     conn = get_conn()
@@ -45,6 +71,7 @@ def _save_user(user: Dict):
     conn.commit()
     conn.close()
 
+
 # Seed default users if not present
 def _seed_defaults():
     _defaults = [
@@ -53,7 +80,8 @@ def _seed_defaults():
         {"username": "viewer1",  "password": "viewer123",  "email": "viewer@ramantivirus.com",  "role": "viewer",  "full_name": "Dashboard Viewer"},
     ]
     for u in _defaults:
-        if not _get_user(u["username"]):
+        existing = _get_user(u["username"])
+        if not existing:
             _save_user({
                 "user_id": str(uuid.uuid4()), "username": u["username"], "email": u["email"],
                 "password_hash": _hash_password(u["password"]), "role": u["role"],
@@ -158,8 +186,12 @@ def login_user(username: str, password: str) -> Dict:
     if not user["is_active"]:
         return {"success": False, "error": "Account is deactivated. Contact administrator."}
 
-    if user["password_hash"] != _hash_password(password):
+    if not _verify_password(password, user["password_hash"]):
         return {"success": False, "error": "Invalid username or password"}
+
+    # Transparently upgrade legacy SHA-256 hash to bcrypt upon successful authentication
+    if not (user["password_hash"].startswith("$2b$") or user["password_hash"].startswith("$2a$")):
+        user["password_hash"] = _hash_password(password)
 
     now = datetime.now(timezone.utc)
     user["last_login"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -233,6 +265,84 @@ def check_permission(token: str, required_permission: str) -> Dict:
     return {
         "authorized": False,
         "error": f"Insufficient permissions. Required: '{required_permission}'. Your role: '{result['payload']['role']}'"
+    }
+
+
+# ── WebSocket Single-Use Short-Lived Ticket Store ───────────────────────────
+_WS_TICKETS: Dict[str, Tuple[datetime, Dict]] = {}
+
+def create_ws_ticket(user_payload: Dict, ttl_seconds: int = 60) -> str:
+    """
+    Generate a cryptographically random, single-use, short-lived ticket
+    for secure WebSocket authentication without passing long-lived credentials in URLs.
+    """
+    now = datetime.now(timezone.utc)
+    # Prune expired tickets
+    expired_keys = [k for k, (exp, _) in _WS_TICKETS.items() if exp < now]
+    for k in expired_keys:
+        _WS_TICKETS.pop(k, None)
+
+    ticket = f"wstk_{secrets.token_urlsafe(32)}"
+    expires_at = now + timedelta(seconds=ttl_seconds)
+    _WS_TICKETS[ticket] = (expires_at, user_payload)
+    return ticket
+
+
+def redeem_ws_ticket(ticket: str) -> Dict[str, Any]:
+    """
+    Atomically redeem and delete a WebSocket ticket.
+    Returns payload if valid and unexpired, else error.
+    """
+    if not ticket or ticket not in _WS_TICKETS:
+        return {"valid": False, "error": "Invalid or already consumed WebSocket ticket"}
+
+    expires_at, payload = _WS_TICKETS.pop(ticket)
+    now = datetime.now(timezone.utc)
+    if now > expires_at:
+        return {"valid": False, "error": "WebSocket ticket has expired"}
+
+    return {"valid": True, "payload": payload}
+
+
+def validate_ws_auth(raw_auth: str) -> Dict[str, Any]:
+    """
+    Validates either a Bearer JWT token or a single-use short-lived WS ticket.
+    Enforces expiration check, signature check, and 'dashboard:read' authorization.
+    Returns dict with 'authorized': bool, 'user': dict, and 'error': str if any.
+    """
+    if not raw_auth:
+        return {"authorized": False, "error": "Missing authentication credential"}
+
+    # Case 1: WS Ticket (starts with wstk_)
+    if raw_auth.startswith("wstk_"):
+        redeem_res = redeem_ws_ticket(raw_auth)
+        if not redeem_res["valid"]:
+            return {"authorized": False, "error": redeem_res["error"]}
+        payload = redeem_res["payload"]
+    else:
+        # Case 2: Bearer JWT
+        token = raw_auth[7:].strip() if raw_auth.lower().startswith("bearer ") else raw_auth.strip()
+        v_res = verify_token(token)
+        if not v_res["valid"]:
+            return {"authorized": False, "error": v_res["error"]}
+        payload = v_res["payload"]
+
+    # Check required permission for WebSocket streaming
+    perms = payload.get("permissions", [])
+    if "dashboard:read" not in perms and payload.get("role") != "admin":
+        return {
+            "authorized": False,
+            "error": "Forbidden: user lacks 'dashboard:read' permission"
+        }
+
+    return {
+        "authorized": True,
+        "user": {
+            "user_id": payload.get("user_id"),
+            "username": payload.get("username"),
+            "role": payload.get("role"),
+            "permissions": perms
+        }
     }
 
 
