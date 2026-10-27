@@ -47,12 +47,12 @@ const CONNECTOR_CONFIGS = {
     title: 'PyOD Specialist ML Engine Settings',
     description: 'Tune hyperparameters, contamination rates, and ensemble voting weights across the 3 specialist models.',
     fields: [
-      { label: 'Isolation Forest Contamination', value: '0.10 (NSL-KDD trained)', type: 'text' },
-      { label: 'KNN Metric & Neighbors', value: 'k=5, Minkowski metric (CICIDS-2017)', type: 'text' },
-      { label: 'HBOS Bin Strategy', value: '20 dynamic histogram bins (UNSW-NB15)', type: 'text' },
+      { label: 'Isolation Forest Contamination', value: '0.465 (NSL-KDD benchmark)', type: 'text' },
+      { label: 'KNN Metric & Neighbors', value: 'k=5, Minkowski metric (NSL-KDD benchmark)', type: 'text' },
+      { label: 'HBOS Bin Strategy', value: 'Dynamic histogram bins (NSL-KDD benchmark)', type: 'text' },
       { label: 'Ensemble Combination Rule', value: 'Max Anomaly Score (Conservative)', type: 'text' },
-      { label: 'Inference Threshold', value: 'Score >= 0.75 (Critical Severity)', type: 'text' },
-      { label: 'Feature Vector Dimensions', value: '3-D: [level, bytes_transferred, failed_attempts]', type: 'text' },
+      { label: 'Inference Threshold', value: 'Score >= 0.70 (Critical Severity)', type: 'text' },
+      { label: 'Feature Vector Dimensions', value: '9-D Flow: [duration, src/dst_bytes, count, error_rates, srv_rates]', type: 'text' },
     ],
     testResult: 'PyOD models loaded in memory. joblib weights verified: iforest.pkl, knn.pkl, hbos.pkl.'
   }

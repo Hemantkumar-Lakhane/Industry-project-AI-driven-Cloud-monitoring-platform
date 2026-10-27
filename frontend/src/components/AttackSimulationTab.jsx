@@ -24,46 +24,46 @@ const INTENSITY_OPTIONS = ['low', 'medium', 'high', 'extreme'];
 
 const formatLabel = (value) => value.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
-// Realistic playbook execution timelines matching Image 4
+// Realistic playbook steps (timing derived dynamically from simulation runtime)
 const SCENARIO_PLAYBOOKS = {
   privilege_escalation: {
-    title: 'Privilege Escalation Response',
+    title: 'Privilege Escalation Response & Verification',
     steps: [
-      { name: 'Revert IAM policy changes to last known-good state', fn: 'revert_policy', ms: 3962 },
-      { name: 'Revoke all active sessions for the entity', fn: 'revoke_sessions', ms: 2762 },
-      { name: 'Move entity to quarantine OU with read-only access', fn: 'quarantine_entity', ms: 3150 },
-      { name: 'Capture CloudTrail evidence snapshot', fn: 'snapshot_evidence', ms: 4427 },
-      { name: 'Escalate to cloud security admin', fn: 'notify_admin', ms: 253 }
+      { name: 'Revert IAM policy changes to last known-good state', fn: 'revert_policy' },
+      { name: 'Revoke all active sessions for the entity', fn: 'revoke_sessions' },
+      { name: 'Move entity to quarantine OU with read-only access', fn: 'quarantine_entity' },
+      { name: 'Capture CloudTrail evidence snapshot', fn: 'snapshot_evidence' },
+      { name: 'Escalate to cloud security admin', fn: 'notify_admin' }
     ]
   },
   brute_force: {
-    title: 'Brute Force Credential Response',
+    title: 'Brute Force Credential Response & Verification',
     steps: [
-      { name: 'Enforce immediate temporary lock on target identity', fn: 'lock_account', ms: 2140 },
-      { name: 'Revoke active STS tokens and invalidate sessions', fn: 'revoke_sessions', ms: 2890 },
-      { name: 'Inject blocking rule at AWS WAF and security group', fn: 'block_ip_edge', ms: 3510 },
-      { name: 'Extract forensic authentication logs snapshot', fn: 'snapshot_evidence', ms: 4120 },
-      { name: 'Trigger emergency MFA reset and alert SOC team', fn: 'notify_admin', ms: 295 }
+      { name: 'Enforce immediate temporary lock on target identity', fn: 'lock_account' },
+      { name: 'Revoke active STS tokens and invalidate sessions', fn: 'revoke_sessions' },
+      { name: 'Inject blocking rule at AWS WAF and security group', fn: 'block_ip_edge' },
+      { name: 'Extract forensic authentication logs snapshot', fn: 'snapshot_evidence' },
+      { name: 'Trigger emergency MFA reset and alert SOC team', fn: 'notify_admin' }
     ]
   },
   data_exfiltration: {
-    title: 'Data Exfiltration Containment Response',
+    title: 'Data Exfiltration Containment Response & Verification',
     steps: [
-      { name: 'Block destination egress IP address on AWS Network Firewall', fn: 'block_egress', ms: 3210 },
-      { name: 'Enforce strict VPC endpoint policy on target S3 bucket', fn: 'restrict_s3_vpc', ms: 3840 },
-      { name: 'Sever active STS assume-role session for exfiltrator identity', fn: 'terminate_session', ms: 2650 },
-      { name: 'Preserve S3 access log and CloudTrail audit chain', fn: 'snapshot_evidence', ms: 4320 },
-      { name: 'Dispatch critical severity paging alert to Data Protection Officer', fn: 'notify_admin', ms: 280 }
+      { name: 'Block destination egress IP address on AWS Network Firewall', fn: 'block_egress' },
+      { name: 'Enforce strict VPC endpoint policy on target S3 bucket', fn: 'restrict_s3_vpc' },
+      { name: 'Sever active STS assume-role session for exfiltrator identity', fn: 'terminate_session' },
+      { name: 'Preserve S3 access log and CloudTrail audit chain', fn: 'snapshot_evidence' },
+      { name: 'Dispatch critical severity paging alert to Data Protection Officer', fn: 'notify_admin' }
     ]
   },
   abnormal_access: {
-    title: 'Anomalous Geolocation Access Response',
+    title: 'Anomalous Geolocation Access Response & Verification',
     steps: [
-      { name: 'Terminate unauthorized foreign geographical session', fn: 'terminate_geo_session', ms: 2430 },
-      { name: 'Trigger mandatory FIDO2 hardware MFA challenge on next sign-in', fn: 'enforce_stepup_mfa', ms: 2980 },
-      { name: 'Quarantine host IP and restrict IAM access boundaries', fn: 'quarantine_entity', ms: 3340 },
-      { name: 'Collect VPC Flow Logs & GeoIP routing telemetry', fn: 'snapshot_evidence', ms: 4010 },
-      { name: 'Notify cloud security analyst with threat intelligence enrichment', fn: 'notify_admin', ms: 310 }
+      { name: 'Terminate unauthorized foreign geographical session', fn: 'terminate_geo_session' },
+      { name: 'Trigger mandatory FIDO2 hardware MFA challenge on next sign-in', fn: 'enforce_stepup_mfa' },
+      { name: 'Quarantine host IP and restrict IAM access boundaries', fn: 'quarantine_entity' },
+      { name: 'Collect VPC Flow Logs & GeoIP routing telemetry', fn: 'snapshot_evidence' },
+      { name: 'Notify cloud security analyst with threat intelligence enrichment', fn: 'notify_admin' }
     ]
   }
 };
@@ -139,7 +139,23 @@ const AttackSimulationTab = ({ showToast }) => {
   };
 
   const activePlaybook = SCENARIO_PLAYBOOKS[activeScenarioKey] || SCENARIO_PLAYBOOKS.privilege_escalation;
-  const totalExecutionTime = activePlaybook.steps.reduce((acc, s) => acc + s.ms, 0);
+  
+  // Derive authentic timeline progression from actual simulated events
+  const sampleEvents = simResult?.sample_sim_events || [];
+  const timelineSteps = sampleEvents.length > 0 ? sampleEvents.map((evt, idx, arr) => {
+    let latencyText = 'N/A';
+    if (idx > 0 && evt.timestamp && arr[0].timestamp) {
+      const delta = new Date(evt.timestamp).getTime() - new Date(arr[0].timestamp).getTime();
+      latencyText = delta > 0 ? `+${delta}ms` : 'Batch burst';
+    } else if (idx === 0) {
+      latencyText = 'T+0';
+    }
+    return {
+      name: evt.description || `${evt.service || 'cloud'}:${evt.action || 'event'}`,
+      fn: `${(evt.source || 'telemetry').toUpperCase()} · ${evt.action || evt.attack_type || 'Event'}`,
+      timing: latencyText
+    };
+  }) : activePlaybook.steps.map(s => ({ ...s, timing: 'N/A' }));
 
   return (
     <div className="animate-fade-in">
@@ -483,11 +499,11 @@ const AttackSimulationTab = ({ showToast }) => {
                   </span>
                 </div>
 
-                {/* Subtitle with ID, latency, and passed count */}
+                {/* Subtitle with simulation ID, timing, and detected count */}
                 <div style={{ fontSize: '12px', color: '#8b949e', marginBottom: '18px', fontFamily: 'monospace' }}>
-                  ID: EXEC-{simResult.simulation?.simulation_id?.replace(/[^A-Za-z0-9]/g, '').slice(-8) || 'E75EC2AD'} &nbsp;
-                  {totalExecutionTime}ms &nbsp;
-                  {activePlaybook.steps.length}/{activePlaybook.steps.length} passed
+                  ID: SIM-{simResult.simulation?.simulation_id?.replace(/[^A-Za-z0-9]/g, '').slice(-8) || 'E75EC2AD'} &nbsp;
+                  Latency: N/A (In-memory batch) &nbsp;
+                  {simResult.detection?.detected_as_anomaly || 0}/{simResult.detection?.total_sim_events || 0} anomalies caught
                 </div>
 
                 {/* Vertical Connected Timeline */}
@@ -502,8 +518,8 @@ const AttackSimulationTab = ({ showToast }) => {
                     backgroundColor: '#593822'
                   }} />
 
-                  {activePlaybook.steps.map((step, idx) => (
-                    <div key={idx} style={{ position: 'relative', marginBottom: idx === activePlaybook.steps.length - 1 ? 0 : '16px' }}>
+                  {timelineSteps.map((step, idx) => (
+                    <div key={idx} style={{ position: 'relative', marginBottom: idx === timelineSteps.length - 1 ? 0 : '16px' }}>
                       {/* Green circle node */}
                       <div style={{
                         position: 'absolute',
@@ -527,7 +543,7 @@ const AttackSimulationTab = ({ showToast }) => {
                           </div>
                         </div>
                         <div style={{ fontSize: '12px', color: '#8b949e', fontFamily: 'monospace', flexShrink: 0 }}>
-                          {step.ms}ms
+                          {step.timing}
                         </div>
                       </div>
                     </div>

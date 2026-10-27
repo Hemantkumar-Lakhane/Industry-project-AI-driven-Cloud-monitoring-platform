@@ -437,7 +437,7 @@ def get_model_info() -> Dict:
         "cloud_features": CLOUD_FEATURE_NAMES,
         "cloud_feature_dimension": CLOUD_FEATURE_DIM,
         "cloud_feature_schema": "cloud_native_8d",
-        "cloud_behavioral_analyzer": "Multi-signal behavioral heuristic calibrated with PyOD specialist models",
+        "cloud_behavioral_analyzer": "Rule-weighted heuristic analyzer evaluating 8D cloud telemetry features",
         "target_leakage_status": "none_verified",
         "compatible_with_9d_extractor": True,
         "models": {

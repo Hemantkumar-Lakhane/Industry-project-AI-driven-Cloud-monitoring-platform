@@ -1,83 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ShieldCheck, Download, RefreshCw, FileText, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { ShieldCheck, Download, RefreshCw, FileText, CheckCircle2, AlertTriangle, X, Info } from 'lucide-react';
 import { API_URL } from '../config';
 
 const ComplianceTab = ({ showToast }) => {
-  const [activeFramework, setActiveFramework] = useState('ISO/IEC 27001:2022');
+  const [activeFrameworkKey, setActiveFrameworkKey] = useState('ISO27001');
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [report, setReport] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
 
-  const frameworks = [
-    { id: 'ISO/IEC 27001:2022', label: 'ISO/IEC 27001:2022', desc: 'Information Security Management Systems (ISMS)' },
-    { id: 'SOC 2 Type II', label: 'SOC 2 Type II', desc: 'Trust Services Criteria (Security, Availability, Confidentiality)' },
-    { id: 'GDPR', label: 'GDPR', desc: 'General Data Protection Regulation (Article 32 Security of Processing)' }
+  const frameworkDefinitions = [
+    { key: 'ISO27001', label: 'ISO/IEC 27001:2022', desc: 'Information Security Management Systems (ISMS)' },
+    { key: 'SOC2', label: 'SOC 2 Type II', desc: 'Trust Services Criteria (Security, Availability, Confidentiality)' },
+    { key: 'GDPR', label: 'GDPR', desc: 'General Data Protection Regulation (Article 32 Security of Processing)' }
   ];
 
-  // Real control gaps mapped to active cloud assets and detector categories
-  const controlGaps = [
-    {
-      control: 'A.8.20 · Network security',
-      finding: 'FIND-NETW · SSH accessible from internet (0.0.0.0/0:22)',
-      resource: 'sg-public-ssh-web ↗',
-      review: 'Evidence →',
-      framework: 'ISO/IEC 27001:2022',
-      status: 'FAILING'
-    },
-    {
-      control: 'A.8.3 · Access restriction',
-      finding: 'FIND-CLOU · Public S3 access block disabled',
-      resource: 's3-cust-records-prod ↗',
-      review: 'Evidence →',
-      framework: 'ISO/IEC 27001:2022',
-      status: 'FAILING'
-    },
-    {
-      control: 'A.8.5 · Secure authentication',
-      finding: 'FIND-IAMP · MFA absent on administrative principal',
-      resource: 'iam-role-superadmin ↗',
-      review: 'Evidence →',
-      framework: 'ISO/IEC 27001:2022',
-      status: 'FAILING'
-    },
-    {
-      control: 'CC6.1 · Logical access controls',
-      finding: 'FIND-IAMP · Unrestricted AdministratorAccess scope',
-      resource: 'iam-role-superadmin ↗',
-      review: 'Evidence →',
-      framework: 'SOC 2 Type II',
-      status: 'FAILING'
-    },
-    {
-      control: 'CC6.6 · Boundary protection',
-      finding: 'FIND-NETW · Ingress port 22 exposed to 0.0.0.0/0',
-      resource: 'sg-public-ssh-web ↗',
-      review: 'Evidence →',
-      framework: 'SOC 2 Type II',
-      status: 'FAILING'
-    },
-    {
-      control: 'Art. 32(1)(a) · Confidentiality & encryption',
-      finding: 'FIND-CLOU · Unencrypted / public S3 asset storage',
-      resource: 's3-cust-records-prod ↗',
-      review: 'Evidence →',
-      framework: 'GDPR',
-      status: 'FAILING'
+  const fetchComplianceDashboard = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await axios.get(`${API_URL}/compliance/dashboard`);
+      setDashboardData(res.data?.data || null);
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || 'Failed to fetch compliance dashboard';
+      setError(msg);
+      if (showToast) showToast(`Compliance data fetch failed: ${msg}`, 'error');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchComplianceDashboard();
+  }, []);
 
   const generateReport = async () => {
     setGenerating(true);
     try {
       const res = await axios.get(`${API_URL}/compliance/report?format=json`);
-      setReport(res.data.data);
+      setReport(res.data?.data || null);
       setShowReportModal(true);
       if (showToast) showToast('Executive compliance audit report generated!');
     } catch (err) {
       if (showToast) showToast('Report generation failed', 'error');
+    } finally {
+      setGenerating(false);
     }
-    setGenerating(false);
   };
 
   const downloadCSVReport = async () => {
@@ -96,19 +67,66 @@ const ComplianceTab = ({ showToast }) => {
     }
   };
 
-  const currentGaps = controlGaps.filter(g => g.framework === activeFramework);
+  const activeFwData = dashboardData?.frameworks?.[activeFrameworkKey] || null;
+  const criticalGaps = activeFwData?.critical_gaps || [];
 
   return (
     <div className="animate-fade-in">
-      {/* 1. FRAMEWORK TABS SELECTOR (FIGMA PILL TABS) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+      {/* 1. INFORMATIONAL HONESTY BADGE */}
+      <div
+        style={{
+          padding: '12px 18px',
+          borderRadius: '8px',
+          backgroundColor: 'var(--surface-table-head)',
+          border: '1px solid var(--border-subtle)',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Info size={16} style={{ color: 'var(--accent-orange)' }} />
+          <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+            <strong>Demo Baseline Audit:</strong> Compliance scores and control mappings are computed dynamically by the backend engine from active CSPM configuration audits and CIEM identity findings.
+          </span>
+        </div>
+        <span
+          style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            padding: '2px 8px',
+            borderRadius: '4px',
+            backgroundColor: 'var(--surface-muted)',
+            color: 'var(--text-tertiary)',
+            border: '1px solid var(--border-subtle)'
+          }}
+        >
+          SEEDED BASELINE EVALUATION
+        </span>
+      </div>
+
+      {/* 2. FRAMEWORK TABS SELECTOR (FIGMA PILL TABS) */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid var(--border-subtle)',
+          marginBottom: '24px',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}
+      >
         <div style={{ display: 'flex', gap: '24px' }}>
-          {frameworks.map((fw) => {
-            const isActive = fw.id === activeFramework;
+          {frameworkDefinitions.map((fw) => {
+            const isActive = fw.key === activeFrameworkKey;
             return (
               <button
-                key={fw.id}
-                onClick={() => setActiveFramework(fw.id)}
+                key={fw.key}
+                onClick={() => setActiveFrameworkKey(fw.key)}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -118,6 +136,7 @@ const ComplianceTab = ({ showToast }) => {
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? 'var(--accent-orange)' : 'var(--text-secondary)',
                   cursor: 'pointer',
+                  transition: 'all 0.15s ease',
                   marginBottom: '-1px'
                 }}
               >
@@ -138,210 +157,200 @@ const ComplianceTab = ({ showToast }) => {
         </div>
       </div>
 
-      {/* 2. THREE SUMMARY CARDS: ISO, SOC 2, GDPR */}
+      {/* ERROR BANNER */}
+      {error && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(217, 45, 32, 0.1)',
+            border: '1px solid rgba(217, 45, 32, 0.3)',
+            marginBottom: '18px',
+            color: 'var(--sev-critical)',
+            fontSize: '13px'
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* 3. THREE DYNAMIC SUMMARY CARDS: ISO, SOC 2, GDPR */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '24px' }}>
-        {frameworks.map((fw, idx) => {
-          const score = fw.id === 'ISO/IEC 27001:2022' ? '88%' : fw.id === 'SOC 2 Type II' ? '82.5%' : '83%';
+        {frameworkDefinitions.map((fw, idx) => {
+          const fwData = dashboardData?.frameworks?.[fw.key];
+          const score = fwData ? `${fwData.score}%` : '—';
+          const passFail = fwData ? `${fwData.passing} / ${fwData.failing}` : '— / —';
+          const totalControls = fwData ? `${fwData.total} evaluated` : 'Loading...';
+          const statusText = fwData?.status ? fwData.status.toUpperCase() : 'AUDITING';
+
           return (
-            <div key={fw.id} className="figma-card">
+            <div key={fw.key} className="figma-card">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
                   {fw.label}
                 </h3>
-                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                  {report ? `${score} Audited` : 'Active baseline'}
+                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                  {score}
                 </span>
               </div>
 
-              <div style={{ width: '40px', height: '4px', backgroundColor: idx === 0 ? 'var(--accent-orange)' : 'var(--text-muted)', borderRadius: '2px', marginBottom: '16px' }} />
+              <div
+                style={{
+                  width: '40px',
+                  height: '4px',
+                  backgroundColor: fw.key === activeFrameworkKey ? 'var(--accent-orange)' : 'var(--text-muted)',
+                  borderRadius: '2px',
+                  marginBottom: '16px'
+                }}
+              />
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                <span>Pass / fail</span>
-                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
-                  {report ? '14 / 3' : '— / —'}
+                <span>Pass / Fail controls</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {passFail}
                 </span>
               </div>
 
-              <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                {report ? 'Audit verified against snapshot' : 'Assessment configured'}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                <span>{totalControls}</span>
+                <span style={{ color: fwData?.status === 'compliant' ? 'var(--success-color)' : 'var(--sev-high)', fontWeight: 600 }}>
+                  {statusText}
+                </span>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* 3. POTENTIAL CONTROL GAPS TABLE */}
+      {/* 4. POTENTIAL CONTROL GAPS TABLE (LIVE BACKEND DATA) */}
       <div className="figma-card" style={{ padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Potential control gaps
+          <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+            Potential Control Gaps & Mappings
           </h3>
           <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-            {activeFramework} · Live mapping
+            {activeFwData?.name || activeFrameworkKey} · {criticalGaps.length} Active Gaps
           </span>
         </div>
 
         <table className="figma-table">
           <thead>
             <tr>
-              <th>Control reference</th>
-              <th>Imported finding</th>
-              <th>Resource</th>
+              <th>Control Reference</th>
+              <th>Requirement Name</th>
+              <th>Source</th>
+              <th>Mapped Security Finding</th>
               <th style={{ textAlign: 'right' }}>Review</th>
             </tr>
           </thead>
           <tbody>
-            {currentGaps.map((gap, idx) => (
-              <tr key={idx}>
-                <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {gap.control}
-                </td>
-                <td style={{ color: 'var(--text-secondary)' }}>
-                  {gap.finding}
-                </td>
-                <td style={{ color: 'var(--accent-orange)' }}>
-                  {gap.resource}
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <button className="figma-link-btn" onClick={() => generateReport()}>
-                    {gap.review}
-                  </button>
+            {loading ? (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                  Loading compliance mapping...
                 </td>
               </tr>
-            ))}
+            ) : criticalGaps.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--success-color)' }}>
+                  No failing control gaps detected for {activeFwData?.name || activeFrameworkKey}.
+                </td>
+              </tr>
+            ) : (
+              criticalGaps.map((gap, idx) => (
+                <tr key={idx}>
+                  <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {gap.control}
+                  </td>
+                  <td style={{ color: 'var(--text-primary)' }}>
+                    {gap.name}
+                  </td>
+                  <td>
+                    <span
+                      style={{
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        backgroundColor: gap.source === 'CIEM' ? 'rgba(235, 107, 39, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+                        color: gap.source === 'CIEM' ? 'var(--accent-orange)' : '#3b82f6'
+                      }}
+                    >
+                      {gap.source}
+                    </span>
+                  </td>
+                  <td style={{ color: 'var(--text-secondary)' }}>
+                    {gap.finding || 'Configuration non-compliance detected'}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button className="figma-link-btn" onClick={() => generateReport()}>
+                      Evidence →
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
 
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-muted)' }}>
-          Potential gaps for review, mapped directly from CSPM cloud audits and CIEM identity findings.
+          Potential gaps for review, mapped directly by backend engine from CSPM cloud audits and CIEM identity risks.
         </div>
       </div>
 
-      {/* 4. ON-SCREEN GENERATED AUDIT REPORT MODAL */}
+      {/* 5. ON-SCREEN GENERATED AUDIT REPORT MODAL */}
       {showReportModal && report && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(3px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '24px'
-        }}>
-          <div className="figma-card" style={{
-            width: '100%',
-            maxWidth: '720px',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            padding: '28px',
-            backgroundColor: 'var(--surface-card)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: '12px',
-            boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
-            animation: 'fadeIn 0.25s ease'
-          }}>
-            {/* Modal Header */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <ShieldCheck size={22} style={{ color: 'var(--accent-orange)' }} />
-                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                    Official Compliance Audit Report
-                  </h3>
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
-                  Report ID: {report.report_id || 'COMP-AUDIT-2026-X8'} · Generated: {report.generated_at || new Date().toISOString()}
-                </div>
-              </div>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '24px'
+          }}
+        >
+          <div
+            className="figma-card"
+            style={{
+              width: '100%',
+              maxWidth: '720px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '24px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                Compliance Audit Report ({report.framework || 'All Frameworks'})
+              </h3>
               <button
                 onClick={() => setShowReportModal(false)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            {/* Score Overview Banner */}
-            <div style={{
-              background: 'var(--surface-muted)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: '8px',
-              padding: '16px 20px',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <div>
-                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Overall Compliance Posture</span>
-                <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--success-color)', marginTop: '2px' }}>
-                  {report.executive_summary?.overall_compliance_score || 84.5}% PASSED
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Audit State</span>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                  ISO 27001 / SOC 2 / GDPR Verified
-                </div>
-              </div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '18px' }}>
+              <div><strong>Audit ID:</strong> {report.report_id || 'AUD-REPORT-2026'}</div>
+              <div><strong>Overall Compliance Score:</strong> {report.overall_score || report.score || dashboardData?.overall_score}%</div>
+              <div><strong>Generated At:</strong> {report.timestamp || new Date().toISOString()}</div>
+              <div><strong>Status:</strong> {report.status || 'Compliant'}</div>
             </div>
 
-            {/* Metric Breakdown Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '20px' }}>
-              <div style={{ padding: '14px', background: 'var(--surface-muted)', borderRadius: '8px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Passing Controls</span>
-                <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--success-color)', marginTop: '2px' }}>
-                  14 Controls
-                </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>No active violations</span>
-              </div>
-              <div style={{ padding: '14px', background: 'var(--surface-muted)', borderRadius: '8px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Gaps Identified</span>
-                <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--sev-critical)', marginTop: '2px' }}>
-                  3 Gaps
-                </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Remediation playbooks available</span>
-              </div>
-              <div style={{ padding: '14px', background: 'var(--surface-muted)', borderRadius: '8px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Evidence Artifacts</span>
-                <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--accent-orange)', marginTop: '2px' }}>
-                  6 Cloud Fixtures
-                </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>CloudTrail + Wazuh audited</span>
-              </div>
-            </div>
-
-            {/* Framework Score Cards */}
-            <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px' }}>
-              Framework Attestation Breakdown
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface-muted)', borderRadius: '6px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>ISO/IEC 27001:2022 (ISMS)</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--success-color)' }}>88.0% · PASS</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface-muted)', borderRadius: '6px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>SOC 2 Type II (Trust Services Criteria)</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--success-color)' }}>82.5% · PASS</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface-muted)', borderRadius: '6px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>GDPR (Regulation EU 2016/679 Art. 32)</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--success-color)' }}>83.0% · PASS</span>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button className="figma-btn-secondary" onClick={downloadCSVReport}>
-                <Download size={13} /> Download CSV Report
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+              <button className="figma-btn-secondary" onClick={() => setShowReportModal(false)}>
+                Close
               </button>
-              <button className="figma-btn-primary" onClick={() => setShowReportModal(false)}>
-                Done / Close Report
+              <button className="figma-btn-primary" onClick={downloadCSVReport}>
+                <Download size={13} /> Download CSV
               </button>
             </div>
           </div>

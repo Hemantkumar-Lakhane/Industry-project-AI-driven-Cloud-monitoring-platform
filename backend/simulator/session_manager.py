@@ -27,7 +27,11 @@ import engines.detectors  # Ensures all 16 detectors register with detector_regi
 from engines.ml_engine import analyze_events
 from engines.cspm_engine import run_cspm_scan
 from engines.ciem_engine import run_ciem_scan
-from engines.db import save_cspm_scan, save_ciem_scan, save_findings_db, get_findings_db, get_findings_stats_db, save_incidents_db, get_incidents_db
+from engines.db import (
+    save_cspm_scan, save_ciem_scan, save_findings_db, get_findings_db,
+    get_findings_stats_db, save_incidents_db, get_incidents_db,
+    clear_simulated_findings_and_incidents_db
+)
 from engines.correlation_engine import correlate_findings
 from engines.localstack_engine import is_localstack_running, run_cspm_scan_localstack, run_ciem_scan_localstack
 from simulator.wazuh_reader import get_wazuh_log_path
@@ -105,7 +109,7 @@ class ActiveTelemetrySession:
                     "verification_status": "VERIFIED" if is_known_attack else "NOT_CONFIGURED"
                 })
 
-        open_inc_count = sum(1 for inc in self.incidents if inc.get("status") == "open") if self.incidents else len(self.findings)
+        open_inc_count = sum(1 for inc in self.incidents if (inc.get("status") or "").lower() == "open") if self.incidents is not None else len(self.findings)
 
         return {
             "session_id": self.session_id,
@@ -389,7 +393,9 @@ class SessionManager:
     def inject_full_simulation(self, intensity: str = "high") -> Dict[str, Any]:
         """Inject full multi-scenario attack suite into the shared session."""
         full_sim = run_full_simulation(intensity)
-        combined_events = full_sim.get("all_events", [])
+        attack_events = [e for sc in full_sim.get("scenarios", []) for e in sc.get("events", [])]
+        noise = simulate_session(n_normal=45, n_attacks=0)
+        combined_events = attack_events + noise
 
         session = self.get_session()
         session.session_id = f"SES-FULL-{str(uuid.uuid4())[:6].upper()}"
@@ -450,6 +456,10 @@ class SessionManager:
         findings = detector_registry.run_all(norm_events)
         session.findings = [f.model_dump(mode="json") for f in findings]
         session.incidents = []
+        try:
+            clear_simulated_findings_and_incidents_db()
+        except Exception:
+            pass
         session.cspm_results = run_cspm_scan(raw_events)
         session.ciem_results = run_ciem_scan(raw_events)
         session.generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

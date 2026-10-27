@@ -1295,10 +1295,10 @@ def trigger_targeted_attack(
     tags=["ML Detection & Analytics"],
     summary="Benchmark Multi-Model ML Ensemble",
     description="""
-Compare performance metrics across the platform's multi-model anomaly detection ensemble on a generated event dataset:
-- **Isolation Forest (iforest):** Trained on NSL-KDD dataset; specializes in brute force, privilege escalation, and port scans.
-- **K-Nearest Neighbors (knn):** Trained on CICIDS-2017 dataset; specializes in DDoS, web attacks, botnets, and lateral movement.
-- **Histogram-based Outlier Score (hbos):** Trained on UNSW-NB15 dataset; specializes in malware, reconnaissance, and backdoors.
+Compare performance metrics across the platform's multi-model anomaly detection ensemble on an event dataset:
+- **Isolation Forest (iforest):** Trained on NSL-KDD benchmark (9D flow features); specializes in point isolation and high-volume burst anomalies.
+- **K-Nearest Neighbors (knn):** Trained on NSL-KDD benchmark (9D flow features); specializes in local cluster distance anomalies and scan patterns.
+- **Histogram-based Outlier Score (hbos):** Trained on NSL-KDD benchmark (9D flow features); specializes in fast univariate histogram outlier scoring.
 
 Returns per-model detection counts, individual anomaly scores, execution latency, and specialist strengths.
 """,
@@ -1313,8 +1313,8 @@ Returns per-model detection counts, individual anomaly scores, execution latency
                         "data": {
                             "models": {
                                 "iforest": {"display_name": "Isolation Forest (NSL-KDD)", "anomalies_detected": 18, "avg_score": 0.742},
-                                "knn": {"display_name": "KNN (CICIDS-2017)", "anomalies_detected": 15, "avg_score": 0.688},
-                                "hbos": {"display_name": "HBOS (UNSW-NB15)", "anomalies_detected": 20, "avg_score": 0.812}
+                                "knn": {"display_name": "KNN (NSL-KDD)", "anomalies_detected": 15, "avg_score": 0.688},
+                                "hbos": {"display_name": "HBOS (NSL-KDD)", "anomalies_detected": 20, "avg_score": 0.812}
                             },
                             "total_events": 120,
                             "ensemble_agreement": 82.5
@@ -1347,22 +1347,79 @@ def ml_model_comparison(
                     "example": {
                         "status": "success",
                         "data": {
-                            "models_loaded": ["iforest", "knn", "hbos"],
-                            "training_meta": {
-                                "iforest": {
+                            "pretrained": True,
+                            "training_mode": "leakage_free_flow_9d",
+                            "scoring_strategy": "Multi-model ensemble on 9D operational network flow features",
+                            "features": [
+                                "duration", "src_bytes", "dst_bytes", "count", "srv_count",
+                                "serror_rate", "rerror_rate", "same_srv_rate", "diff_srv_rate"
+                            ],
+                            "feature_dimension": 9,
+                            "feature_schema": "flow_9d",
+                            "cloud_features": [
+                                "payload_bytes", "failed_auth_count", "high_risk_action_flag",
+                                "auth_anomaly_flag", "distinct_targets_count", "rule_severity_norm",
+                                "error_status_flag", "burst_velocity"
+                            ],
+                            "cloud_feature_dimension": 8,
+                            "cloud_feature_schema": "cloud_native_8d",
+                            "cloud_behavioral_analyzer": "Rule-weighted heuristic analyzer evaluating 8D cloud telemetry features",
+                            "target_leakage_status": "none_verified",
+                            "compatible_with_9d_extractor": True,
+                            "models": {
+                                "Isolation Forest (NSL-KDD)": {
                                     "dataset": "NSL-KDD",
-                                    "f1_score": 0.620,
-                                    "specialises": ["brute_force", "privilege_escalation", "port_scan"]
+                                    "specialises_in": "9-dimensional network flow anomalies",
+                                    "train_samples": 125973,
+                                    "contamination": 0.4654,
+                                    "f1_score": 78.74,
+                                    "accuracy": 77.51,
+                                    "recall": 73.19,
+                                    "precision": 85.21,
+                                    "false_positive_rate": 16.8,
+                                    "roc_auc": 77.61,
+                                    "confusion_matrix": {
+                                        "tp": 9393,
+                                        "fp": 1631,
+                                        "fn": 3440,
+                                        "tn": 8080
+                                    }
                                 },
-                                "knn": {
-                                    "dataset": "CICIDS-2017",
-                                    "f1_score": 0.2416,
-                                    "specialises": ["ddos", "web_attacks", "botnet", "lateral_movement"]
+                                "HBOS (NSL-KDD)": {
+                                    "dataset": "NSL-KDD",
+                                    "specialises_in": "9-dimensional network flow anomalies",
+                                    "train_samples": 125973,
+                                    "contamination": 0.4654,
+                                    "f1_score": 69.47,
+                                    "accuracy": 70.68,
+                                    "recall": 58.59,
+                                    "precision": 85.3,
+                                    "false_positive_rate": 13.35,
+                                    "roc_auc": 78.61,
+                                    "confusion_matrix": {
+                                        "tp": 7519,
+                                        "fp": 1296,
+                                        "fn": 5314,
+                                        "tn": 8415
+                                    }
                                 },
-                                "hbos": {
-                                    "dataset": "UNSW-NB15",
-                                    "f1_score": 1.0,
-                                    "specialises": ["malware", "reconnaissance", "backdoor"]
+                                "KNN (NSL-KDD)": {
+                                    "dataset": "NSL-KDD",
+                                    "specialises_in": "9-dimensional network flow anomalies",
+                                    "train_samples": 10000,
+                                    "contamination": 0.4654,
+                                    "f1_score": 74.23,
+                                    "accuracy": 74.1,
+                                    "recall": 65.52,
+                                    "precision": 85.6,
+                                    "false_positive_rate": 14.56,
+                                    "roc_auc": 73.95,
+                                    "confusion_matrix": {
+                                        "tp": 8408,
+                                        "fp": 1414,
+                                        "fn": 4425,
+                                        "tn": 8297
+                                    }
                                 }
                             }
                         }
@@ -1609,14 +1666,14 @@ def get_correlated_incidents(
 ):
     session = session_manager.get_session()
     incidents = []
-    if session and session.incidents:
+    if session and session.incidents is not None:
         incidents = session.incidents
     else:
         persisted = get_incidents_db(limit=limit, status=status, severity=severity)
         if persisted:
             incidents = persisted
         else:
-            current_findings = session.findings if session and session.findings else get_findings_db(limit=200)
+            current_findings = session.findings if (session and session.findings is not None) else get_findings_db(limit=200)
             if current_findings:
                 corr_incidents = correlate_findings(current_findings)
                 incidents = [inc.model_dump(mode="json") if hasattr(inc, "model_dump") else inc for inc in corr_incidents]
@@ -1666,7 +1723,7 @@ def trigger_incident_correlation(
 ):
     _require_permission(authorization, "dashboard:read", credentials)
     session = session_manager.get_session()
-    current_findings = session.findings if session and session.findings else get_findings_db(limit=500)
+    current_findings = session.findings if (session and session.findings is not None) else get_findings_db(limit=500)
     corr_incidents = correlate_findings(current_findings)
     incidents_data = [inc.model_dump(mode="json") if hasattr(inc, "model_dump") else inc for inc in corr_incidents]
     if session:
@@ -1726,7 +1783,7 @@ def update_incident_status(
 )
 def get_incident_stats():
     session = session_manager.get_session()
-    incidents = session.incidents if session and session.incidents else get_incidents_db(limit=200)
+    incidents = session.incidents if (session and session.incidents is not None) else get_incidents_db(limit=200)
 
     total = len(incidents)
     open_cnt = sum(1 for inc in incidents if (inc.get("status") or "").lower() == "open")
@@ -2478,14 +2535,6 @@ def get_risk_score():
         incidents = get_incidents_db(limit=50)
 
     risk = calculate_unified_risk(analyzed, cspm_findings, ciem_findings, incidents=incidents)
-    save_risk_score(
-        risk["unified_risk_score"],
-        risk["components"]["ml_anomaly_detection"]["score"],
-        risk["components"]["cspm_posture"]["score"],
-        risk["components"]["ciem_identity"]["score"],
-        risk["unified_risk_level"],
-        incident=risk["components"]["incident_correlation"]["score"]
-    )
     risk["trend"] = get_risk_trend(risk["unified_risk_score"])
     return {"status": "success", "data": risk}
 
@@ -3078,18 +3127,56 @@ async def websocket_events(websocket: WebSocket):
         return
 
     try:
+        # Push immediate snapshot of current active session
+        session = session_manager.get_session()
+        last_session_id = session.session_id if session else None
+        last_event_count = len(session.events) if session else 0
+        last_finding_count = len(session.findings) if session else 0
+
+        analyzed = session.analyzed_events if (session and session.analyzed_events) else []
+        anomalies = [e for e in analyzed if e.get("is_anomaly")]
+        summary = session.to_summary() if session else {}
+        threats = summary.get("threats", {})
+
+        await websocket.send_text(json.dumps({
+            "type": "events_update",
+            "total": len(analyzed),
+            "anomalies": len(anomalies),
+            "critical": threats.get("critical", 0),
+            "latest_events": analyzed[:10],
+            "data_source": session.data_source if session else "SIMULATED",
+            "session_id": last_session_id
+        }))
+
         while True:
-            events = _get_events(30, 5)
-            analyzed = analyze_events(events)
-            anomalies = [e for e in analyzed if e.get("is_anomaly")]
-            await websocket.send_text(json.dumps({
-                "type": "events_update",
-                "total": len(analyzed),
-                "anomalies": len(anomalies),
-                "critical": sum(1 for e in analyzed if e.get("ml_severity") == "Critical"),
-                "latest_events": analyzed[:10]
-            }))
-            await asyncio.sleep(10)
+            await asyncio.sleep(3)
+            current_session = session_manager.get_session()
+            if not current_session:
+                continue
+            cur_sess_id = current_session.session_id
+            cur_evt_count = len(current_session.events)
+            cur_fnd_count = len(current_session.findings)
+
+            # Broadcast only when session state has genuinely changed (new logs, simulation injection, or reset)
+            if cur_sess_id != last_session_id or cur_evt_count != last_event_count or cur_fnd_count != last_finding_count:
+                last_session_id = cur_sess_id
+                last_event_count = cur_evt_count
+                last_finding_count = cur_fnd_count
+
+                cur_analyzed = current_session.analyzed_events or []
+                cur_anomalies = [e for e in cur_analyzed if e.get("is_anomaly")]
+                cur_summary = current_session.to_summary()
+                cur_threats = cur_summary.get("threats", {})
+
+                await websocket.send_text(json.dumps({
+                    "type": "events_update",
+                    "total": len(cur_analyzed),
+                    "anomalies": len(cur_anomalies),
+                    "critical": cur_threats.get("critical", 0),
+                    "latest_events": cur_analyzed[:10],
+                    "data_source": current_session.data_source,
+                    "session_id": cur_sess_id
+                }))
     except WebSocketDisconnect:
         pass
     except Exception:

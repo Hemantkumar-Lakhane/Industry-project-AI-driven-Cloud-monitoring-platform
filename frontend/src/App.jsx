@@ -757,6 +757,11 @@ const Dashboard = () => {
               cspm={data.cspm}
               ciem={data.ciem}
               findings={findings}
+              incidents={incidents}
+              onRefreshData={() => {
+                fetchIncidents();
+                fetchFindings(findingsAttackMode);
+              }}
             />
           )}
 

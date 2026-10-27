@@ -12,8 +12,13 @@ DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA busy_timeout = 5000;")
+    except Exception:
+        pass
     return conn
 
 
@@ -442,6 +447,15 @@ def cleanup_duplicate_findings_db():
             GROUP BY attack_category, title, affected_resource, affected_principal
         )
     """)
+    conn.commit()
+    conn.close()
+
+
+def clear_simulated_findings_and_incidents_db():
+    """Archive active simulated findings and incidents when resetting to clean baseline."""
+    conn = get_conn()
+    conn.execute("UPDATE findings SET status = 'archived' WHERE data_source = 'SIMULATED' AND status = 'open'")
+    conn.execute("UPDATE incidents SET status = 'archived' WHERE status = 'open' AND (incident_id LIKE 'INC-SIM-%' OR title LIKE '%Simulat%' OR lead_attack_category IN ('brute_force', 'account_takeover', 'iam_privilege_escalation', 'data_exfiltration', 'cryptomining', 'ddos', 'malware_ransomware', 'defense_tampering'))")
     conn.commit()
     conn.close()
 

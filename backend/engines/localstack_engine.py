@@ -10,10 +10,14 @@ Setup:
   awslocal iam create-user --user-name alice
 """
 import os
+import time
 import uuid
 
 LOCALSTACK_ENDPOINT = os.environ.get("LOCALSTACK_ENDPOINT", "http://localhost:4566")
 USE_LOCALSTACK = os.environ.get("USE_LOCALSTACK", "false").lower() == "true"
+
+_LS_STATUS_CACHE = {"running": False, "last_checked": 0.0}
+_CACHE_TTL_SECONDS = 30.0
 
 def _client(service: str):
     import boto3
@@ -26,12 +30,19 @@ def _client(service: str):
     )
 
 
-def is_localstack_running() -> bool:
+def is_localstack_running(force_refresh: bool = False) -> bool:
+    global _LS_STATUS_CACHE
+    now = time.time()
+    if not force_refresh and (now - _LS_STATUS_CACHE["last_checked"] < _CACHE_TTL_SECONDS):
+        return _LS_STATUS_CACHE["running"]
+
     try:
         import urllib.request
-        urllib.request.urlopen(f"{LOCALSTACK_ENDPOINT}/_localstack/health", timeout=2)
+        urllib.request.urlopen(f"{LOCALSTACK_ENDPOINT}/_localstack/health", timeout=0.2)
+        _LS_STATUS_CACHE = {"running": True, "last_checked": now}
         return True
     except Exception:
+        _LS_STATUS_CACHE = {"running": False, "last_checked": now}
         return False
 
 

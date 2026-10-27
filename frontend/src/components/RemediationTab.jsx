@@ -20,171 +20,297 @@ import {
   Layers,
   AlertCircle,
   HelpCircle,
-  RotateCcw
+  RotateCcw,
+  Info
 } from 'lucide-react';
 import { API_URL } from '../config';
 
-const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [], ciem = [], findings = [] }) => {
-  // Extract or build authentic incidents from live findings
-  const incidents = [
-    {
-      id: 'INC-01',
-      attackType: 'brute_force',
-      name: 'SSH Password Brute Force Attack',
-      severity: 'critical',
-      target: findings.find(f => (f.attack_category || '').toLowerCase().includes('brute'))?.affected_principal || 'prod-web-01 (10.0.1.25)',
-      source: 'Wazuh SIEM Host Agent',
-      time: 'Live Telemetry',
-      whatIsAttack: 'An automated malicious bot is guessing passwords continuously to breach the administrator account on your production server. It attempted 18 logins in less than 2 seconds.',
-      whyDidItArrive: 'Public SSH Port Left Open: Server port 22 was configured with a firewall rule permitting access from any computer on the internet (0.0.0.0/0) without IP whitelisting or rate limiting.',
-      howIsItFixed: [
-        'Instantly blacklists the hostile attacker IP address across the perimeter firewall.',
-        'Closes public SSH port 22 and restricts remote administration access exclusively to your private internal VPN.',
-        'Temporarily locks the targeted account and mandates an immediate Multi-Factor Authentication (MFA) reset.'
-      ]
-    },
-    {
-      id: 'INC-02',
-      attackType: 'data_exfiltration',
-      name: 'Unauthorized Data Exfiltration from Cloud Storage',
-      severity: 'high',
-      target: findings.find(f => (f.attack_category || '').toLowerCase().includes('data'))?.affected_resource || 'prod-financial-records (S3)',
-      source: 'AWS CloudTrail & VPC Flow Logs',
-      time: 'Live Telemetry',
-      whatIsAttack: 'A compromised service account was detected downloading an abnormal volume of sensitive financial archives to an untrusted external IP address.',
-      whyDidItArrive: 'Over-Permissive Storage Access: The workload was granted unrestricted "s3:*" wildcard read permissions rather than strict least-privilege scoping.',
-      howIsItFixed: [
-        'Immediately terminates active egress network flows towards the suspicious destination.',
-        'Revokes compromised application API keys and rotates cloud access credentials.',
-        'Applies AWS S3 Block Public Access to prevent anonymous or unintended data leakage.'
-      ]
-    },
-    {
-      id: 'INC-03',
-      attackType: 'privilege_escalation',
-      name: 'IAM Privilege Escalation Attempt',
-      severity: 'high',
-      target: findings.find(f => (f.attack_category || '').toLowerCase().includes('privilege'))?.affected_principal || 'SuperAdminExecutionRole',
-      source: 'IAM Policy Engine & Wazuh',
-      time: 'Live Telemetry',
-      whatIsAttack: 'A standard worker role attempted to elevate its own privileges to Super Administrator by exploiting an unconstrained AssumeRole trust relationship.',
-      whyDidItArrive: 'Missing Permission Boundary: The cloud IAM role lacked explicit boundary policies, allowing lateral elevation into root administrative functions.',
-      howIsItFixed: [
-        'Revokes all active STS temporary credentials generated during the elevation attempt.',
-        'Detaches the unauthorized administrative policy from the compromised role.',
-        'Enforces an immutable IAM boundary condition restricting the role strictly to its local cluster.'
-      ]
-    },
-    {
-      id: 'INC-04',
-      attackType: 'network_scanning',
-      name: 'Hostile Network Port Scanning',
-      severity: 'medium',
-      target: 'Production VPC Ingress (sg-0442ab91c890f11)',
-      source: 'VPC Flow Log Inspection',
-      time: 'Live Telemetry',
-      whatIsAttack: 'A remote adversary is scanning open network ports across your subnet to discover exposed services, unpatched databases, and entry doors.',
-      whyDidItArrive: 'Inbound Edge Rules Exposed: Multiple development ports (such as 8080, 5432, and 6379) were directly accessible without an application load balancer.',
-      howIsItFixed: [
-        'Drops inbound SYN packet bursts originating from the scanning IP address block.',
-        'Hides database and cache ports behind private VPC subnets with zero public routing.',
-        'Enables automated edge rate-limiting to throttle aggressive port discovery scans.'
-      ]
-    }
-  ];
+// Fallback demo scenarios available for dry-run simulation when in clean baseline
+const DEMO_PREVIEWS = [
+  {
+    id: 'DEMO-BF-01',
+    attackType: 'brute_force',
+    name: 'SSH Password Brute Force Attack',
+    severity: 'critical',
+    target: 'prod-web-01 (10.0.1.25)',
+    source: 'Wazuh SIEM Host Agent',
+    time: 'Demo Baseline',
+    whatIsAttack: 'Automated credential stuffing and dictionary attack guessing administrative credentials rapidly against exposed SSH endpoint.',
+    whyDidItArrive: 'Public SSH Port Left Open: Server port 22 allows inbound traffic from 0.0.0.0/0 without rate limiting or IP allowlisting.',
+    howIsItFixed: [
+      'Blacklists hostile source IP address at perimeter security group and edge firewall.',
+      'Restricts administrative SSH access exclusively to corporate private VPN CIDR.',
+      'Temporarily locks targeted account and triggers mandatory MFA reset challenge.'
+    ],
+    status: 'open',
+    isLive: false
+  },
+  {
+    id: 'DEMO-EX-02',
+    attackType: 'data_exfiltration',
+    name: 'Unauthorized Data Exfiltration from Cloud Storage',
+    severity: 'high',
+    target: 'prod-financial-records (S3)',
+    source: 'AWS CloudTrail & VPC Flow Logs',
+    time: 'Demo Baseline',
+    whatIsAttack: 'Abnormal volume of sensitive financial archives transferred to untrusted external destination IP.',
+    whyDidItArrive: 'Over-Permissive Storage Access: Workload IAM role configured with unconstrained s3:* read wildcard.',
+    howIsItFixed: [
+      'Terminates active egress network flows towards untrusted destination address.',
+      'Revokes active STS temporary credentials and rotates IAM access keys.',
+      'Applies AWS S3 Block Public Access and restricts bucket policy to internal VPC endpoint.'
+    ],
+    status: 'open',
+    isLive: false
+  },
+  {
+    id: 'DEMO-PE-03',
+    attackType: 'privilege_escalation',
+    name: 'IAM Privilege Escalation Attempt',
+    severity: 'high',
+    target: 'SuperAdminExecutionRole',
+    source: 'IAM Policy Engine & Wazuh',
+    time: 'Demo Baseline',
+    whatIsAttack: 'Worker role attempted to elevate privileges to Super Administrator through unconstrained AssumeRole trust relationship.',
+    whyDidItArrive: 'Missing Permission Boundary: Role lacked explicit permission boundaries, enabling administrative elevation.',
+    howIsItFixed: [
+      'Revokes active STS temporary credentials generated during elevation attempt.',
+      'Detaches unauthorized administrative policy from compromised role.',
+      'Enforces immutable IAM permission boundary restricting actions strictly to local workload.'
+    ],
+    status: 'open',
+    isLive: false
+  },
+  {
+    id: 'DEMO-NS-04',
+    attackType: 'network_scanning',
+    name: 'Hostile Network Port Scanning',
+    severity: 'medium',
+    target: 'Production VPC Ingress (sg-0442ab91c890f11)',
+    source: 'VPC Flow Log Inspection',
+    time: 'Demo Baseline',
+    whatIsAttack: 'Adversary scanning exposed network ports across subnet to identify unpatched databases and open ingress services.',
+    whyDidItArrive: 'Exposed Edge Ports: Development ports directly exposed to public internet without ingress filtering.',
+    howIsItFixed: [
+      'Drops inbound SYN packet bursts originating from scanning IP CIDR.',
+      'Moves backend database and cache services to private subnets without public route tables.',
+      'Enables automated edge rate-limiting to throttle aggressive port discovery.'
+    ],
+    status: 'open',
+    isLive: false
+  }
+];
 
-  const [selectedIncidentId, setSelectedIncidentId] = useState(incidents[0].id);
+const RemediationTab = ({
+  playbooks = [],
+  onExecutePlaybook,
+  showToast,
+  cspm = [],
+  ciem = [],
+  findings = [],
+  incidents = [],
+  onRefreshData
+}) => {
+  // Transform live incidents from backend API
+  const liveIncidents = (incidents || []).map((inc) => {
+    const rawAttackType = (inc.attack_categories && inc.attack_categories[0]) || 'brute_force';
+    const target =
+      (inc.resources && inc.resources[0]) ||
+      (inc.principals && inc.principals[0]) ||
+      (inc.source_ips && inc.source_ips[0]) ||
+      'Production Cloud Asset';
+    const source = (inc.correlation_reasons && inc.correlation_reasons[0]) || 'Multi-Signal Correlation Engine';
+    const timeFormatted = inc.start_time
+      ? new Date(inc.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' UTC'
+      : 'Live Telemetry';
+
+    // Tailored fix steps based on attack type
+    const defaultFixSteps = [
+      'Isolate compromised network flows and block source IP address at perimeter firewall.',
+      'Invalidate active STS temporary credentials and revoke elevated session tokens.',
+      'Re-apply least-privilege IAM policy and enforce immediate MFA re-authentication.'
+    ];
+
+    return {
+      id: inc.incident_id,
+      rawId: inc.incident_id,
+      attackType: rawAttackType,
+      name: inc.title,
+      severity: (inc.severity || 'high').toLowerCase(),
+      target,
+      source,
+      time: timeFormatted,
+      whatIsAttack: inc.description || `Correlated security campaign involving ${inc.attack_categories?.join(', ') || 'anomalous signals'}.`,
+      whyDidItArrive:
+        inc.correlation_reasons && inc.correlation_reasons.length > 0
+          ? inc.correlation_reasons.join('. ')
+          : 'Deterministic detection signatures triggered across monitored telemetry.',
+      howIsItFixed: defaultFixSteps,
+      status: inc.status || 'open',
+      isLive: true
+    };
+  });
+
+  const hasLiveIncidents = liveIncidents.length > 0;
+  const displayIncidents = hasLiveIncidents ? liveIncidents : DEMO_PREVIEWS;
+
+  const [selectedIncidentId, setSelectedIncidentId] = useState(displayIncidents[0]?.id || 'DEMO-BF-01');
   const [healedIncidents, setHealedIncidents] = useState(new Set());
   const [dryRunResults, setDryRunResults] = useState({});
+  const [lastExecutionId, setLastExecutionId] = useState({});
   const [executing, setExecuting] = useState(false);
   const [runningPipeline, setRunningPipeline] = useState(false);
   const [healedConfigs, setHealedConfigs] = useState(new Set());
   const [revokedEntities, setRevokedEntities] = useState(new Set());
+  const [actionError, setActionError] = useState(null);
 
-  const currentIncident = incidents.find(inc => inc.id === selectedIncidentId) || incidents[0];
+  const currentIncident = displayIncidents.find((inc) => inc.id === selectedIncidentId) || displayIncidents[0];
   const isHealed = healedIncidents.has(currentIncident.id);
+  const currentExecId = lastExecutionId[currentIncident.id];
 
-  // 1-Click Auto Remediation
-  const handleAutoRemediate = async () => {
-    setExecuting(true);
-    try {
-      // Trigger dry-run / playbook endpoint
-      await axios.post(`${API_URL}/remediation/dry-run/${currentIncident.attackType}`);
-      setHealedIncidents(prev => new Set(prev).add(currentIncident.id));
-      if (showToast) showToast(`Remediation applied: "${currentIncident.name}" is now secured!`);
-    } catch (err) {
-      // Graceful fallback for demo/offline resilience
-      setHealedIncidents(prev => new Set(prev).add(currentIncident.id));
-      if (showToast) showToast(`Remediation applied: Threat neutralized!`);
-    }
-    setExecuting(false);
-  };
-
-  // Safe Dry Run Simulation
+  // 1. Dry Run Simulation (Never mutate, dry_run=True)
   const handleDryRun = async () => {
     setExecuting(true);
+    setActionError(null);
     try {
-      const res = await axios.post(`${API_URL}/remediation/dry-run/${currentIncident.attackType}`);
-      setDryRunResults(prev => ({
+      const res = await axios.post(`${API_URL}/remediation/execute/${currentIncident.attackType}?dry_run=true`);
+      const data = res.data?.data || {};
+      const execId = data.execution_id;
+
+      if (execId) {
+        setLastExecutionId((prev) => ({ ...prev, [currentIncident.id]: execId }));
+      }
+
+      setDryRunResults((prev) => ({
         ...prev,
         [currentIncident.id]: {
           verified: true,
-          plan: res.data?.data?.steps || ['Firewall rule validated', 'Identity session isolated', 'MFA verified'],
+          executionId: execId,
+          plan: data.steps_executed?.map((s) => s.description) || [
+            'Firewall rule validated',
+            'Identity session isolated',
+            'MFA verified'
+          ],
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' UTC'
         }
       }));
-      if (showToast) showToast('Dry-run simulation succeeded! Safe to apply in production.');
+
+      if (showToast) showToast('Safe dry-run simulation succeeded in sandbox! Safe to apply.');
     } catch (err) {
-      setDryRunResults(prev => ({
-        ...prev,
-        [currentIncident.id]: {
-          verified: true,
-          plan: ['Perimeter rule parameters checked', 'Service continuity verified 100%', 'Zero downtime impact confirmed'],
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' UTC'
-        }
-      }));
-      if (showToast) showToast('Dry-run simulation completed successfully.');
+      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Dry run simulation failed';
+      setActionError(`Dry-run failed: ${msg}`);
+      if (showToast) showToast(`Dry-run failed: ${msg}`, 'error');
+    } finally {
+      setExecuting(false);
     }
-    setExecuting(false);
   };
 
-  // Run End-to-End Pipeline
+  // 2. Apply Remediation (dry_run=False)
+  const handleAutoRemediate = async () => {
+    setExecuting(true);
+    setActionError(null);
+    try {
+      const res = await axios.post(`${API_URL}/remediation/execute/${currentIncident.attackType}?dry_run=false`);
+      const data = res.data?.data || {};
+      const execId = data.execution_id;
+
+      if (execId) {
+        setLastExecutionId((prev) => ({ ...prev, [currentIncident.id]: execId }));
+      }
+
+      setHealedIncidents((prev) => new Set(prev).add(currentIncident.id));
+      if (onRefreshData) onRefreshData();
+
+      if (showToast) {
+        showToast(`Remediation executed (Simulated Sandbox): "${currentIncident.name}" contained!`);
+      }
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Remediation failed';
+      setActionError(`Remediation failed: ${msg}`);
+      if (showToast) showToast(`Remediation failed: ${msg}`, 'error');
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  // 3. Rollback Executed Remediation via POST /api/remediation/rollback
+  const handleRollback = async () => {
+    if (!currentExecId) {
+      if (showToast) showToast('No recorded execution ID for this incident to rollback.', 'warning');
+      return;
+    }
+
+    setExecuting(true);
+    setActionError(null);
+    try {
+      const res = await axios.post(`${API_URL}/remediation/rollback`, {
+        execution_id: currentExecId
+      });
+
+      // Remove from healed set to reflect restored 'open' state
+      setHealedIncidents((prev) => {
+        const next = new Set(prev);
+        next.delete(currentIncident.id);
+        return next;
+      });
+
+      if (onRefreshData) onRefreshData();
+
+      const rollbackMsg = res.data?.data?.message || `Execution ${currentExecId} rolled back successfully.`;
+      if (showToast) showToast(rollbackMsg);
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Rollback failed';
+      setActionError(`Rollback error: ${msg}`);
+      if (showToast) showToast(`Rollback failed: ${msg}`, 'error');
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  // 4. Run End-to-End Pipeline
   const handleRunFullPipeline = async () => {
     setRunningPipeline(true);
+    setActionError(null);
     try {
       await axios.get(`${API_URL}/remediation/full-pipeline`);
-      // Heal all incidents
-      setHealedIncidents(new Set(incidents.map(i => i.id)));
+      setHealedIncidents(new Set(displayIncidents.map((i) => i.id)));
       setHealedConfigs(new Set(['VULN-001', 'VULN-002']));
       setRevokedEntities(new Set(['secops-operator', 'prod-ci-role']));
-      if (showToast) showToast('Autonomous response executed: All detected threats remediated!');
-    } catch (err) {
-      setHealedIncidents(new Set(incidents.map(i => i.id)));
+      if (onRefreshData) onRefreshData();
       if (showToast) showToast('Autonomous response executed across all telemetry vectors.');
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || 'Pipeline execution failed';
+      setActionError(`Pipeline failed: ${msg}`);
+      if (showToast) showToast(`Pipeline execution failed: ${msg}`, 'error');
+    } finally {
+      setRunningPipeline(false);
     }
-    setRunningPipeline(false);
   };
 
-  // Auto-Fix Individual Config
+  // 5. Auto-Fix Individual Config (CSPM)
   const autoFixConfig = async (vulnId) => {
     try {
       await axios.post(`${API_URL}/remediation/config-fix/${vulnId}`);
-    } catch (e) {
-      // offline resilience
+      setHealedConfigs((prev) => new Set(prev).add(vulnId));
+      if (showToast) showToast('Security configuration updated and baseline healed!');
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || 'Configuration fix failed';
+      setActionError(`Config fix failed: ${msg}`);
+      if (showToast) showToast(`Config fix failed: ${msg}`, 'error');
     }
-    setHealedConfigs(prev => new Set(prev).add(vulnId));
-    if (showToast) showToast('Security configuration updated and baseline healed!');
   };
 
-  // Revoke IAM Access
+  // 6. Revoke IAM Access (CIEM)
   const revokeAccess = async (name, type, risk) => {
     try {
       await axios.post(`${API_URL}/remediation/revoke-access?entity_name=${name}&entity_type=${type}&risk_level=${risk}`);
-    } catch (e) {
-      // offline resilience
+      setRevokedEntities((prev) => new Set(prev).add(name));
+      if (showToast) showToast(`Privileges revoked and MFA enforced for ${name}`);
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || 'Access revocation failed';
+      setActionError(`Access revocation failed: ${msg}`);
+      if (showToast) showToast(`Access revocation failed: ${msg}`, 'error');
     }
-    setRevokedEntities(prev => new Set(prev).add(name));
-    if (showToast) showToast(`Privileges revoked and MFA enforced for ${name}`);
   };
 
   return (
@@ -196,22 +322,22 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ShieldCheck size={18} style={{ color: 'var(--accent-orange)' }} />
               <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                Security Incident Remediation & Root Cause Resolution
+                Security Incident Remediation & Rollback Console
               </h3>
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-              Continuous telemetry correlation isolating attack vectors, origin root causes, and automated containment actions.
+              Live telemetry correlation isolating attack vectors, root cause analysis, automated sandbox containment, and verified rollbacks.
             </p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-              {healedIncidents.size} of {incidents.length} Threats Secured
+              {healedIncidents.size} of {displayIncidents.length} Threats Secured
             </span>
             <button
               className="figma-btn-primary"
               onClick={handleRunFullPipeline}
-              disabled={runningPipeline}
+              disabled={runningPipeline || executing}
               style={{ padding: '8px 16px' }}
             >
               <Play size={13} className={runningPipeline ? 'animate-spin' : ''} />
@@ -221,9 +347,118 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
         </div>
       </div>
 
-      {/* 2. ACTIVE INCIDENT SELECTOR BUTTONS */}
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${incidents.length}, 1fr)`, gap: '10px', marginBottom: '20px' }}>
-        {incidents.map((inc) => {
+      {/* 2. BASELINE STATUS BANNER / ACTIVE INCIDENT STATUS */}
+      {!hasLiveIncidents ? (
+        <div
+          style={{
+            padding: '14px 18px',
+            borderRadius: '8px',
+            backgroundColor: 'var(--surface-table-head)',
+            border: '1px solid var(--border-subtle)',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <CheckCircle size={18} style={{ color: 'var(--success-color)' }} />
+            <div>
+              <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Clean Baseline — Zero Active Live Incidents
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                No active threats detected. Displaying verified demo playbooks below for dry-run simulation and safe evaluation.
+              </div>
+            </div>
+          </div>
+          <span
+            style={{
+              padding: '4px 10px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: 700,
+              backgroundColor: 'var(--surface-muted)',
+              color: 'var(--text-tertiary)',
+              border: '1px solid var(--border-subtle)'
+            }}
+          >
+            DEMO PLAYBOOK PREVIEW MODE
+          </span>
+        </div>
+      ) : (
+        <div
+          style={{
+            padding: '14px 18px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(217, 45, 32, 0.08)',
+            border: '1px solid rgba(217, 45, 32, 0.25)',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <AlertTriangle size={18} style={{ color: 'var(--sev-critical)' }} />
+            <div>
+              <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--sev-critical)' }}>
+                Active Incident Correlation Detected ({liveIncidents.length} Live Campaign{liveIncidents.length > 1 ? 's' : ''})
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                Incidents generated from active telemetry signals. Recommended playbooks ready for dry-run or sandbox containment.
+              </div>
+            </div>
+          </div>
+          <span
+            style={{
+              padding: '4px 10px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: 700,
+              backgroundColor: 'rgba(217, 45, 32, 0.15)',
+              color: 'var(--sev-critical)'
+            }}
+          >
+            LIVE TELEMETRY INCIDENTS
+          </span>
+        </div>
+      )}
+
+      {/* ERROR BANNER IF ACTION FAILED */}
+      {actionError && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(217, 45, 32, 0.1)',
+            border: '1px solid rgba(217, 45, 32, 0.3)',
+            marginBottom: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--sev-critical)', fontSize: '13px' }}>
+            <AlertCircle size={16} />
+            <span>{actionError}</span>
+          </div>
+          <button
+            onClick={() => setActionError(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px' }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* 3. INCIDENT SELECTOR BUTTONS */}
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${displayIncidents.length}, 1fr)`, gap: '10px', marginBottom: '20px' }}>
+        {displayIncidents.map((inc) => {
           const isSelected = inc.id === currentIncident.id;
           const incHealed = healedIncidents.has(inc.id);
           return (
@@ -245,7 +480,7 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
                 </span>
                 {incHealed ? (
                   <span style={{ fontSize: '11px', color: 'var(--success-color)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <Check size={12} /> Fixed
+                    <Check size={12} /> Contained
                   </span>
                 ) : (
                   <span style={{ fontSize: '11px', color: 'var(--sev-high)', fontWeight: 500 }}>
@@ -256,15 +491,16 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
               <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {inc.name}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                Target: {inc.target.split(' ')[0]}
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Target: {inc.target.split(' ')[0]}</span>
+                {inc.isLive && <span style={{ color: 'var(--accent-orange)', fontWeight: 600 }}>LIVE</span>}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* 3. INCIDENT REMEDIATION CONSOLE */}
+      {/* 4. INCIDENT REMEDIATION CONSOLE */}
       <div className="figma-card" style={{ marginBottom: '24px', padding: '24px' }}>
         {/* Incident Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
@@ -276,16 +512,25 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
               <h2 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
                 {currentIncident.name}
               </h2>
+              {currentIncident.isLive ? (
+                <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: 'rgba(235, 107, 39, 0.15)', color: 'var(--accent-orange)' }}>
+                  LIVE CORRELATION
+                </span>
+              ) : (
+                <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: 'var(--surface-muted)', color: 'var(--text-tertiary)' }}>
+                  DEMO PLAYBOOK
+                </span>
+              )}
             </div>
             <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '6px' }}>
-              Target Asset: <strong style={{ color: 'var(--text-primary)' }}>{currentIncident.target}</strong> · Source: {currentIncident.source}
+              Target Asset: <strong style={{ color: 'var(--text-primary)' }}>{currentIncident.target}</strong> · Source: {currentIncident.source} · Time: {currentIncident.time}
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {isHealed ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '6px', backgroundColor: 'var(--success-bg)', color: 'var(--success-color)', fontWeight: 600, fontSize: '13px' }}>
-                <Check size={15} /> Remediated & Secured
+                <Check size={15} /> Contained (Sandbox)
               </span>
             ) : (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '6px', backgroundColor: 'var(--sev-high-bg)', color: 'var(--sev-high)', fontWeight: 600, fontSize: '13px' }}>
@@ -293,35 +538,42 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
               </span>
             )}
 
+            {/* Test Fix (Dry Run Simulation) */}
             <button
               className="figma-btn-secondary"
               onClick={handleDryRun}
               disabled={executing}
-              title="Test the remediation in a safe sandbox simulation without modifying production"
+              title="Test the remediation playbook safely in sandbox without mutating resources"
             >
-              <Search size={13} /> Test Fix (Dry Run)
+              <Search size={13} />
+              {executing ? 'Evaluating...' : 'Test Fix (Dry Run)'}
             </button>
 
-            {isHealed ? (
+            {/* Rollback button (Available if an execution exists or if marked healed) */}
+            {(currentExecId || isHealed) && (
               <button
                 className="figma-btn-secondary"
-                onClick={() => setHealedIncidents(prev => {
-                  const next = new Set(prev);
-                  next.delete(currentIncident.id);
-                  return next;
-                })}
+                onClick={handleRollback}
+                disabled={executing}
+                title="Rollback previous remediation action using backend /api/remediation/rollback"
+                style={{ borderColor: 'var(--accent-orange)', color: 'var(--accent-orange)' }}
               >
-                <RotateCcw size={13} /> Reopen Incident
+                <RotateCcw size={13} className={executing ? 'animate-spin' : ''} />
+                Rollback ({currentExecId || 'Active'})
               </button>
-            ) : (
+            )}
+
+            {/* Apply Automated Fix */}
+            {!isHealed && (
               <button
                 className="figma-btn-primary"
                 onClick={handleAutoRemediate}
                 disabled={executing}
                 style={{ padding: '8px 18px' }}
+                title="Execute remediation playbook in sandbox runtime"
               >
                 <Wrench size={13} className={executing ? 'animate-spin' : ''} />
-                {executing ? 'Securing...' : 'Apply Automated Fix (Fix Now)'}
+                {executing ? 'Securing...' : 'Apply Fix (Simulated Sandbox)'}
               </button>
             )}
           </div>
@@ -387,7 +639,7 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
                 <Check size={14} /> Safe Dry-Run Simulation Passed (Zero Service Interruption)
               </span>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                {dryRunResults[currentIncident.id].time}
+                EXEC: {dryRunResults[currentIncident.id].executionId || 'SIMULATED'} · {dryRunResults[currentIncident.id].time}
               </span>
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -395,9 +647,14 @@ const RemediationTab = ({ playbooks = [], onExecutePlaybook, showToast, cspm = [
             </div>
           </div>
         )}
+
+        <div style={{ marginTop: '14px', fontSize: '12px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Info size={13} />
+          <span>Operational Boundary: When live cloud infrastructure credentials are not configured, remediation actions and rollbacks execute against the local simulation state engine.</span>
+        </div>
       </div>
 
-      {/* 4. CLOUD CONFIGURATION & IDENTITY AUTO-FIXES (CSPM & CIEM) */}
+      {/* 5. CLOUD CONFIGURATION & IDENTITY AUTO-FIXES (CSPM & CIEM) */}
       <div className="figma-grid-2col">
         {/* CSPM Configuration Auto-Fixes */}
         <div className="figma-card" style={{ padding: '0', overflow: 'hidden' }}>

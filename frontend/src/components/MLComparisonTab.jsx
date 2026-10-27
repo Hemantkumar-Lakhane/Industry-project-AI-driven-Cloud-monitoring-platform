@@ -34,7 +34,7 @@ const MLComparisonTab = ({ showToast }) => {
         <AlertCircle size={18} className="figma-callout-icon" />
         <div className="figma-callout-content">
           <h4>PyOD evaluation · Specialist model benchmarks</h4>
-          <p>Isolation Forest, KNN, and HBOS evaluated on benchmark datasets. 9-dimensional operational network/flow feature model is in training status.</p>
+          <p>Isolation Forest, KNN, and HBOS evaluated on the NSL-KDD flow benchmark using the verified 9-dimensional schema.</p>
         </div>
       </div>
 
@@ -61,7 +61,7 @@ const MLComparisonTab = ({ showToast }) => {
           <thead>
             <tr>
               <th>Model</th>
-              <th>Suggested reference</th>
+              <th>Benchmark Dataset</th>
               <th style={{ textAlign: 'center' }}>Accuracy</th>
               <th style={{ textAlign: 'center' }}>Precision</th>
               <th style={{ textAlign: 'center' }}>Recall</th>
@@ -77,7 +77,7 @@ const MLComparisonTab = ({ showToast }) => {
                     {name} {name === comparison.best_model && <span style={{ color: 'var(--success-color)', fontSize: '11px', marginLeft: '6px' }}>★ Best</span>}
                   </td>
                   <td style={{ color: 'var(--text-secondary)' }}>
-                    {name.includes('Isolation') ? 'NSL-KDD' : name.includes('KNN') ? 'CICIDS-2017' : 'UNSW-NB15'}
+                    {m.dataset || 'NSL-KDD'}
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: 600 }}>{m.accuracy}%</td>
                   <td style={{ textAlign: 'center', fontWeight: 600 }}>{m.precision}%</td>
@@ -97,7 +97,7 @@ const MLComparisonTab = ({ showToast }) => {
         </table>
 
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-muted)' }}>
-          Dataset names are suggested evaluation references, not evidence of production model training.
+          All 3 PyOD specialist models are trained on the NSL-KDD flow benchmark using the verified 9-dimensional schema.
         </div>
       </div>
 
@@ -177,7 +177,7 @@ const MLComparisonTab = ({ showToast }) => {
                 Feature mapping
               </label>
               <div style={{ padding: '8px 12px', backgroundColor: 'var(--surface-muted)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
-                3-D Normalized Flow
+                9-D Operational Flow (IEEE schema)
               </div>
             </div>
           </div>
