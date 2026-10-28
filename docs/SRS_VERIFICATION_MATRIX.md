@@ -2,7 +2,7 @@
 
 **Document Version:** 2.0 (Authoritative Verification)  
 **Verification Date:** 2026-10-27  
-**Auditors & Implementers:** Tanmay (Platform Security & Infrastructure) & Hemant (Intelligence, ML & Analytics)  
+**Auditors & Implementers:** Member 1 / Member 4 (Platform Security & Infrastructure) & Member 2 / Member 3 (Intelligence, ML & Analytics)  
 **Baseline Standard:** `RAM_Antivirus_Cloud_Workload_Security_Threat_Detection_SRS (1).docx`
 
 ---
@@ -11,18 +11,18 @@
 
 | Functional Requirement | Area | Ownership | Automated Tests | Negative Tests | Verified Status |
 | :--- | :--- | :--- | :--- | :--- | :---: |
-| **FR-01: Multi-Cloud Resource & Asset Inventory** | Asset Discovery & Topology | Tanmay | 12 tests | 4 tests | **PASS** |
-| **FR-02: Workload Telemetry Ingestion** | SIEM / Wazuh / Socket / Audit | Tanmay | 18 tests | 5 tests | **PASS** |
-| **FR-03: Cloud Misconfiguration Detection (CSPM)** | Security Posture / IaC | Hemant | 16 tests | 4 tests | **PASS** |
-| **FR-04: Cloud Identity & Entitlement Risk (CIEM)** | Least Privilege / Excessive IAM | Hemant | 14 tests | 4 tests | **PASS** |
-| **FR-05: Workload Vulnerability Management & NVD** | CVE Detection & NIST Ingestion | Hemant | 11 tests | 4 tests | **PASS** |
-| **FR-06: ML Behavioral Threat Detection** | PyOD Anomaly Ensemble & Cloud 8D | Hemant | 16 tests | 4 tests | **PASS** |
-| **FR-07: Real-Time Incident Correlation** | Anti-Bridging Graph & Attack Graph | Hemant | 14 tests | 3 tests | **PASS** |
-| **FR-08: Unified Dynamic Risk Scoring** | Multi-Factor Dynamic Calculation | Hemant | 12 tests | 3 tests | **PASS** |
-| **FR-09: Automated & Manual Remediation** | Playbooks, Persistent Rollback, RBAC | Tanmay | 15 tests | 5 tests | **PASS** |
-| **FR-10: Regulatory Compliance Tracking** | CIS, NIST, ISO, GDPR, Timeline | Hemant | 10 tests | 2 tests | **PASS** |
-| **FR-11: Role-Based Access Control & Security** | bcrypt, JWT, Route Guard, WS Auth | Tanmay | 18 tests | 8 tests | **PASS** |
-| **FR-12: Attack Simulation & Threat Validation** | Scenario Catalog & Injection Buffer | Tanmay | 12 tests | 3 tests | **PASS** |
+| **FR-01: Multi-Cloud Resource & Asset Inventory** | Asset Discovery & Topology | Member 1 / Member 4 | 12 tests | 4 tests | **PASS** |
+| **FR-02: Workload Telemetry Ingestion** | SIEM / Wazuh / Socket / Audit | Member 1 / Member 4 | 18 tests | 5 tests | **PASS** |
+| **FR-03: Cloud Misconfiguration Detection (CSPM)** | Security Posture / IaC | Member 2 / Member 3 | 16 tests | 4 tests | **PASS** |
+| **FR-04: Cloud Identity & Entitlement Risk (CIEM)** | Least Privilege / Excessive IAM | Member 2 / Member 3 | 14 tests | 4 tests | **PASS** |
+| **FR-05: Workload Vulnerability Management & NVD** | CVE Detection & NIST Ingestion | Member 2 / Member 3 | 11 tests | 4 tests | **PASS** |
+| **FR-06: ML Behavioral Threat Detection** | PyOD Anomaly Ensemble & Cloud 8D | Member 2 / Member 3 | 16 tests | 4 tests | **PASS** |
+| **FR-07: Real-Time Incident Correlation** | Anti-Bridging Graph & Attack Graph | Member 2 / Member 3 | 14 tests | 3 tests | **PASS** |
+| **FR-08: Unified Dynamic Risk Scoring** | Multi-Factor Dynamic Calculation | Member 2 / Member 3 | 12 tests | 3 tests | **PASS** |
+| **FR-09: Automated & Manual Remediation** | Playbooks, Persistent Rollback, RBAC | Member 1 / Member 4 | 15 tests | 5 tests | **PASS** |
+| **FR-10: Regulatory Compliance Tracking** | CIS, NIST, ISO, GDPR, Timeline | Member 2 / Member 3 | 10 tests | 2 tests | **PASS** |
+| **FR-11: Role-Based Access Control & Security** | bcrypt, JWT, Route Guard, WS Auth | Member 1 / Member 4 | 18 tests | 8 tests | **PASS** |
+| **FR-12: Attack Simulation & Threat Validation** | Scenario Catalog & Injection Buffer | Member 1 / Member 4 | 12 tests | 3 tests | **PASS** |
 
 ---
 

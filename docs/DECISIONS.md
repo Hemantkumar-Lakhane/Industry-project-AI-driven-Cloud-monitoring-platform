@@ -5,12 +5,12 @@
 
 ---
 
-## ADR-001: Separation of Workstreams Between Tanmay and Hemant
+## ADR-001: Separation of Workstreams Between the 4 Engineering Members
 * **Status:** Accepted
 * **Context:** Simultaneous edits to `backend/main.py` and `feature_extractor.py` by two developers create high risk of Git merge conflicts and test regressions.
 * **Decision:** Assign strict single ownership:
-  - Tanmay owns API routing, authentication, authorization, cloud connector infrastructure, and remediation persistence.
-  - Hemant owns ML feature extraction, model inference calibration, detector tuning, compliance history, and UI components.
+  - Member 1 / Member 4 owns API routing, authentication, authorization, cloud connector infrastructure, and remediation persistence.
+  - Member 2 / Member 3 owns ML feature extraction, model inference calibration, detector tuning, compliance history, and UI components.
 * **Consequences:** Changes to shared Pydantic schemas require mutual sign-off before implementation.
 
 ---

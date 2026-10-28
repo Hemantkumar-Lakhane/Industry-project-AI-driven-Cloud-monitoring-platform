@@ -4,8 +4,8 @@
 **Milestone:** End-to-End Verification & Production Readiness  
 **Verification Date:** October 27, 2026  
 **QA Leads & Engineering Owners:**  
-- **Tanmay** (Platform Security, Cloud Infrastructure, Telemetry & Detection Workstream A)  
-- **Hemant** (Intelligence Engine, ML, Analytics, Risk & Detection Workstream B)  
+- **Member 1 / Member 4** (Platform Security, Cloud Infrastructure, Telemetry & Detection Workstream A)  
+- **Member 2 / Member 3** (Intelligence Engine, ML, Analytics, Risk & Detection Workstream B)  
 
 ---
 
@@ -15,8 +15,8 @@ Each feature has exactly one primary owner. Testing interfaces follow stable con
 
 | Workstream | Owner | Features & Functional Areas | Detectors Assigned |
 | :--- | :--- | :--- | :--- |
-| **Platform Security & Infrastructure** | **Tanmay** | • User Authentication, bcrypt, JWT, RBAC<br>• Public Registration Lockdown (`POST /api/auth/register`)<br>• WebSocket Handshake & Short-Lived Ticket Auth (`/ws/events`)<br>• Cloud Asset Discovery & Host Compute Telemetry (`/api/assets`)<br>• Workload Telemetry & Connector Health Probes<br>• Remediation Playbooks & Durable Rollback in SQLite | **Group A (8 Detectors):**<br>1. Brute Force<br>2. Account Takeover (ATO)<br>3. IAM Privilege Escalation<br>4. Cloud Misconfiguration Drift<br>5. Network Scanning<br>6. Distributed Denial of Service (DDoS)<br>7. Supply Chain Compromise<br>8. Defense & Logging Tampering |
-| **Intelligence, ML & Analytics** | **Hemant** | • 8D Cloud Behavioral Feature Extractor & Leakage Guard<br>• PyOD ML Multi-Model Ensemble (iforest, knn, hbos)<br>• Percentile Anomaly Score Calibration<br>• Cloud Security Posture Management (CSPM)<br>• Cloud Identity & Entitlement Risk (CIEM)<br>• Workload Vulnerability Scanning & NIST NVD API Sync<br>• Incident Correlation Graph & Anti-Bridging<br>• 4-Pillar Unified Dynamic Risk Scoring<br>• Regulatory Compliance Tracking & Historical Snapshots | **Group B (8 Detectors):**<br>9. Suspicious API Activity<br>10. Data Exfiltration<br>11. Cryptomining Workloads<br>12. Container & Kubernetes Attacks<br>13. Application BOLA & SSRF<br>14. Malware & Ransomware Precursor<br>15. Database Threat Activity<br>16. Serverless Function Abuse |
+| **Platform Security & Infrastructure** | **Member 1 / Member 4** | • User Authentication, bcrypt, JWT, RBAC<br>• Public Registration Lockdown (`POST /api/auth/register`)<br>• WebSocket Handshake & Short-Lived Ticket Auth (`/ws/events`)<br>• Cloud Asset Discovery & Host Compute Telemetry (`/api/assets`)<br>• Workload Telemetry & Connector Health Probes<br>• Remediation Playbooks & Durable Rollback in SQLite | **Group A (8 Detectors):**<br>1. Brute Force<br>2. Account Takeover (ATO)<br>3. IAM Privilege Escalation<br>4. Cloud Misconfiguration Drift<br>5. Network Scanning<br>6. Distributed Denial of Service (DDoS)<br>7. Supply Chain Compromise<br>8. Defense & Logging Tampering |
+| **Intelligence, ML & Analytics** | **Member 2 / Member 3** | • 8D Cloud Behavioral Feature Extractor & Leakage Guard<br>• PyOD ML Multi-Model Ensemble (iforest, knn, hbos)<br>• Percentile Anomaly Score Calibration<br>• Cloud Security Posture Management (CSPM)<br>• Cloud Identity & Entitlement Risk (CIEM)<br>• Workload Vulnerability Scanning & NIST NVD API Sync<br>• Incident Correlation Graph & Anti-Bridging<br>• 4-Pillar Unified Dynamic Risk Scoring<br>• Regulatory Compliance Tracking & Historical Snapshots | **Group B (8 Detectors):**<br>9. Suspicious API Activity<br>10. Data Exfiltration<br>11. Cryptomining Workloads<br>12. Container & Kubernetes Attacks<br>13. Application BOLA & SSRF<br>14. Malware & Ransomware Precursor<br>15. Database Threat Activity<br>16. Serverless Function Abuse |
 
 ---
 
@@ -24,24 +24,24 @@ Each feature has exactly one primary owner. Testing interfaces follow stable con
 
 | SRS Req | Module / Feature Name | Assigned Owner | Backend Source Files | Primary API Endpoints | Frontend Views | Verification Status |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: |
-| **FR-01** | Multi-Cloud Resource & Asset Inventory | Tanmay | `engines/asset_engine.py`, `engines/db.py` | `GET /api/assets`, `POST /api/assets/discover`, `GET /api/assets/connectors` | `DataSourcesTab.jsx` | **PASS (Local/Sim)**<br>*BLOCKED (Live AWS)* |
-| **FR-02** | Workload Telemetry Ingestion & Provenance | Tanmay | `simulator/wazuh_reader.py`, `simulator/wazuh_simulator.py` | `GET /api/simulate/events`, `GET /api/status` | `LiveLogsTab.jsx`, `OverviewTab.jsx` | **PASS (Sim/Mock)**<br>*BLOCKED (Live Wazuh agent)* |
-| **FR-03** | Cloud Misconfiguration Detection (CSPM) | Hemant | `engines/cspm_engine.py`, `engines/localstack_engine.py` | `GET /api/cspm/scan`, `GET /api/cspm/history` | `OverviewTab.jsx`, `RemediationTab.jsx` | **PASS** |
-| **FR-04** | Cloud Identity Entitlement Risk (CIEM) | Hemant | `engines/ciem_engine.py`, `engines/localstack_engine.py` | `GET /api/ciem/scan`, `GET /api/ciem/history` | `OverviewTab.jsx`, `RemediationTab.jsx` | **PASS** |
-| **FR-05** | Workload Vulnerability Management & NVD | Hemant | `engines/vulnerability_engine.py`, `engines/db.py` | `GET /api/vulnerabilities`, `POST /api/vulnerabilities/scan`, `POST /api/vulnerabilities/nvd/sync` | `AlertsIncidentsTab.jsx` (Vulnerabilities view) | **PASS** |
-| **FR-06** | ML Behavioral Threat Detection | Hemant | `engines/feature_extractor.py`, `engines/ml_engine.py` | `GET /api/ml/compare`, `GET /api/ml/model-info`, `GET /api/simulate/attack` | `MLComparisonTab.jsx` | **PASS** |
-| **FR-07** | Real-Time Incident Correlation | Hemant | `engines/correlation_engine.py`, `engines/db.py` | `GET /api/incidents`, `GET /api/incidents/{id}`, `GET /api/incidents/stats` | `AlertsIncidentsTab.jsx` (Incidents view) | **PASS** |
-| **FR-08** | Unified Dynamic Risk Scoring | Hemant | `engines/risk_engine.py`, `engines/db.py` | `GET /api/risk/score`, `GET /api/risk/trend` | `RiskScoreTab.jsx` | **PASS** |
-| **FR-09** | Automated Remediation & Durable Rollback | Tanmay | `engines/remediation_engine.py`, `engines/db.py` | `GET /api/remediation/playbooks`, `POST /api/remediation/execute/{type}`, `POST /api/remediation/rollback` | `RemediationTab.jsx` | **PASS** |
-| **FR-10** | Regulatory Compliance Tracking | Hemant | `engines/compliance_engine.py`, `engines/db.py` | `GET /api/compliance/dashboard`, `GET /api/compliance/report`, `GET /api/compliance/trend` | `ComplianceTab.jsx` | **PASS** |
-| **FR-11** | Role-Based Access Control & WS Auth | Tanmay | `engines/auth_engine.py`, `main.py` | `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/ws-ticket`, `WS /ws/events` | `LoginPage.jsx`, `App.jsx` | **PASS** |
-| **FR-12** | Attack Simulation & Threat Validation | Tanmay | `simulator/attack_simulator.py`, `simulator/session_manager.py` | `POST /api/simulation/execute`, `GET /api/simulation/scenarios`, `POST /api/simulation/reset` | `AttackSimulationTab.jsx` | **PASS** |
+| **FR-01** | Multi-Cloud Resource & Asset Inventory | Member 1 / Member 4 | `engines/asset_engine.py`, `engines/db.py` | `GET /api/assets`, `POST /api/assets/discover`, `GET /api/assets/connectors` | `DataSourcesTab.jsx` | **PASS (Local/Sim)**<br>*BLOCKED (Live AWS)* |
+| **FR-02** | Workload Telemetry Ingestion & Provenance | Member 1 / Member 4 | `simulator/wazuh_reader.py`, `simulator/wazuh_simulator.py` | `GET /api/simulate/events`, `GET /api/status` | `LiveLogsTab.jsx`, `OverviewTab.jsx` | **PASS (Sim/Mock)**<br>*BLOCKED (Live Wazuh agent)* |
+| **FR-03** | Cloud Misconfiguration Detection (CSPM) | Member 2 / Member 3 | `engines/cspm_engine.py`, `engines/localstack_engine.py` | `GET /api/cspm/scan`, `GET /api/cspm/history` | `OverviewTab.jsx`, `RemediationTab.jsx` | **PASS** |
+| **FR-04** | Cloud Identity Entitlement Risk (CIEM) | Member 2 / Member 3 | `engines/ciem_engine.py`, `engines/localstack_engine.py` | `GET /api/ciem/scan`, `GET /api/ciem/history` | `OverviewTab.jsx`, `RemediationTab.jsx` | **PASS** |
+| **FR-05** | Workload Vulnerability Management & NVD | Member 2 / Member 3 | `engines/vulnerability_engine.py`, `engines/db.py` | `GET /api/vulnerabilities`, `POST /api/vulnerabilities/scan`, `POST /api/vulnerabilities/nvd/sync` | `AlertsIncidentsTab.jsx` (Vulnerabilities view) | **PASS** |
+| **FR-06** | ML Behavioral Threat Detection | Member 2 / Member 3 | `engines/feature_extractor.py`, `engines/ml_engine.py` | `GET /api/ml/compare`, `GET /api/ml/model-info`, `GET /api/simulate/attack` | `MLComparisonTab.jsx` | **PASS** |
+| **FR-07** | Real-Time Incident Correlation | Member 2 / Member 3 | `engines/correlation_engine.py`, `engines/db.py` | `GET /api/incidents`, `GET /api/incidents/{id}`, `GET /api/incidents/stats` | `AlertsIncidentsTab.jsx` (Incidents view) | **PASS** |
+| **FR-08** | Unified Dynamic Risk Scoring | Member 2 / Member 3 | `engines/risk_engine.py`, `engines/db.py` | `GET /api/risk/score`, `GET /api/risk/trend` | `RiskScoreTab.jsx` | **PASS** |
+| **FR-09** | Automated Remediation & Durable Rollback | Member 1 / Member 4 | `engines/remediation_engine.py`, `engines/db.py` | `GET /api/remediation/playbooks`, `POST /api/remediation/execute/{type}`, `POST /api/remediation/rollback` | `RemediationTab.jsx` | **PASS** |
+| **FR-10** | Regulatory Compliance Tracking | Member 2 / Member 3 | `engines/compliance_engine.py`, `engines/db.py` | `GET /api/compliance/dashboard`, `GET /api/compliance/report`, `GET /api/compliance/trend` | `ComplianceTab.jsx` | **PASS** |
+| **FR-11** | Role-Based Access Control & WS Auth | Member 1 / Member 4 | `engines/auth_engine.py`, `main.py` | `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/ws-ticket`, `WS /ws/events` | `LoginPage.jsx`, `App.jsx` | **PASS** |
+| **FR-12** | Attack Simulation & Threat Validation | Member 1 / Member 4 | `simulator/attack_simulator.py`, `simulator/session_manager.py` | `POST /api/simulation/execute`, `GET /api/simulation/scenarios`, `POST /api/simulation/reset` | `AttackSimulationTab.jsx` | **PASS** |
 
 ---
 
 ## 3. Step-by-Step Manual Test Procedures
 
-### Group 1: Tanmay — Platform Security & Infrastructure
+### Group 1: Member 1 / Member 4 — Platform Security & Infrastructure
 
 #### TC-TNY-01: User Authentication & JWT Flow
 - **Prerequisites:** Backend running on `http://127.0.0.1:8000`.
@@ -108,7 +108,7 @@ Each feature has exactly one primary owner. Testing interfaces follow stable con
 
 ---
 
-### Group 2: Hemant — Intelligence, ML & Analytics
+### Group 2: Member 2 / Member 3 — Intelligence, ML & Analytics
 
 #### TC-HMT-01: 8D Cloud Behavioral Feature Extraction
 - **Prerequisites:** Clean event payload.
@@ -192,8 +192,8 @@ Each feature has exactly one primary owner. Testing interfaces follow stable con
 
 | Category | Checks Completed Locally (PASS) | Checks Requiring User / External Infrastructure (BLOCKED) |
 | :--- | :--- | :--- |
-| **Tanmay** | • Admin/Viewer Authentication & Hash Migration (TC-TNY-01, 02)<br>• Public Registration Lockdown (TC-TNY-03)<br>• WebSocket Authenticated Handshake & Tickets (TC-TNY-04)<br>• Asset Inventory & Local Compute Workloads (TC-TNY-05)<br>• Connector Probing in Local/Fallback Mode (TC-TNY-06)<br>• Remediation Execution & SQLite Rollback (TC-TNY-07)<br>• Detector Group A — 8/8 Detectors (TC-TNY-08) | **BLOCKED:** Live AWS CloudTrail / EC2 resource mutation (requires live AWS account credentials: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`).<br>**BLOCKED:** Physical Wazuh Manager endpoint connection (requires live enterprise SIEM socket `/var/ossec/logs/alerts/alerts.json`). |
-| **Hemant** | • 8D Cloud Behavioral Features & Leakage Guard (TC-HMT-01)<br>• ML Ensemble Inference & Score Calibration (TC-HMT-02)<br>• CSPM Misconfiguration Scanning (TC-HMT-03)<br>• CIEM Identity Entitlement Risk Scanning (TC-HMT-04)<br>• Workload Vulnerabilities & NVD Sync (TC-HMT-05)<br>• Incident Correlation & Anti-Bridging (TC-HMT-06)<br>• 4-Pillar Dynamic Unified Risk Scoring (TC-HMT-07)<br>• Compliance Dashboard & History Trend (TC-HMT-08)<br>• Detector Group B — 8/8 Detectors (TC-HMT-09) | **BLOCKED:** Elevated NIST NVD API synchronization (unauthenticated rate limit is 5 req/30s; unlocking 50 req/30s requires optional `NVD_API_KEY`).<br>**BLOCKED:** Human Visual Final Alignment (requires user manual inspection of visual typography and layout in browser). |
+| **Member 1 / Member 4** | • Admin/Viewer Authentication & Hash Migration (TC-TNY-01, 02)<br>• Public Registration Lockdown (TC-TNY-03)<br>• WebSocket Authenticated Handshake & Tickets (TC-TNY-04)<br>• Asset Inventory & Local Compute Workloads (TC-TNY-05)<br>• Connector Probing in Local/Fallback Mode (TC-TNY-06)<br>• Remediation Execution & SQLite Rollback (TC-TNY-07)<br>• Detector Group A — 8/8 Detectors (TC-TNY-08) | **BLOCKED:** Live AWS CloudTrail / EC2 resource mutation (requires live AWS account credentials: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`).<br>**BLOCKED:** Physical Wazuh Manager endpoint connection (requires live enterprise SIEM socket `/var/ossec/logs/alerts/alerts.json`). |
+| **Member 2 / Member 3** | • 8D Cloud Behavioral Features & Leakage Guard (TC-HMT-01)<br>• ML Ensemble Inference & Score Calibration (TC-HMT-02)<br>• CSPM Misconfiguration Scanning (TC-HMT-03)<br>• CIEM Identity Entitlement Risk Scanning (TC-HMT-04)<br>• Workload Vulnerabilities & NVD Sync (TC-HMT-05)<br>• Incident Correlation & Anti-Bridging (TC-HMT-06)<br>• 4-Pillar Dynamic Unified Risk Scoring (TC-HMT-07)<br>• Compliance Dashboard & History Trend (TC-HMT-08)<br>• Detector Group B — 8/8 Detectors (TC-HMT-09) | **BLOCKED:** Elevated NIST NVD API synchronization (unauthenticated rate limit is 5 req/30s; unlocking 50 req/30s requires optional `NVD_API_KEY`).<br>**BLOCKED:** Human Visual Final Alignment (requires user manual inspection of visual typography and layout in browser). |
 
 ---
 

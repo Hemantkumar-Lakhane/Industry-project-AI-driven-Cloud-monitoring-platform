@@ -2,7 +2,7 @@
 
 **Document ID:** `docs/PROJECT_BASELINE.md`  
 **Baseline Date:** October 27, 2026  
-**Auditor / Architect:** Engineering Audit Council (Tanmay & Hemant Implementation Baseline)  
+**Auditor / Architect:** Engineering Audit Council (Core Team (4 Members) Implementation Baseline)  
 **Target Repository:** `Industry-project-AI-driven-Cloud-monitoring-platform-`  
 **Active Branch:** `ui-design`  
 **Baseline Commit:** `a7c1d2e13941e2eec7794a08c010099ec8ca0ace`  
@@ -87,24 +87,24 @@ Prior audit reports (such as `docs/archive/AUDIT_2026-10-26.md`) made claims bas
 
 | Module Path | Primary Responsibility | Verification Status | Operational Reality | Assigned Owner |
 | :--- | :--- | :---: | :--- | :---: |
-| `backend/main.py` | FastAPI application routing & lifecycle | **VERIFIED WORKING** | 49 endpoints (44 HTTP, 1 WS, 4 Docs). Operational routes protected with RBAC. | **Tanmay** |
-| `backend/engines/auth_engine.py` | JWT authentication & RBAC user store | **VERIFIED WORKING** | Upgraded to `bcrypt` (12 rounds) with individual salts; backward-compatible hash upgrades. | **Tanmay** |
+| `backend/main.py` | FastAPI application routing & lifecycle | **VERIFIED WORKING** | 49 endpoints (44 HTTP, 1 WS, 4 Docs). Operational routes protected with RBAC. | **Member 1 / Member 4** |
+| `backend/engines/auth_engine.py` | JWT authentication & RBAC user store | **VERIFIED WORKING** | Upgraded to `bcrypt` (12 rounds) with individual salts; backward-compatible hash upgrades. | **Member 1 / Member 4** |
 | `backend/engines/base_detector.py` | Abstract detector interface & registry | **VERIFIED WORKING** | Registry manages all 16 cloud attack detectors with strict schema typing. | **Joint** |
-| `backend/engines/detectors/*.py` | 16 discrete attack category detectors | **VERIFIED WORKING** | 16 discrete detector classes tested and verified with zero false positives on benign streams. Divided into balanced workstreams. | **8 Tanmay / 8 Hemant** |
-| `backend/engines/correlation_engine.py` | Cross-finding incident correlation | **VERIFIED WORKING** | Union-Find graph algorithm with 15-minute sliding window and kill-chain tiers. | **Hemant** |
-| `backend/engines/risk_engine.py` | 4-pillar unified risk scoring | **VERIFIED WORKING** | Formula: $0.35 \times \text{Incidents} + 0.25 \times \text{ML} + 0.20 \times \text{CSPM} + 0.20 \times \text{CIEM}$. | **Hemant** |
-| `backend/engines/vulnerability_engine.py` | Dependency & binary CVE scanning | **VERIFIED WORKING** | Semantic version comparisons against 8 verified advisories with CVSS v3.1 base scores. | **Hemant** |
-| `backend/engines/asset_engine.py` | Cloud asset discovery & inventory | **VERIFIED WORKING** | Probes LocalStack & AWS; discovers local host workloads via psutil (compute & ports < 60000); merges with inventory (20 assets verified). | **Tanmay** |
-| `backend/engines/cspm_engine.py` | Cloud security posture management | **VERIFIED WORKING** | Evaluates rules against resources and telemetry; flags open S3 buckets, unrestricted security groups. | **Tanmay** |
-| `backend/engines/ciem_engine.py` | Identity & entitlement analysis | **VERIFIED WORKING** | Flags wildcard actions, dormant credentials, and missing MFA. | **Tanmay** |
-| `backend/engines/compliance_engine.py` | Compliance control mapping (ISO/SOC2/GDPR)| **VERIFIED WORKING** | Mapped controls across 3 frameworks; trend deltas computed from SQLite snapshots. | **Hemant** |
-| `backend/engines/remediation_engine.py` | Containment playbooks & rollback | **VERIFIED WORKING** | Modifies finding status in SQLite; rollback records durable in SQLite `remediation_history`. | **Tanmay** |
-| `backend/engines/feature_extractor.py` | Feature extraction for ML models | **VERIFIED WORKING** | Dual-schema: 9D TCP flow features (NSL-KDD benchmark) and 8D cloud-native audit telemetry features. | **Hemant** |
-| `backend/engines/ml_engine.py` | PyOD specialist anomaly ensemble | **VERIFIED WORKING** | Dual-lens inference combining 3 specialist flow PyOD models with 8D cloud behavioral analyzer; calibrated percentile severity tiers. | **Hemant** |
-| `backend/engines/db.py` | SQLite database schema & migrations | **VERIFIED WORKING** | Maintains 9 tables including `remediation_history`; auto-migrates columns safely. | **Tanmay** |
-| `backend/simulator/*` | Wazuh log reader & attack generator | **VERIFIED WORKING** | Reads 5,001 real logs from `alerts.json` and supports controlled adversary bursts. | **Tanmay** |
-| `frontend/src/App.jsx` | React root application & state | **VERIFIED WORKING** | Global Axios Bearer interceptor; real-time WebSocket client streaming with auto-reconnect and polling fallback; live UTC clock. | **Tanmay** |
-| `frontend/src/components/*` | 11 UI tab views & modals | **VERIFIED WORKING** | Render telemetry, SVG Donut charts, forensic investigation drawers, vulnerability table, and risk trends. | **Hemant** |
+| `backend/engines/detectors/*.py` | 16 discrete attack category detectors | **VERIFIED WORKING** | 16 discrete detector classes tested and verified with zero false positives on benign streams. Divided into balanced workstreams. | **8 Member 1 / Member 4 / 8 Member 2 / Member 3** |
+| `backend/engines/correlation_engine.py` | Cross-finding incident correlation | **VERIFIED WORKING** | Union-Find graph algorithm with 15-minute sliding window and kill-chain tiers. | **Member 2 / Member 3** |
+| `backend/engines/risk_engine.py` | 4-pillar unified risk scoring | **VERIFIED WORKING** | Formula: $0.35 \times \text{Incidents} + 0.25 \times \text{ML} + 0.20 \times \text{CSPM} + 0.20 \times \text{CIEM}$. | **Member 2 / Member 3** |
+| `backend/engines/vulnerability_engine.py` | Dependency & binary CVE scanning | **VERIFIED WORKING** | Semantic version comparisons against 8 verified advisories with CVSS v3.1 base scores. | **Member 2 / Member 3** |
+| `backend/engines/asset_engine.py` | Cloud asset discovery & inventory | **VERIFIED WORKING** | Probes LocalStack & AWS; discovers local host workloads via psutil (compute & ports < 60000); merges with inventory (20 assets verified). | **Member 1 / Member 4** |
+| `backend/engines/cspm_engine.py` | Cloud security posture management | **VERIFIED WORKING** | Evaluates rules against resources and telemetry; flags open S3 buckets, unrestricted security groups. | **Member 1 / Member 4** |
+| `backend/engines/ciem_engine.py` | Identity & entitlement analysis | **VERIFIED WORKING** | Flags wildcard actions, dormant credentials, and missing MFA. | **Member 1 / Member 4** |
+| `backend/engines/compliance_engine.py` | Compliance control mapping (ISO/SOC2/GDPR)| **VERIFIED WORKING** | Mapped controls across 3 frameworks; trend deltas computed from SQLite snapshots. | **Member 2 / Member 3** |
+| `backend/engines/remediation_engine.py` | Containment playbooks & rollback | **VERIFIED WORKING** | Modifies finding status in SQLite; rollback records durable in SQLite `remediation_history`. | **Member 1 / Member 4** |
+| `backend/engines/feature_extractor.py` | Feature extraction for ML models | **VERIFIED WORKING** | Dual-schema: 9D TCP flow features (NSL-KDD benchmark) and 8D cloud-native audit telemetry features. | **Member 2 / Member 3** |
+| `backend/engines/ml_engine.py` | PyOD specialist anomaly ensemble | **VERIFIED WORKING** | Dual-lens inference combining 3 specialist flow PyOD models with 8D cloud behavioral analyzer; calibrated percentile severity tiers. | **Member 2 / Member 3** |
+| `backend/engines/db.py` | SQLite database schema & migrations | **VERIFIED WORKING** | Maintains 9 tables including `remediation_history`; auto-migrates columns safely. | **Member 1 / Member 4** |
+| `backend/simulator/*` | Wazuh log reader & attack generator | **VERIFIED WORKING** | Reads 5,001 real logs from `alerts.json` and supports controlled adversary bursts. | **Member 1 / Member 4** |
+| `frontend/src/App.jsx` | React root application & state | **VERIFIED WORKING** | Global Axios Bearer interceptor; real-time WebSocket client streaming with auto-reconnect and polling fallback; live UTC clock. | **Member 1 / Member 4** |
+| `frontend/src/components/*` | 11 UI tab views & modals | **VERIFIED WORKING** | Render telemetry, SVG Donut charts, forensic investigation drawers, vulnerability table, and risk trends. | **Member 2 / Member 3** |
 
 ---
 
