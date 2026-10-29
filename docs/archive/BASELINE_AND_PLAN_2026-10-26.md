@@ -13,7 +13,7 @@
 ## 1. Executive Summary
 
 1. **Inherited Foundation:** The original codebase was delivered as a bulk import by Raghav Dilip Vyas (`connect2raghav`, final commit `51e4aa5` on 2026-07-06), containing an initial FastAPI backend, 3 unsupervised PyOD models, an inline React dashboard with a dark orange theme, simulated Wazuh telemetry, and the Group 4 IEEE SRS document.
-2. **Current State:** The repository was taken over on 2026-10-21 by Hemantkumar Lakhane (`DevBolt07`) and Tanmay Kumbhare (`Tanmay-Kumbhare`), expanding it from 56 files to over 110 files (+14,635 lines).
+2. **Current State:** The repository was taken over on 2026-10-21 by the project core team, expanding it from 56 files to over 110 files (+14,635 lines).
 3. **Core Additions Built by Team:** Created 16 modular attack category detectors, normalized event and finding schemas (`event.py`, `finding.py`), 9D feature extractor, live telemetry session manager, 7 modular React operational tabs, an automated Windows launcher (`run.bat`), and a 47-test automated verification suite.
 4. **Research & Benchmarks:** Built an empirical fusion-ablation benchmarking framework (`experiments/`, `results/`) demonstrating statistical confidence intervals, anti-leakage rules, and ROC/PR curves (safely archived on branch `backup/benchmark-tests`).
 5. **No Regressions Found:** AST syntax tree comparison verified 100% preservation of all 39 baseline API endpoints, with 7 new enterprise endpoints added.
@@ -30,7 +30,7 @@
 ### 2.1 Git History & Evidence Analysis
 A forensic trace of the repository history (`git log --all --reverse`) reveals two distinct historical phases:
 1. **Phase 1 (Sponsor/Original Contributor):** May 5, 2026 – July 6, 2026 by Raghav Dilip Vyas (`connect.raghav2@gmail.com`).
-2. **Phase 2 (Current Project Team):** October 21, 2026 – Present by DevBolt07 (`lakhanehemant@gmail.com`) and Tanmay Kumbhare (`kumbharetanmay80@gmail.com`).
+2. **Phase 2 (Current Project Team):** October 21, 2026 – Present by the core development team (Member 1, Member 2, Member 3, Member 4).
 
 ### 2.2 Candidate Comparison Matrix
 
@@ -168,7 +168,7 @@ baseline_inspect/
 ```
 CONTRIBUTION BREAKDOWN BY AUTHOR (Post-Baseline)
 ========================================================================================
-Author: DevBolt07 <lakhanehemant@gmail.com> (8 Commits)
+Core Architecture & Detectors:
   - run.bat (Automated 3-terminal parallel launcher)
   - backend/schemas/ (event.py, finding.py - Pydantic V2 normalized contracts)
   - backend/engines/base_detector.py (BaseDetector abstract class & registry)
@@ -179,7 +179,7 @@ Author: DevBolt07 <lakhanehemant@gmail.com> (8 Commits)
   - frontend/src/components/ (7 new operational tabs: Overview, Alerts, Remediation, etc.)
   - docs/PERSON_1_DATASET_AND_FEATURE_ANALYSIS.md (Comprehensive ML audit report)
 
-Author: Tanmay-Kumbhare <kumbharetanmay80@gmail.com> (2 Commits on backup/benchmark-tests)
+Fusion & Benchmark Harness:
   - experiments/rules.py & experiments/rules.json (Deterministic anti-leakage rules)
   - experiments/fusion_ablation.py (Empirical multi-model ablation test harness)
   - experiments/calibration.py & experiments/fusion.py (Probability calibration)

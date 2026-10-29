@@ -48,4 +48,7 @@ Thumbs.db
 
 # Local Documentation & Notes
 /local-project-notes/
-audit_tmp/
+audit_tmp/
+
+# Scratch development files
+scratch/

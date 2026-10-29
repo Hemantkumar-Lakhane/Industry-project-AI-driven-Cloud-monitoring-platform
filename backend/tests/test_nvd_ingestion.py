@@ -1,5 +1,5 @@
 """
-Test Suite: NIST National Vulnerability Database (NVD) Automated Ingestion (Hemant Add-on)
+Test Suite: NIST National Vulnerability Database (NVD) Automated Ingestion (Member 4 Vulnerability Module)
 ==========================================================================================
 Verifies:
 1. NVDClient fetches and parses official NVD 2.0 schema payloads.

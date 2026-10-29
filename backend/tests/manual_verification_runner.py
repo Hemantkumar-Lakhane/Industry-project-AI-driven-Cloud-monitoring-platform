@@ -1,6 +1,6 @@
 """
 Automated Execution Engine for Manual QA Checklist
-Executes all non-interactive manual test procedures across Tanmay and Hemant ownership modules.
+Executes all non-interactive manual test procedures across platform and analytics modules.
 Outputs detailed pass/fail evidence, negative test outcomes, and data payloads.
 """
 import sys
@@ -38,9 +38,9 @@ def run_qa_suite():
     print("=" * 70)
 
     # ──────────────────────────────────────────────────────────────────────────
-    # SECTION 1: TANMAY — PLATFORM SECURITY & INFRASTRUCTURE
+    # SECTION 1: PLATFORM SECURITY & INFRASTRUCTURE
     # ──────────────────────────────────────────────────────────────────────────
-    print("\n[TANMAY] Executing Platform Security & Infrastructure Verifications...")
+    print("\n[SECURITY] Executing Platform Security & Infrastructure Verifications...")
 
     # TC-TNY-01: Admin Login & JWT Issuance
     t0 = time.time()
@@ -190,9 +190,9 @@ def run_qa_suite():
 
 
     # ──────────────────────────────────────────────────────────────────────────
-    # SECTION 2: HEMANT — INTELLIGENCE, ML & ANALYTICS
+    # SECTION 2: INTELLIGENCE, ML & ANALYTICS
     # ──────────────────────────────────────────────────────────────────────────
-    print("\n[HEMANT] Executing Intelligence, ML & Analytics Verifications...")
+    print("\n[ML] Executing Intelligence, ML & Analytics Verifications...")
 
     # TC-HMT-01: 8D Cloud Behavioral Feature Extraction
     sample_event = {

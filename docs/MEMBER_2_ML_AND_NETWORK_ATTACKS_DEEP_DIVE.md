@@ -506,3 +506,4 @@ If the event is network traffic, the 9D PyOD models dominate. If the event is an
 
 ### Q25: If an evaluator asks: "Does your platform modify live AWS production resources during DDoS or Exfiltration remediation?", what is your answer?
 **Answer:** No. We are very transparent about our ground-truth boundaries: our remediation engine executes in **dry-run simulation mode**. It generates executable Boto3/CLI playbooks, tracks execution history in SQLite, and supports durable rollback, but it does not modify live production cloud infrastructure. Detection, ML inference, feature extraction, correlation, and risk scoring are fully implemented and live.
+

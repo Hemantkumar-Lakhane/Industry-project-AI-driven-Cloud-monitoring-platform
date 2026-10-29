@@ -1,5 +1,5 @@
 """
-Test Suite: Secure WebSocket Authentication & Lifecycle (Tanmay Add-on)
+Test Suite: Secure WebSocket Authentication & Lifecycle (Platform Security Module)
 =======================================================================
 Verifies:
 1. Unauthenticated or timed-out connections are rejected with 4401.
