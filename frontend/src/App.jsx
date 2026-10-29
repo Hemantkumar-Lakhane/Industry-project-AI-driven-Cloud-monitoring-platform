@@ -6,7 +6,6 @@ import {
   Gauge,
   Cpu,
   Wrench,
-  FileCheck2,
   FlaskConical,
   Users,
   Database,
@@ -31,7 +30,6 @@ import AlertsIncidentsTab from './components/AlertsIncidentsTab';
 import RiskScoreTab from './components/RiskScoreTab';
 import MLComparisonTab from './components/MLComparisonTab';
 import RemediationTab from './components/RemediationTab';
-import ComplianceTab from './components/ComplianceTab';
 import AttackSimulationTab from './components/AttackSimulationTab';
 import LiveLogsTab from './components/LiveLogsTab';
 import UserManagementTab from './components/UserManagementTab';
@@ -391,7 +389,6 @@ const App = () => {
     { id: 'alerts', label: 'Alerts & Incidents', icon: <AlertTriangle size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
     { id: 'risk', label: 'Risk Score', icon: <Gauge size={16} />, perm: 'risk:read', roles: ['admin', 'analyst', 'viewer'] },
     { id: 'remediation', label: 'Remediation', icon: <Wrench size={16} />, perm: 'remediation:read', roles: ['admin', 'analyst', 'viewer'] },
-    { id: 'compliance', label: 'Compliance', icon: <FileCheck2 size={16} />, perm: 'compliance:read', roles: ['admin', 'analyst', 'viewer'] },
     { id: 'ml', label: 'ML Comparison', icon: <Cpu size={16} />, perm: 'ml:read', roles: ['admin', 'analyst'] },
     { id: 'simulation', label: 'Attack Simulation', icon: <FlaskConical size={16} />, perm: 'simulation:read', roles: ['admin', 'analyst'] },
     { id: 'livelogs', label: 'Live Log Stream', icon: <Terminal size={16} />, perm: 'admin', roles: ['admin'] },
@@ -467,15 +464,6 @@ const App = () => {
         <div className="figma-date-badge">
           <Shield size={13} style={{ color: 'var(--accent-orange)' }} /> Safe Dry-Run Mode
         </div>
-      )
-    },
-    compliance: {
-      title: 'Compliance',
-      subtitle: 'Continuous framework auditing (SOC2, ISO 27001, GDPR)',
-      action: (
-        <button className="figma-btn-primary" onClick={() => { setActiveTab('compliance'); showToast('Compliance assessment refreshed'); }}>
-          <RefreshCw size={13} /> Re-audit frameworks
-        </button>
       )
     },
     simulation: {
@@ -860,8 +848,6 @@ const App = () => {
               }}
             />
           )}
-
-          {activeTab === 'compliance' && <ComplianceTab showToast={showToast} />}
 
           {activeTab === 'simulation' && <AttackSimulationTab showToast={showToast} onNavigateTab={handleNavigateTab} />}
 

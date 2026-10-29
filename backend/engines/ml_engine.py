@@ -377,6 +377,9 @@ def compare_models(events: List[Dict]) -> Dict:
             max_p = float(np.max(probs)) if len(probs) > 0 else 0.0
             if max_p > 0.5 and np.sum(probs > 0.5) > 0:
                 thresh = 0.5
+            elif len(probs) > 5:
+                p_thresh = float(np.percentile(probs, 82))
+                thresh = min(0.35, max(1e-6, p_thresh))
             elif max_p > 1e-4:
                 thresh = max_p * 0.5
             else:

@@ -129,3 +129,78 @@ export class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
+
+export const Pagination = ({
+  currentPage = 1,
+  totalItems = 0,
+  pageSize = 10,
+  onPageChange,
+  itemLabel = 'items'
+}) => {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  if (totalItems <= 0) return null;
+
+  const startIdx = (currentPage - 1) * pageSize + 1;
+  const endIdx = Math.min(currentPage * pageSize, totalItems);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) {
+        if (!pages.includes(i)) pages.push(i);
+      }
+      if (currentPage < totalPages - 2) pages.push('...');
+      if (!pages.includes(totalPages)) pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  return (
+    <div className="figma-pagination-container">
+      <div className="figma-pagination-info">
+        Showing <strong>{startIdx}</strong>–<strong>{endIdx}</strong> of <strong>{totalItems}</strong> {itemLabel}
+      </div>
+      <div className="figma-pagination-actions">
+        <button
+          type="button"
+          className="figma-page-btn"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage <= 1}
+          aria-label="Previous page"
+        >
+          Previous
+        </button>
+        {getPageNumbers().map((page, idx) => (
+          page === '...' ? (
+            <span key={`ellipsis-${idx}`} style={{ padding: '0 4px', color: 'var(--text-secondary)' }}>…</span>
+          ) : (
+            <button
+              key={page}
+              type="button"
+              className={`figma-page-btn ${currentPage === page ? 'active' : ''}`}
+              onClick={() => onPageChange(page)}
+            >
+              {page}
+            </button>
+          )
+        ))}
+        <button
+          type="button"
+          className="figma-page-btn"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages}
+          aria-label="Next page"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+};

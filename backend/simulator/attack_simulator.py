@@ -275,18 +275,293 @@ def simulate_malware_ransomware(intensity: str = "high") -> Dict:
         "description": f"Ransomware Precursor: Mass enumeration and backup tampering on {target_ip}"
     }
 
+
+def simulate_account_takeover(intensity: str = "high") -> Dict:
+    """Simulate Account Takeover (ATO): Credential spray from foreign IP, login profile change, and MFA bypass."""
+    profile = _profile(intensity)
+    user = random.choice(["alice", "charlie", "david", "lead-dev"])
+    attacker_ip = f"198.51.100.{random.randint(10, 80)}"
+    events = [
+        {"id": f"SIM-ATO-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 5501, "level": 12, "severity": "high",
+         "event_type": "authentication", "attack_type": "account_takeover", "user": user,
+         "src_ip": attacker_ip, "dst_ip": "10.0.0.5", "service": "iam", "region": "us-east-1",
+         "action": "ConsoleLogin", "status": "success", "bytes_transferred": 0, "failed_attempts": 0,
+         "description": f"Initial unverified console login for {user} from unrecognised geo IP {attacker_ip}"},
+        {"id": f"SIM-ATO-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 5403, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "account_takeover", "user": user,
+         "src_ip": attacker_ip, "dst_ip": "10.0.0.5", "service": "iam", "region": "us-east-1",
+         "action": "UpdateLoginProfile", "status": "success", "bytes_transferred": 0, "failed_attempts": 0,
+         "description": f"Operator password abruptly overwritten by rogue session on {user}"},
+        {"id": f"SIM-ATO-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 5403, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "account_takeover", "user": user,
+         "src_ip": attacker_ip, "dst_ip": "10.0.0.5", "service": "iam", "region": "us-east-1",
+         "action": "CreateAccessKey", "status": "success", "bytes_transferred": 0, "failed_attempts": 0,
+         "description": f"Permanent API access key generated for rogue persistence on account {user}"},
+        {"id": f"SIM-ATO-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 5404, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "account_takeover", "user": user,
+         "src_ip": attacker_ip, "dst_ip": "10.0.0.5", "service": "iam", "region": "us-east-1",
+         "action": "DeleteVirtualMFADevice", "status": "success", "bytes_transferred": 0, "failed_attempts": 0,
+         "description": f"Mandatory MFA protection detached by adversary on compromised account {user}"}
+    ]
+    return {
+        **_simulation_meta("SIM-ATO"),
+        "scenario": "account_takeover", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Account Takeover: Unauthorized foreign login, MFA detachment, and credential re-keying on {user}"
+    }
+
+def simulate_suspicious_api(intensity: str = "high") -> Dict:
+    """Simulate Suspicious API Activity: Rapid reconnaissance and unauthorized infrastructure manipulation."""
+    user = random.choice(["svc-cloud-sync", "temp-contractor", "infra-deployer"])
+    src_ip = f"91.108.{random.randint(1,10)}.{random.randint(1,50)}"
+    events = [
+        {"id": f"SIM-API-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 80102, "level": 10, "severity": "high",
+         "event_type": "attack", "attack_type": "suspicious_api_activity", "user": user,
+         "src_ip": src_ip, "dst_ip": "10.0.0.1", "service": "ec2", "region": "ap-east-1",
+         "action": "DescribeInstances", "status": "success", "bytes_transferred": 1200, "failed_attempts": 0,
+         "description": f"Bulk resource discovery API burst by {user} outside standard operating region"},
+        {"id": f"SIM-API-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 80105, "level": 13, "severity": "critical",
+         "event_type": "attack", "attack_type": "suspicious_api_activity", "user": user,
+         "src_ip": src_ip, "dst_ip": "10.0.0.1", "service": "ec2", "region": "ap-east-1",
+         "action": "RunInstances", "status": "success", "bytes_transferred": 3400, "failed_attempts": 0,
+         "description": f"Unapproved EC2 instances spawned in non-compliant foreign zone"},
+        {"id": f"SIM-API-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 80108, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "suspicious_api_activity", "user": user,
+         "src_ip": src_ip, "dst_ip": "10.0.0.1", "service": "rds", "region": "ap-east-1",
+         "action": "CreateDBSnapshot", "status": "success", "bytes_transferred": 8900, "failed_attempts": 0,
+         "description": f"Production database snapshot triggered from unapproved foreign API session"}
+    ]
+    return {
+        **_simulation_meta("SIM-API"),
+        "scenario": "suspicious_api_activity", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Suspicious API Activity: Out-of-region resource enumeration and compute spawning by {user}"
+    }
+
+def simulate_cloud_misconfiguration(intensity: str = "high") -> Dict:
+    """Simulate Cloud Misconfiguration Drift: Opening public S3 buckets and 0.0.0.0/0 inbound rules."""
+    user = random.choice(["terraform-runner", "devops-admin", "contractor-1"])
+    events = [
+        {"id": f"SIM-CFG-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 80201, "level": 13, "severity": "critical",
+         "event_type": "attack", "attack_type": "cloud_misconfiguration", "user": user,
+         "src_ip": "10.0.1.18", "dst_ip": "10.0.0.2", "service": "ec2", "region": "us-east-1",
+         "action": "AuthorizeSecurityGroupIngress", "status": "success", "bytes_transferred": 0, "failed_attempts": 0,
+         "description": f"Permissive security group ingress opened to world 0.0.0.0/0 on port 22/3389"},
+        {"id": f"SIM-CFG-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 80203, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "cloud_misconfiguration", "user": user,
+         "src_ip": "10.0.1.18", "dst_ip": "10.0.0.2", "service": "s3", "region": "us-east-1",
+         "action": "PutBucketAcl", "status": "success", "bytes_transferred": 0, "failed_attempts": 0,
+         "description": f"S3 bucket ACL changed to public-read, exposing confidential cloud data storage"}
+    ]
+    return {
+        **_simulation_meta("SIM-CFG"),
+        "scenario": "cloud_misconfiguration", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Cloud Misconfiguration: Ingress opened to 0.0.0.0/0 and S3 bucket exposed publicly"
+    }
+
+def simulate_ddos(intensity: str = "high") -> Dict:
+    """Simulate Distributed Denial of Service (DDoS) traffic flood."""
+    events = []
+    target_ip = "10.0.0.10"
+    for i in range(12):
+        src_ip = f"185.220.101.{random.randint(1, 100)}"
+        events.append({
+            "id": f"SIM-DOS-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+            "source": "wazuh", "rule_id": 40101, "level": 12, "severity": "critical",
+            "event_type": "attack", "attack_type": "ddos", "user": "anonymous",
+            "src_ip": src_ip, "dst_ip": target_ip, "service": "network", "region": "us-east-1",
+            "action": "SYNFlood", "status": "dropped", "bytes_transferred": random.randint(15000, 85000), "failed_attempts": 0,
+            "description": f"Volumetric SYN flood packet surge from botnet origin {src_ip}"
+        })
+    return {
+        **_simulation_meta("SIM-DOS"),
+        "scenario": "ddos", "intensity": intensity, "target_user": "perimeter-firewall",
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Distributed Denial of Service: Inbound volumetric packet saturation against {target_ip}"
+    }
+
+def simulate_container_k8s(intensity: str = "high") -> Dict:
+    """Simulate Container & Kubernetes attack: Privileged pod escape and host socket mount."""
+    user = random.choice(["kube-operator", "svc-pod-deployer"])
+    events = [
+        {"id": f"SIM-K8S-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 87001, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "container_k8s_attacks", "user": user,
+         "src_ip": "10.0.2.14", "dst_ip": "10.0.2.20", "service": "kubernetes", "region": "us-east-1",
+         "action": "ExecIntoPod", "status": "success", "bytes_transferred": 4200, "failed_attempts": 0,
+         "description": f"Interactive shell session established inside production container with privileged: true"},
+        {"id": f"SIM-K8S-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 87005, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "container_k8s_attacks", "user": user,
+         "src_ip": "10.0.2.14", "dst_ip": "10.0.2.20", "service": "docker", "region": "us-east-1",
+         "action": "MountDockerSocket", "status": "success", "bytes_transferred": 2100, "failed_attempts": 0,
+         "description": f"Container escape vector: Host /var/run/docker.sock mounted into ephemeral pod"}
+    ]
+    return {
+        **_simulation_meta("SIM-K8S"),
+        "scenario": "container_k8s_attacks", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Container & K8s Threats: Privileged pod interactive exec and host docker socket mount"
+    }
+
+def simulate_bola_ssrf(intensity: str = "high") -> Dict:
+    """Simulate Application BOLA & SSRF targeting AWS IMDS metadata endpoint 169.254.169.254."""
+    user = "web-client"
+    src_ip = f"194.26.{random.randint(1,50)}.{random.randint(1,100)}"
+    events = [
+        {"id": f"SIM-SSRF-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 31105, "level": 13, "severity": "critical",
+         "event_type": "attack", "attack_type": "bola_ssrf", "user": user,
+         "src_ip": src_ip, "dst_ip": "169.254.169.254", "service": "web-api", "region": "us-east-1",
+         "action": "SSRFProbe", "status": "blocked", "bytes_transferred": 850, "failed_attempts": 0,
+         "description": f"Server-Side Request Forgery probe accessing cloud metadata IMDS http://169.254.169.254/latest/meta-data/"},
+        {"id": f"SIM-SSRF-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 31108, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "bola_ssrf", "user": user,
+         "src_ip": src_ip, "dst_ip": "169.254.169.254", "service": "web-api", "region": "us-east-1",
+         "action": "BOLAExploit", "status": "detected", "bytes_transferred": 1450, "failed_attempts": 0,
+         "description": f"Broken Object Level Authorization parameter tampering targeting private tenant records"}
+    ]
+    return {
+        **_simulation_meta("SIM-SSRF"),
+        "scenario": "bola_ssrf", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Application BOLA & SSRF: AWS Instance Metadata (169.254.169.254) extraction attempts"
+    }
+
+def simulate_database_attacks(intensity: str = "high") -> Dict:
+    """Simulate Database Threat Activity: SQL injection queries and unauthorized dump attempts."""
+    user = "web-app-db-user"
+    src_ip = f"185.191.{random.randint(1,50)}.{random.randint(1,100)}"
+    events = [
+        {"id": f"SIM-DB-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 31150, "level": 13, "severity": "critical",
+         "event_type": "attack", "attack_type": "database_attacks", "user": user,
+         "src_ip": src_ip, "dst_ip": "10.0.0.20", "service": "postgres", "region": "us-east-1",
+         "action": "SQLInjection", "status": "detected", "bytes_transferred": 3200, "failed_attempts": 0,
+         "description": f"SQL Injection detected: ' UNION SELECT null, username, password_hash FROM users --"},
+        {"id": f"SIM-DB-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 80112, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "database_attacks", "user": user,
+         "src_ip": src_ip, "dst_ip": "10.0.0.20", "service": "rds", "region": "us-east-1",
+         "action": "ModifyDBInstance", "status": "detected", "bytes_transferred": 0, "failed_attempts": 0,
+         "description": f"Adversary modifying production database storage to grant external public accessibility"}
+    ]
+    return {
+        **_simulation_meta("SIM-DB"),
+        "scenario": "database_attacks", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Database Attacks: Hostile SQL injection pattern and RDS parameter manipulation"
+    }
+
+def simulate_serverless_abuse(intensity: str = "high") -> Dict:
+    """Simulate Serverless Function Abuse: Code modification and recursive invocation denial."""
+    user = random.choice(["ci-cd-bot", "lambda-manager"])
+    events = [
+        {"id": f"SIM-LAM-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 80401, "level": 13, "severity": "critical",
+         "event_type": "attack", "attack_type": "serverless_abuse", "user": user,
+         "src_ip": "10.0.1.18", "dst_ip": "10.0.0.1", "service": "lambda", "region": "us-east-1",
+         "action": "UpdateFunctionCode", "status": "success", "bytes_transferred": 14500, "failed_attempts": 0,
+         "description": f"Unauthorized code modification injected into production payment processing Lambda"},
+        {"id": f"SIM-LAM-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 80405, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "serverless_abuse", "user": user,
+         "src_ip": "10.0.1.18", "dst_ip": "10.0.0.1", "service": "lambda", "region": "us-east-1",
+         "action": "Invoke", "status": "success", "bytes_transferred": 29000, "failed_attempts": 0,
+         "description": f"Recursive execution loop triggered: serverless resource exhaustion burst"}
+    ]
+    return {
+        **_simulation_meta("SIM-LAM"),
+        "scenario": "serverless_abuse", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Serverless Function Abuse: Unauthorized Lambda code update and execution loop surge"
+    }
+
+def simulate_supply_chain(intensity: str = "high") -> Dict:
+    """Simulate Supply Chain Compromise: Compromised CI/CD pipeline dependency and backdoored runner."""
+    user = "github-actions-runner"
+    events = [
+        {"id": f"SIM-SC-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 89001, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "supply_chain_compromise", "user": user,
+         "src_ip": "10.0.3.12", "dst_ip": "185.220.101.44", "service": "build-system", "region": "us-east-1",
+         "action": "InstallBackdooredPackage", "status": "success", "bytes_transferred": 9800, "failed_attempts": 0,
+         "description": f"Compromised third-party dependency injected during automated application build"},
+        {"id": f"SIM-SC-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 89004, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "supply_chain_compromise", "user": user,
+         "src_ip": "10.0.3.12", "dst_ip": "185.220.101.44", "service": "build-system", "region": "us-east-1",
+         "action": "ExfiltrateBuildSecrets", "status": "detected", "bytes_transferred": 4500, "failed_attempts": 0,
+         "description": f"Build runner attempting to transmit CI/CD repository secrets to rogue exterior server"}
+    ]
+    return {
+        **_simulation_meta("SIM-SC"),
+        "scenario": "supply_chain_compromise", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Supply Chain Compromise: Malicious package dependency detected in build environment"
+    }
+
+def simulate_defense_tampering(intensity: str = "high") -> Dict:
+    """Simulate Defense Tampering: Stopping CloudTrail audit trails and disabling security agents."""
+    user = random.choice(["rogue-admin", "intruder-01"])
+    events = [
+        {"id": f"SIM-DT-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "cloudtrail", "rule_id": 80301, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "defense_tampering", "user": user,
+         "src_ip": "10.0.1.18", "dst_ip": "10.0.0.1", "service": "cloudtrail", "region": "us-east-1",
+         "action": "StopLogging", "status": "success", "bytes_transferred": 0, "failed_attempts": 0,
+         "description": f"Adversary disabled CloudTrail audit logging to conceal subsequent malicious operations"},
+        {"id": f"SIM-DT-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 5508, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "defense_tampering", "user": user,
+         "src_ip": "10.0.1.18", "dst_ip": "10.0.0.1", "service": "wazuh-agent", "region": "us-east-1",
+         "action": "KillSecurityDaemon", "status": "success", "bytes_transferred": 0, "failed_attempts": 0,
+         "description": f"Host agent security daemon killed by adversary via SIGKILL"}
+    ]
+    return {
+        **_simulation_meta("SIM-DT"),
+        "scenario": "defense_tampering", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Defense & Log Tampering: CloudTrail StopLogging executed and host security daemon terminated"
+    }
+
 SCENARIOS = {
+    # All 16 Dedicated Attack Categories
     "brute_force": simulate_brute_force,
+    "account_takeover": simulate_account_takeover,
+    "iam_privilege_escalation": simulate_privilege_escalation,
     "privilege_escalation": simulate_privilege_escalation,
+    "suspicious_api_activity": simulate_suspicious_api,
+    "suspicious_api": simulate_suspicious_api,
+    "cloud_misconfiguration": simulate_cloud_misconfiguration,
     "data_exfiltration": simulate_data_exfiltration,
     "network_scanning": simulate_network_scanning,
     "port_scan": simulate_network_scanning,
+    "ddos": simulate_ddos,
     "cryptomining": simulate_cryptomining,
+    "container_k8s_attacks": simulate_container_k8s,
+    "container_k8s": simulate_container_k8s,
+    "bola_ssrf": simulate_bola_ssrf,
     "malware_ransomware": simulate_malware_ransomware,
     "ransomware": simulate_malware_ransomware,
+    "database_attacks": simulate_database_attacks,
+    "serverless_abuse": simulate_serverless_abuse,
+    "supply_chain_compromise": simulate_supply_chain,
+    "supply_chain": simulate_supply_chain,
+    "defense_tampering": simulate_defense_tampering,
     "abnormal_access": simulate_abnormal_access,
 }
-
 def get_scenario_catalog() -> List[Dict]:
     """Return scenario metadata for frontend rendering."""
     catalog = []

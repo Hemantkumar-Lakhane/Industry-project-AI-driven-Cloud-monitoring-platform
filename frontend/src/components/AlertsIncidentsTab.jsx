@@ -1,3 +1,4 @@
+import { Pagination } from './SharedComponents';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search, ChevronDown, ArrowUpDown, ArrowRight, ExternalLink, ShieldCheck, X,
@@ -39,6 +40,7 @@ const AlertsIncidentsTab = ({
   const [severityFilter, setSeverityFilter] = useState('All');
   const [incidentPage, setIncidentPage] = useState(1);
   const [findingPage, setFindingPage] = useState(1);
+  const [vulnPage, setVulnPage] = useState(1);
   const pageSize = 10;
   const [statusFilter, setStatusFilter] = useState('All');
   const [sourceFilter, setSourceFilter] = useState('All');
@@ -617,38 +619,15 @@ const AlertsIncidentsTab = ({
             </tbody>
           </table>
 
-          {/* FIGMA PAGINATION BAR FOR INCIDENTS */}
+          {/* UNIFIED PAGINATION FOR INCIDENTS */}
           {filteredIncidents.length > 0 && (
-            <div className="figma-pagination-container">
-              <div>
-                Showing <strong>{Math.min(filteredIncidents.length, (incidentPage - 1) * pageSize + 1)}</strong> to <strong>{Math.min(filteredIncidents.length, incidentPage * pageSize)}</strong> of <strong>{filteredIncidents.length}</strong> correlated incidents
-              </div>
-              <div className="figma-pagination-actions">
-                <button
-                  className="figma-page-btn"
-                  onClick={() => setIncidentPage(p => Math.max(1, p - 1))}
-                  disabled={incidentPage === 1}
-                >
-                  &larr; Prev
-                </button>
-                {Array.from({ length: totalIncidentPages }, (_, i) => i + 1).map(p => (
-                  <button
-                    key={p}
-                    className={`figma-page-btn ${incidentPage === p ? 'active' : ''}`}
-                    onClick={() => setIncidentPage(p)}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button
-                  className="figma-page-btn"
-                  onClick={() => setIncidentPage(p => Math.min(totalIncidentPages, p + 1))}
-                  disabled={incidentPage === totalIncidentPages}
-                >
-                  Next &rarr;
-                </button>
-              </div>
-            </div>
+            <Pagination
+              currentPage={incidentPage}
+              totalItems={filteredIncidents.length}
+              pageSize={pageSize}
+              onPageChange={setIncidentPage}
+              itemLabel="correlated incidents"
+            />
           )}
         </div>
       )}
@@ -759,39 +738,15 @@ const AlertsIncidentsTab = ({
             </tbody>
           </table>
 
-          {/* FIGMA PAGINATION BAR FOR ATOMIC FINDINGS */}
+          {/* UNIFIED PAGINATION FOR FINDINGS */}
           {filteredFindings.length > 0 && (
-            <div className="figma-pagination-container">
-              <div>
-                Showing <strong>{Math.min(filteredFindings.length, (findingPage - 1) * pageSize + 1)}</strong> to <strong>{Math.min(filteredFindings.length, findingPage * pageSize)}</strong> of <strong>{filteredFindings.length}</strong> atomic findings
-              </div>
-              <div className="figma-pagination-actions">
-                <button
-                  className="figma-page-btn"
-                  onClick={() => setFindingPage(p => Math.max(1, p - 1))}
-                  disabled={findingPage === 1}
-                >
-                  &larr; Prev
-                </button>
-                {Array.from({ length: totalFindingPages }, (_, i) => i + 1).slice(0, 7).map(p => (
-                  <button
-                    key={p}
-                    className={`figma-page-btn ${findingPage === p ? 'active' : ''}`}
-                    onClick={() => setFindingPage(p)}
-                  >
-                    {p}
-                  </button>
-                ))}
-                {totalFindingPages > 7 && <span style={{ padding: '0 4px' }}>...</span>}
-                <button
-                  className="figma-page-btn"
-                  onClick={() => setFindingPage(p => Math.min(totalFindingPages, p + 1))}
-                  disabled={findingPage === totalFindingPages}
-                >
-                  Next &rarr;
-                </button>
-              </div>
-            </div>
+            <Pagination
+              currentPage={findingPage}
+              totalItems={filteredFindings.length}
+              pageSize={pageSize}
+              onPageChange={setFindingPage}
+              itemLabel="atomic findings"
+            />
           )}
         </div>
       )}
@@ -849,7 +804,7 @@ const AlertsIncidentsTab = ({
                     No vulnerabilities detected. Click 'Rescan Host Manifests' to scan active workload packages.
                   </td>
                 </tr>
-              ) : (
+                            ) : (
                 vulnerabilities
                   .filter(v => {
                     const matchSearch = !searchTerm ||
@@ -859,6 +814,7 @@ const AlertsIncidentsTab = ({
                     const matchSev = severityFilter === 'All' || (v.severity || '').toLowerCase() === severityFilter.toLowerCase();
                     return matchSearch && matchSev;
                   })
+                  .slice((vulnPage - 1) * pageSize, vulnPage * pageSize)
                   .map((vuln, idx) => {
                     const sev = (vuln.severity || 'high').toLowerCase();
                     const cvss = vuln.cvss_score ? Number(vuln.cvss_score).toFixed(1) : '7.5';
@@ -909,6 +865,29 @@ const AlertsIncidentsTab = ({
               )}
             </tbody>
           </table>
+          {vulnerabilities.filter(v => {
+            const matchSearch = !searchTerm ||
+              v.cve_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              v.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              v.package_name?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchSev = severityFilter === 'All' || (v.severity || '').toLowerCase() === severityFilter.toLowerCase();
+            return matchSearch && matchSev;
+          }).length > 0 && (
+            <Pagination
+              currentPage={vulnPage}
+              totalItems={vulnerabilities.filter(v => {
+                const matchSearch = !searchTerm ||
+                  v.cve_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  v.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  v.package_name?.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchSev = severityFilter === 'All' || (v.severity || '').toLowerCase() === severityFilter.toLowerCase();
+                return matchSearch && matchSev;
+              }).length}
+              pageSize={pageSize}
+              onPageChange={setVulnPage}
+              itemLabel="vulnerabilities"
+            />
+          )}
         </div>
       )}
 

@@ -1233,6 +1233,7 @@ def api_get_nvd_status():
 
 
 
+@app.post("/api/simulate/attack", include_in_schema=False)
 @app.get(
     "/api/simulate/attack",
     tags=["ML Detection & Analytics"],

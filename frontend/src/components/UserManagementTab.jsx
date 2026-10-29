@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { AlertCircle, Search, UserCheck, UserX, Plus, Shield, RefreshCw } from 'lucide-react';
 import { API_URL } from '../config';
+import { Pagination } from './SharedComponents';
 
 const UserManagementTab = ({ token, showToast }) => {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
   
   // Real Invite Form State
   const [inviteEmail, setInviteEmail] = useState('');
@@ -203,7 +206,7 @@ const UserManagementTab = ({ token, showToast }) => {
                 </td>
               </tr>
             ) : (
-              filtered.map((u, idx) => (
+              filtered.slice((page - 1) * pageSize, page * pageSize).map((u, idx) => (
                 <tr key={u.username || idx}>
                   <td>
                     <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.name}</div>
@@ -244,6 +247,15 @@ const UserManagementTab = ({ token, showToast }) => {
             )}
           </tbody>
         </table>
+        {filtered.length > 0 && (
+          <Pagination
+            currentPage={page}
+            totalItems={filtered.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            itemLabel="users"
+          />
+        )}
       </div>
 
       {/* 4. 2-COLUMN BOTTOM: ROLE PERMISSIONS MATRIX + INVITATION FORM */}
