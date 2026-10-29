@@ -1,16 +1,23 @@
 @echo off
-title RAM Antivirus - Member 2 EDA and ML Pipeline Runner
+title RAM Antivirus - Member 2 Complete EDA and ML Master Runner
 cd /d "%~dp0"
 
 echo =====================================================================
-echo    RAM ANTIVIRUS — MEMBER 2: EDA & MACHINE LEARNING PIPELINE
+echo    RAM ANTIVIRUS — MEMBER 2: MASTER EDA & ML PIPELINE RUNNER
 echo =====================================================================
 echo.
-echo [*] Executing Python EDA and Anomaly Model Training...
-echo [*] Dataset: NSL-KDD (KDDTrain+ N=125,973 ^| KDDTest+ N=22,544)
+echo [*] Executing Master Pipeline:
+echo     - Phase 1: Data Ingestion (Head / Tail)
+echo     - Phase 2: Structural Understanding (Rows/Cols, info, describe)
+echo     - Phase 3: Data Quality (Nulls, Duplicates, Cardinality)
+echo     - Phase 4: Categorical Exploration (Protocols, Services, Flags)
+echo     - Phase 5: Categorical Encoding & Attack Taxonomy Mapping
+echo     - Phase 6: Random Forest Feature Importance Ranking
+echo     - Phase 7: Multi-Dimensional Visualizations & Heatmaps
+echo     - Phase 8: StandardScaler Normalization & PyOD Model Training
 echo.
 
-python backend\ml_pipeline_eda_visualizer.py
+python backend\eda_master_pipeline.py
 
 if errorlevel 1 (
     echo.
@@ -22,7 +29,7 @@ if errorlevel 1 (
 echo.
 echo =====================================================================
 echo [OK] Execution completed successfully!
-echo [OK] Generated 8 high-resolution graphs in:
+echo [OK] Generated high-resolution EDA and Model graphs in:
 echo      docs\images\ml_visualizations\
 echo.
 echo Opening visualization folder...
