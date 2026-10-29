@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, X } from 'lucide-react';
 import logoUrl from '../assets/LOGO.png';
 
 export const Badge = ({ children, level }) => {
@@ -64,13 +64,32 @@ export const ScoreRing = ({ score, size = 120, color, label }) => {
 
 export const Toast = ({ message, type = 'success', onClose }) => {
   useEffect(() => {
-    const timer = setTimeout(onClose, 4000);
+    const timer = setTimeout(onClose, 3200);
     return () => clearTimeout(timer);
   }, [onClose]);
   return (
-    <div className={`toast toast-${type}`}>
-      {type === 'success' ? <CheckCircle size={20} color="#10b981" /> : <XCircle size={20} color="#ef4444" />}
-      <span>{message}</span>
+    <div className={`toast toast-${type}`} role="alert">
+      <div className="toast-icon">
+        {type === 'success' ? (
+          <CheckCircle size={15} color="#10b981" />
+        ) : (
+          <XCircle size={15} color="#ef4444" />
+        )}
+      </div>
+      <div className="toast-content">
+        <span className="toast-message">{message}</span>
+      </div>
+      {onClose && (
+        <button
+          type="button"
+          className="toast-close-btn"
+          onClick={onClose}
+          aria-label="Dismiss notification"
+          title="Dismiss"
+        >
+          <X size={13} />
+        </button>
+      )}
     </div>
   );
 };
