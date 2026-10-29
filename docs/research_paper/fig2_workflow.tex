@@ -1,0 +1,39 @@
+% Figure 2: End-to-End Detection and Response Workflow
+\begin{tikzpicture}[
+    scale=0.82, every node/.style={transform shape},
+    startstop/.style={rectangle, rounded corners=12pt, minimum width=2.4cm, minimum height=0.7cm, text centered, draw=black, fill=blue!10, font=\footnotesize\bfseries},
+    process/.style={rectangle, minimum width=2.5cm, minimum height=0.7cm, text centered, draw=black, fill=white, font=\footnotesize},
+    decision/.style={diamond, aspect=2, minimum width=2.5cm, minimum height=0.8cm, text centered, draw=black, fill=yellow!15, font=\footnotesize},
+    arrow/.style={thick,-stealth,draw=black!80}
+]
+
+\node [startstop] (event_in) at (0, 0) {Incoming Event};
+\node [process] (schema_val) at (2.8, 0) {Schema Validation\\\& Field Mapping};
+\node [decision] (rule_match) at (6.2, 0) {Known Rule?};
+
+\node [process] (rule_alert) at (6.2, -1.8) {Set Rule Score\\$S_{\mathrm{rule}} \in [40, 95]$};
+\node [process] (extract) at (9.2, 0) {Extract Flow Features\\$\mathbf{x} = [d, b_s, b_d, c, \dots]$};
+
+\node [process] (scale) at (9.2, -1.8) {Apply Fitted Scaler\\$\mathbf{x}_{\mathrm{scaled}} = \mathbf{S}(\mathbf{x})$};
+\node [process] (infer) at (9.2, -3.4) {Run PyOD Inference\\(IForest, HBOS, KNN)};
+\node [process] (composite) at (6.2, -3.4) {Compute Composite Risk\\$R = \min(100, S_{\mathrm{rule}} + S_{\mathrm{ml}})$};
+
+\node [decision] (risk_thresh) at (2.8, -3.4) {$R \ge \tau_{\mathrm{alert}}$?};
+\node [process] (dispatch) at (0, -3.4) {Generate Alert\\\& Persist in SQLite};
+\node [process] (playbook) at (0, -5.0) {Trigger Automated Playbook\\(Simulated AWS / IP Block)};
+\node [startstop] (ignore) at (2.8, -5.0) {Telemetry Logged\\No Alert};
+
+\draw [arrow] (event_in) -- (schema_val);
+\draw [arrow] (schema_val) -- (rule_match);
+\draw [arrow] (rule_match) -- node[left, font=\scriptsize] {Yes} (rule_alert);
+\draw [arrow] (rule_match) -- node[above, font=\scriptsize] {No / Always} (extract);
+\draw [arrow] (rule_alert) |- (composite);
+\draw [arrow] (extract) -- (scale);
+\draw [arrow] (scale) -- (infer);
+\draw [arrow] (infer) -- (composite);
+\draw [arrow] (composite) -- (risk_thresh);
+\draw [arrow] (risk_thresh) -- node[above, font=\scriptsize] {Yes} (dispatch);
+\draw [arrow] (risk_thresh) -- node[right, font=\scriptsize] {No} (ignore);
+\draw [arrow] (dispatch) -- (playbook);
+
+\end{tikzpicture}

@@ -1,0 +1,69 @@
+% Figure 1: RAM Antivirus Multi-Layer Cloud Security Platform Architecture
+\begin{tikzpicture}[
+    scale=0.82, every node/.style={transform shape},
+    box/.style={rectangle, draw=black!70, rounded corners=3pt, fill=blue!5, thick, minimum width=2.4cm, minimum height=0.75cm, align=center, font=\footnotesize},
+    simbox/.style={rectangle, draw=orange!80!black, dashed, rounded corners=3pt, fill=orange!8, thick, minimum width=2.4cm, minimum height=0.75cm, align=center, font=\footnotesize},
+    propbox/.style={rectangle, draw=gray!70, dotted, rounded corners=3pt, fill=gray!8, thick, minimum width=2.4cm, minimum height=0.75cm, align=center, font=\footnotesize},
+    group/.style={rectangle, draw=black!40, rounded corners=5pt, inner sep=6pt, fill=black!2},
+    arr/.style={-stealth, thick, draw=black!75},
+    lbl/.style={font=\scriptsize\bfseries, align=center}
+]
+
+% Column 1: Telemetry & Ingestion
+\node[lbl] (hdr1) at (0, 4.4) {1. Ingestion Layer};
+\node[box] (cwatch) at (0, 3.4) {CloudWatch Logs\\(Simulated/LocalStack)};
+\node[simbox] (wazuh_agent) at (0, 2.0) {Wazuh Agent /\\Log Generator};
+\node[propbox] (ebpf) at (0, 0.6) {eBPF Telemetry\\(Proposed Host Hook)};
+
+\node[group, fit=(hdr1) (cwatch) (wazuh_agent) (ebpf)] (grp_ingest) {};
+
+% Column 2: Normalization & Preprocessing
+\node[lbl] (hdr2) at (3.6, 4.4) {2. Processing \& Correlation};
+\node[box] (event_norm) at (3.6, 3.4) {Event Normalization\\\& Schema Validation};
+\node[box] (rule_engine) at (3.6, 2.0) {Wazuh SIEM\\Deterministic Rules};
+\node[box] (feat_extract) at (3.6, 0.6) {Feature Extractor\\(Flow Metrics)};
+
+\node[group, fit=(hdr2) (event_norm) (rule_engine) (feat_extract)] (grp_proc) {};
+
+% Column 3: Multi-Model ML & Detection
+\node[lbl] (hdr3) at (7.4, 4.4) {3. Detection Engines};
+\node[box] (iforest) at (7.4, 3.5) {Isolation Forest\\(PyOD Sub-sampling)};
+\node[box] (hbos) at (7.4, 2.4) {HBOS\\(Histogram Scorer)};
+\node[box] (knn) at (7.4, 1.3) {KNN Detector\\(Distance Outliers)};
+\node[box] (risk_agg) at (7.4, 0.1) {Composite Risk Engine\\$\min(100, S_{\mathrm{rule}} + S_{\mathrm{ml}})$};
+
+\node[group, fit=(hdr3) (iforest) (hbos) (knn) (risk_agg)] (grp_detect) {};
+
+% Column 4: Storage, API & Control
+\node[lbl] (hdr4) at (11.4, 4.4) {4. Management \& Response};
+\node[box] (fastapi) at (11.4, 3.4) {FastAPI Gateway\\(40 REST Endpoints)};
+\node[box] (storage) at (11.4, 2.0) {SQLite / In-Memory\\Alerts \& Audit Logs};
+\node[simbox] (playbook) at (11.4, 0.6) {Automated Playbooks\\(Simulated Remediations)};
+
+\node[group, fit=(hdr4) (fastapi) (storage) (playbook)] (grp_mgmt) {};
+
+% Connections
+\draw[arr] (cwatch.east) -- (event_norm.west);
+\draw[arr] (wazuh_agent.east) -- (event_norm.west);
+\draw[arr] (event_norm.south) -- (rule_engine.north);
+\draw[arr] (event_norm.south) to[out=270,in=180] (feat_extract.west);
+
+\draw[arr] (rule_engine.east) to[out=0,in=180] (risk_agg.west);
+\draw[arr] (feat_extract.east) to[out=0,in=180] (iforest.west);
+\draw[arr] (feat_extract.east) to[out=0,in=180] (hbos.west);
+\draw[arr] (feat_extract.east) to[out=0,in=180] (knn.west);
+
+\draw[arr] (iforest.east) to[out=0,in=90] (risk_agg.north);
+\draw[arr] (hbos.east) to[out=0,in=120] (risk_agg.north);
+\draw[arr] (knn.east) to[out=0,in=150] (risk_agg.north);
+
+\draw[arr] (risk_agg.east) to[out=0,in=180] (storage.west);
+\draw[arr] (risk_agg.east) to[out=0,in=180] (playbook.west);
+\draw[arr] (storage.north) -- (fastapi.south);
+
+% Legend
+\node[box, minimum width=1.4cm, minimum height=0.4cm, font=\tiny] (leg1) at (2.5, -1.2) {Implemented};
+\node[simbox, minimum width=1.4cm, minimum height=0.4cm, font=\tiny] (leg2) at (5.8, -1.2) {Simulated / Emulated};
+\node[propbox, minimum width=1.4cm, minimum height=0.4cm, font=\tiny] (leg3) at (9.2, -1.2) {Proposed Future Work};
+
+\end{tikzpicture}

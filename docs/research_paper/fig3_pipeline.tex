@@ -1,0 +1,42 @@
+% Figure 3: Machine Learning Training vs Runtime Inference Pipeline
+\begin{tikzpicture}[
+    scale=0.82, every node/.style={transform shape},
+    box/.style={rectangle, draw=black, rounded corners=3pt, fill=white, minimum width=2.6cm, minimum height=0.7cm, text centered, font=\footnotesize},
+    databox/.style={cylinder, draw=black, shape border rotate=90, aspect=0.25, fill=blue!10, minimum width=2.0cm, minimum height=0.8cm, text centered, font=\scriptsize\bfseries},
+    artbox/.style={rectangle, draw=purple!80!black, dashed, fill=purple!5, minimum width=2.4cm, minimum height=0.7cm, text centered, font=\scriptsize\bfseries},
+    arrow/.style={thick,-stealth,draw=black!80}
+]
+
+% Top: Offline Training Pipeline
+\node at (-1.5, 2.8) {\textbf{Offline Training Pipeline}};
+
+\node [databox] (kdd_train) at (0, 2.0) {NSL-KDD Train\\(125,973 recs)};
+\node [box] (clean_train) at (2.8, 2.0) {Feature Selection\\(9 Flow Features)};
+\node [box] (fit_scaler) at (5.8, 2.0) {Fit StandardScaler\\$\boldsymbol{\mu}_{\mathrm{train}}, \boldsymbol{\sigma}_{\mathrm{train}}$};
+\node [box] (train_model) at (8.8, 2.0) {Fit PyOD Estimator\\(Contamination $c$)};
+\node [artbox] (save_pkl) at (11.8, 2.0) {Serialize Artifacts\\(model.pkl, scaler.pkl)};
+
+\draw [arrow] (kdd_train) -- (clean_train);
+\draw [arrow] (clean_train) -- (fit_scaler);
+\draw [arrow] (fit_scaler) -- (train_model);
+\draw [arrow] (train_model) -- (save_pkl);
+
+% Bottom: Online Inference Pipeline
+\node at (-1.5, -0.4) {\textbf{Runtime Inference Pipeline}};
+
+\node [databox] (live_event) at (0, -1.2) {Workload Event\\(Streaming JSON)};
+\node [box] (parse_live) at (2.8, -1.2) {Extract Feature\\Vector $\mathbf{x}_{\mathrm{live}}$};
+\node [box] (apply_scaler) at (5.8, -1.2) {Transform Vector\\$\mathbf{z} = (\mathbf{x} - \boldsymbol{\mu})/\boldsymbol{\sigma}$};
+\node [box] (infer_live) at (8.8, -1.2) {PyOD Score\\$s = f_{\mathrm{decision}}(\mathbf{z})$};
+\node [box] (verdict) at (11.8, -1.2) {Threshold Check\\$s > \tau \implies \mathrm{Anomaly}$};
+
+\draw [arrow] (live_event) -- (parse_live);
+\draw [arrow] (parse_live) -- (apply_scaler);
+\draw [arrow] (apply_scaler) -- (infer_live);
+\draw [arrow] (infer_live) -- (verdict);
+
+% Connecting Artifacts to Runtime
+\draw [arrow, dashed, draw=purple!80!black] (save_pkl.south) to[out=270,in=90] node[right, font=\tiny\bfseries] {Load At Startup} (infer_live.north);
+\draw [arrow, dashed, draw=purple!80!black] (save_pkl.south) to[out=240,in=90] (apply_scaler.north);
+
+\end{tikzpicture}

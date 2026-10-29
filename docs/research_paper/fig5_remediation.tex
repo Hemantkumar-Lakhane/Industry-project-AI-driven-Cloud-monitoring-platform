@@ -1,0 +1,28 @@
+% Figure 5: Automated Playbook Remediation Sequence and Lifecycle
+\begin{tikzpicture}[
+    scale=0.82, every node/.style={transform shape},
+    box/.style={rectangle, draw=black, rounded corners=3pt, fill=white, minimum width=2.4cm, minimum height=0.7cm, text centered, font=\footnotesize},
+    actbox/.style={rectangle, draw=blue!80!black, fill=blue!10, rounded corners=3pt, minimum width=2.6cm, minimum height=0.75cm, text centered, font=\footnotesize\bfseries},
+    simbox/.style={rectangle, draw=orange!80!black, dashed, fill=orange!10, rounded corners=3pt, minimum width=2.6cm, minimum height=0.75cm, text centered, font=\footnotesize\bfseries},
+    decision/.style={diamond, aspect=1.8, draw=black, fill=yellow!15, text centered, font=\footnotesize},
+    arrow/.style={thick,-stealth,draw=black!80}
+]
+
+\node [box] (alert) at (0, 0) {Correlated Alert\\(Risk Score $\ge 70$)};
+\node [box] (policy) at (3.2, 0) {Policy Lookup\\(Playbook Registry)};
+\node [decision] (dryrun) at (6.8, 0) {Dry-Run Mode?};
+
+\node [simbox] (sim_exec) at (6.8, -2.0) {Simulated Action\\(Mock Log Recorded)};
+\node [actbox] (live_exec) at (10.2, 0) {AWS / OS API Call\\(Revoke IAM / Block IP)};
+\node [box] (audit) at (10.2, -2.0) {Audit Log Persisted\\(Snapshot for Rollback)};
+\node [box] (complete) at (3.2, -2.0) {Incident Closed /\\Dashboard Updated};
+
+\draw [arrow] (alert) -- (policy);
+\draw [arrow] (policy) -- (dryrun);
+\draw [arrow] (dryrun) -- node[right, font=\scriptsize] {Yes (Default)} (sim_exec);
+\draw [arrow] (dryrun) -- node[above, font=\scriptsize] {No (Live)} (live_exec);
+\draw [arrow] (live_exec) -- (audit);
+\draw [arrow] (sim_exec) -- (complete);
+\draw [arrow] (audit) -- (complete);
+
+\end{tikzpicture}
