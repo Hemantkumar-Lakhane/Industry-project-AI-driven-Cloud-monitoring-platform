@@ -72,7 +72,7 @@ export const getLiveUtcTime = () => {
   };
 };
 
-const Dashboard = () => {
+const App = () => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -883,8 +883,7 @@ const Dashboard = () => {
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
-          </div>
+    </div>
   );
 };
 
