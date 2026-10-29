@@ -1,6 +1,6 @@
-# Ram Antivirus — Cloud Security AI Platform
+# Cloud Security AI Platform
 
-### Setup & Run Guide
+### Enterprise Multi-Layer Threat Detection, Machine Learning Analytics & Automated Remediation
 
 ---
 
@@ -10,8 +10,10 @@
 * **Team Work Distribution (4 Members):** [`docs/WORK_DISTRIBUTION.md`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/docs/WORK_DISTRIBUTION.md)
 * **SRS Implementation Status (FR-01 to FR-12):** [`docs/SRS_IMPLEMENTATION_STATUS.md`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/docs/SRS_IMPLEMENTATION_STATUS.md)
 * **Security & Vulnerability Review:** [`docs/SECURITY_REVIEW.md`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/docs/SECURITY_REVIEW.md)
-* **Implementation Progress:** [`docs/IMPLEMENTATION_PROGRESS.md`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/docs/IMPLEMENTATION_PROGRESS.md)
-* **Testing & Verification:** [`docs/TESTING_AND_VERIFICATION.md`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/docs/TESTING_AND_VERIFICATION.md)
+* **Attack Detector Matrix (16 Detectors):** [`docs/DETECTOR_MATRIX.md`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/docs/DETECTOR_MATRIX.md)
+* **Member 2 Network Threat & ML Deep Dive:** [`docs/MEMBER_2_ML_AND_NETWORK_ATTACKS_DEEP_DIVE.md`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/docs/MEMBER_2_ML_AND_NETWORK_ATTACKS_DEEP_DIVE.md)
+* **Manual QA & Verification Checklist:** [`docs/MANUAL_VERIFICATION_CHECKLIST.md`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/docs/MANUAL_VERIFICATION_CHECKLIST.md)
+* **Production Jupyter Notebooks (01 to 05):** [`notebooks/`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/notebooks/)
 
 ---
 

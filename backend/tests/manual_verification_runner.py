@@ -34,7 +34,7 @@ def run_qa_suite():
     client = TestClient(app)
     evidence = {}
     print("=" * 70)
-    print("RAM ANTIVIRUS — MANUAL QA AUTOMATED EXECUTION ENGINE")
+    print("CLOUD SECURITY PLATFORM — MANUAL QA AUTOMATED EXECUTION ENGINE")
     print("=" * 70)
 
     # ──────────────────────────────────────────────────────────────────────────

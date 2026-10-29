@@ -2,7 +2,7 @@
   "TC-SEC-01": {
     "status": "PASS",
     "description": "Admin login & JWT issuance",
-    "latency_ms": 268.87,
+    "latency_ms": 246.46,
     "user": "admin",
     "role": "admin",
     "permissions_count": 17
@@ -22,7 +22,7 @@
   "TC-SEC-04": {
     "status": "PASS",
     "description": "WebSocket ticket creation, handshake, event stream, and single-use exhaustion",
-    "ticket_prefix": "wstk_oTn9PGn",
+    "ticket_prefix": "wstk_XUH5Hf4",
     "handshake_response": {
       "type": "auth_ok",
       "username": "admin",
@@ -33,14 +33,14 @@
   "TC-SEC-05": {
     "status": "PASS",
     "description": "Asset discovery and compute workload inventory",
-    "total_assets": 48,
+    "total_assets": 58,
     "critical_risk_assets": 1,
     "assets_by_type": {
       "iam_role": 1,
       "ec2_instance": 2,
       "rds_database": 1,
       "host_compute": 1,
-      "network_service": 36,
+      "network_service": 46,
       "web_service": 3,
       "s3_bucket": 2,
       "iam_user": 1,
@@ -61,7 +61,7 @@
     "status": "PASS",
     "description": "Playbook execution, durable rollback, and 404 on invalid execution ID",
     "executed_playbook": "brute_force",
-    "execution_id": "EXEC-F0EBCAC2",
+    "execution_id": "EXEC-778EB759",
     "rollback_status": "success",
     "invalid_rollback_code": 404
   },

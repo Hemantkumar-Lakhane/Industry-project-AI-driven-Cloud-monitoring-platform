@@ -288,7 +288,7 @@ def test_j_real_task1_correlated_multi_stage_campaign():
     assert details["lis_len"] == 3
     assert details["r_fwd"] == 1.0
 
-    risk_res = calculate_incident_risk([inc])
+    risk_res = calculate_incident_risk([inc], current_time=now + timedelta(minutes=10))
     assert risk_res["score"] >= 75.0
     assert risk_res["level"] == "critical"
 
