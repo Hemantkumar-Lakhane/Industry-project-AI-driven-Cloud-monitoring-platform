@@ -54,59 +54,278 @@ const AlertsIncidentsTab = ({
   const [selectedFinding, setSelectedFinding] = useState(null);
   const [activeDrawerTab, setActiveDrawerTab] = useState('evidence'); // 'evidence' | 'analysis' | 'remediation'
 
-  // Report generation for detected attacks
+  // Executive Threat Report PDF Generation (Print-Ready Layout with Visuals & KPIs)
   const handleExportReport = () => {
     const activeList = filteredIncidents.length > 0 ? filteredIncidents : incidents;
-    const nowIso = new Date().toISOString();
-    const dateStr = nowIso.slice(0, 10);
+    const now = new Date();
+    const dateFormatted = now.toUTCString();
+    const dateStr = now.toISOString().slice(0, 10);
 
-    const reportLines = [
-      '# RAM Antivirus — Executive Threat Incident Report',
-      `Generated: ${new Date().toUTCString()}`,
-      `Scope: Real-Time Correlated Threat Incidents & Forensic Analysis`,
-      '',
-      '## Executive Summary',
-      `- Total Correlated Incidents: ${activeList.length}`,
-      `- Critical Severity: ${activeList.filter(i => (i.severity || '').toLowerCase() === 'critical').length}`,
-      `- High Severity: ${activeList.filter(i => (i.severity || '').toLowerCase() === 'high').length}`,
-      `- Medium Severity: ${activeList.filter(i => (i.severity || '').toLowerCase() === 'medium').length}`,
-      `- Low Severity: ${activeList.filter(i => (i.severity || '').toLowerCase() === 'low').length}`,
-      '',
-      '## Correlated Attack Campaigns & Root Cause Analysis',
-      ...activeList.map((inc, i) => {
-        const cats = Array.isArray(inc.attack_categories) ? inc.attack_categories.join(', ') : (inc.attack_categories || 'N/A');
-        const ips = Array.isArray(inc.source_ips) ? inc.source_ips.join(', ') : (inc.source_ips || 'N/A');
-        const princs = Array.isArray(inc.principals) ? inc.principals.join(', ') : (inc.principals || 'N/A');
-        const res = Array.isArray(inc.resources) ? inc.resources.join(', ') : (inc.resources || 'N/A');
-        return [
-          `### ${i + 1}. [${(inc.severity || 'HIGH').toUpperCase()}] ${inc.title}`,
-          `- Incident ID: ${inc.incident_id || inc.id}`,
-          `- Status: ${inc.status || 'open'}`,
-          `- Attack Categories: ${cats}`,
-          `- Attacking Source IPs: ${ips}`,
-          `- Compromised Principals: ${princs}`,
-          `- Targeted Cloud Assets: ${res}`,
-          `- Correlated Findings Count: ${inc.finding_count || inc.findings?.length || 1}`,
-          `- Root Cause Analysis: ${inc.description || 'Observed anomalous activity in host and cloud telemetry.'}`,
-          `- Recommended Response Playbook: ${inc.primary_playbook_id || 'Standard Automated Containment'}`,
-          ''
-        ].join('\n');
-      })
-    ];
+    const critCount = activeList.filter(i => (i.severity || '').toLowerCase() === 'critical').length;
+    const highCount = activeList.filter(i => (i.severity || '').toLowerCase() === 'high').length;
+    const medCount = activeList.filter(i => (i.severity || '').toLowerCase() === 'medium').length;
+    const lowCount = activeList.filter(i => (i.severity || '').toLowerCase() === 'low').length;
+    const totalCount = activeList.length || 1;
 
-    const reportContent = reportLines.join('\n');
-    const blob = new Blob([reportContent], { type: 'text/markdown;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `RAM_Antivirus_Threat_Report_${dateStr}.md`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const critPct = Math.round((critCount / totalCount) * 100);
+    const highPct = Math.round((highCount / totalCount) * 100);
+    const medPct = Math.round((medCount / totalCount) * 100);
+    const lowPct = Math.round((lowCount / totalCount) * 100);
 
-    if (showToast) {
-      showToast('Executive Threat Report exported successfully!');
+    const incidentsRowsHtml = activeList.map((inc, idx) => {
+      const sev = (inc.severity || 'high').toUpperCase();
+      const sevColor = sev === 'CRITICAL' ? '#ef4444' : (sev === 'HIGH' ? '#f97316' : (sev === 'MEDIUM' ? '#eab308' : '#3b82f6'));
+      const cats = Array.isArray(inc.attack_categories) ? inc.attack_categories.join(', ') : (inc.attack_categories || 'Multi-Stage');
+      const ips = Array.isArray(inc.source_ips) ? inc.source_ips.join(', ') : (inc.source_ips || 'Internal');
+      const princs = Array.isArray(inc.principals) ? inc.principals.join(', ') : (inc.principals || 'system');
+      const res = Array.isArray(inc.resources) ? inc.resources.join(', ') : (inc.resources || 'cloud-workload');
+
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <td style="padding: 10px 8px; font-family: monospace; font-size: 11px; font-weight: 700; color: #1e293b;">
+            ${inc.incident_id || 'INC-' + (idx + 100)}
+          </td>
+          <td style="padding: 10px 8px;">
+            <span style="display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #ffffff; background-color: ${sevColor};">
+              ${sev}
+            </span>
+          </td>
+          <td style="padding: 10px 8px; font-size: 12px; color: #0f172a;">
+            <strong>${inc.title}</strong>
+            <div style="font-size: 11px; color: #64748b; margin-top: 3px;">${inc.description || 'Behavioral anomaly correlated across telemetry streams.'}</div>
+          </td>
+          <td style="padding: 10px 8px; font-size: 11px; color: #334155;">
+            <div><strong>Identity:</strong> <code>${princs}</code></div>
+            <div><strong>IP:</strong> <code>${ips}</code></div>
+            <div><strong>Asset:</strong> <code>${res}</code></div>
+          </td>
+          <td style="padding: 10px 8px; font-size: 11px; color: #475569;">
+            <span style="display: inline-block; padding: 2px 6px; border-radius: 4px; background: #f1f5f9; font-weight: 600;">
+              ${inc.primary_playbook_id || 'PB-AUTO-CONTAIN'}
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>RAM Antivirus — Threat Incident Audit Report (${dateStr})</title>
+        <style>
+          @page { size: A4 portrait; margin: 15mm 15mm 15mm 15mm; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #0f172a;
+            line-height: 1.5;
+            background: #ffffff;
+            margin: 0;
+            padding: 24px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+          }
+          .brand-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.3px;
+          }
+          .brand-subtitle {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+          }
+          .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+          }
+          .kpi-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 14px;
+          }
+          .kpi-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+          }
+          .kpi-value {
+            font-size: 24px;
+            font-weight: 800;
+            margin-top: 4px;
+          }
+          .chart-container {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 24px;
+          }
+          .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5px;
+            margin-bottom: 24px;
+          }
+          .table th {
+            text-align: left;
+            background: #f1f5f9;
+            padding: 8px;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #cbd5e1;
+          }
+          .print-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0f172a;
+            color: #ffffff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+          }
+          @media print {
+            .print-bar { display: none !important; }
+            body { padding: 0 !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-bar">
+          <span style="font-size: 13px; font-weight: 600;">Executive Threat Report — Ready for PDF Export</span>
+          <button onclick="window.print()" style="background: #f97316; color: #ffffff; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
+            Print / Save as PDF
+          </button>
+        </div>
+
+        <div class="report-header">
+          <div>
+            <div class="brand-title">RAM Antivirus — SOC Threat Intelligence & Incident Report</div>
+            <div class="brand-subtitle">Automated Ingestion, PyOD Behavioral Analytics & Wazuh SIEM Incident Correlation</div>
+          </div>
+          <div style="text-align: right; font-size: 11px; color: #64748b;">
+            <div><strong>Generated:</strong> ${dateFormatted}</div>
+            <div><strong>Classification:</strong> SOC-2 / Internal Audit</div>
+            <div><strong>Environment:</strong> Production Cloud Telemetry</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card" style="border-left: 4px solid #ef4444;">
+            <div class="kpi-label">Critical Threats</div>
+            <div class="kpi-value" style="color: #ef4444;">${critCount}</div>
+            <div style="font-size: 11px; color: #64748b;">${critPct}% of correlated campaigns</div>
+          </div>
+          <div class="kpi-card" style="border-left: 4px solid #f97316;">
+            <div class="kpi-label">High Severity</div>
+            <div class="kpi-value" style="color: #f97316;">${highCount}</div>
+            <div style="font-size: 11px; color: #64748b;">${highPct}% privilege / credential attacks</div>
+          </div>
+          <div class="kpi-card" style="border-left: 4px solid #eab308;">
+            <div class="kpi-label">Medium Severity</div>
+            <div class="kpi-value" style="color: #ca8a04;">${medCount}</div>
+            <div style="font-size: 11px; color: #64748b;">${medPct}% recon & posture scans</div>
+          </div>
+          <div class="kpi-card" style="border-left: 4px solid #3b82f6;">
+            <div class="kpi-label">Low / Baseline</div>
+            <div class="kpi-value" style="color: #2563eb;">${lowCount}</div>
+            <div style="font-size: 11px; color: #64748b;">${lowPct}% informational anomalies</div>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Severity Distribution Breakdown</div>
+          <div style="display: flex; height: 18px; border-radius: 6px; overflow: hidden; background: #e2e8f0;">
+            <div style="width: ${critPct}%; background: #ef4444;" title="Critical: ${critCount}"></div>
+            <div style="width: ${highPct}%; background: #f97316;" title="High: ${highCount}"></div>
+            <div style="width: ${medPct}%; background: #eab308;" title="Medium: ${medCount}"></div>
+            <div style="width: ${lowPct}%; background: #3b82f6;" title="Low: ${lowCount}"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-top: 6px;">
+            <span>Critical (${critCount})</span>
+            <span>High (${highCount})</span>
+            <span>Medium (${medCount})</span>
+            <span>Low (${lowCount})</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <h3 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">Correlated Attack Campaigns & Plain-English Root Cause</h3>
+          <p style="font-size: 11.5px; color: #64748b; margin: 0;">Multi-stage attack chains identified through cross-telemetry entity clustering (Identity, IP, Resource).</p>
+        </div>
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 100px;">Incident ID</th>
+              <th style="width: 80px;">Severity</th>
+              <th>Threat Campaign & Root Cause</th>
+              <th style="width: 220px;">Target Entities & Indicators</th>
+              <th style="width: 140px;">Playbook Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${incidentsRowsHtml}
+          </tbody>
+        </table>
+
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between;">
+          <span>RAM Antivirus Workload Protection Suite</span>
+          <span>Automated Containment & Forensic Auditing Engine</span>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWin = window.open('', '_blank');
+    if (printWin) {
+      printWin.document.open();
+      printWin.document.write(htmlContent);
+      printWin.document.close();
+      printWin.focus();
+      setTimeout(() => {
+        try {
+          printWin.print();
+        } catch (e) {
+          console.warn('Auto print trigger bypassed:', e);
+        }
+      }, 400);
+      if (showToast) {
+        showToast('PDF Threat Report preview opened — ready to save as PDF!');
+      }
+    } else {
+      // Fallback to downloading printable HTML if popup is blocked
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `RAM_Antivirus_Threat_Report_${dateStr}.html`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      if (showToast) {
+        showToast('Popup blocked — saved printable HTML threat report!');
+      }
     }
   };
   const [copiedId, setCopiedId] = useState(false);
@@ -416,9 +635,16 @@ const AlertsIncidentsTab = ({
         )}
       </div>
 
-      {/* 2. VIEW MODE TOGGLE + SEARCH & FILTERS */}
-      <div className="figma-filter-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-        {/* Tab Toggle: Incidents vs Findings */}
+      {/* 2A. VIEW NAVIGATION & TOP ACTIONS */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        marginBottom: '14px'
+      }}>
+        {/* Segmented View Mode Tabs */}
         <div style={{
           display: 'inline-flex',
           backgroundColor: 'var(--surface-sunken)',
@@ -443,7 +669,7 @@ const AlertsIncidentsTab = ({
             }}
             onClick={() => setViewMode('incidents')}
           >
-            <Layers size={14} style={{ color: viewMode === 'incidents' ? 'var(--sev-crit)' : 'inherit' }} />
+            <Layers size={14} style={{ color: viewMode === 'incidents' ? 'var(--accent-orange)' : 'inherit' }} />
             Correlated Incidents ({incidents.length})
           </button>
           <button
@@ -484,16 +710,57 @@ const AlertsIncidentsTab = ({
             onClick={() => setViewMode('vulnerabilities')}
           >
             <AlertTriangle size={14} style={{ color: viewMode === 'vulnerabilities' ? '#ef4444' : 'inherit' }} />
-            Vulnerabilities ({vulnerabilities.length})
+            Cloud Vulnerabilities ({vulnerabilities.length})
           </button>
         </div>
 
+        {/* Primary Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {(fetchIncidents || fetchFindings) && (
+            <button
+              className="figma-btn-secondary"
+              style={{ padding: '7px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              onClick={() => {
+                if (fetchIncidents) fetchIncidents();
+                if (fetchFindings) fetchFindings(findingsAttackMode);
+              }}
+            >
+              <RefreshCw size={12} className={incidentsLoading || findingsLoading ? 'animate-spin' : ''} />
+              <span>Refresh</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="figma-btn-primary"
+            onClick={handleExportReport}
+            title="Generate and Download Executive Threat Audit Report in PDF"
+            style={{ padding: '7px 14px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <FileDown size={13} />
+            <span>Export PDF Report</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2B. DEDICATED SEARCH & FILTER TOOLBAR */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '10px 14px',
+        backgroundColor: 'var(--surface-card)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: '8px',
+        marginBottom: '16px',
+        flexWrap: 'wrap'
+      }}>
         {/* Search */}
-        <div className="figma-header-search" style={{ flex: '1 1 250px', width: 'auto', backgroundColor: 'var(--surface-card)' }}>
-          <Search size={15} style={{ color: 'var(--text-tertiary)' }} />
+        <div className="figma-header-search" style={{ flex: '1 1 240px', width: 'auto', backgroundColor: 'var(--surface-muted)' }}>
+          <Search size={14} style={{ color: 'var(--text-tertiary)' }} />
           <input
             type="text"
-            placeholder={viewMode === 'incidents' ? "Search incidents, entities, IPs, stages..." : "Search findings, resources, or identifiers..."}
+            placeholder={viewMode === 'incidents' ? "Search incidents by ID, title, IP, principal..." : "Search findings by ID, title, resource..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -507,36 +774,12 @@ const AlertsIncidentsTab = ({
           )}
         </div>
 
-        {/* Severity Filter */}
-        <select
-          className="figma-filter-select"
-          value={severityFilter}
-          onChange={(e) => setSeverityFilter(e.target.value)}
-        >
-          <option value="All">Severity: All</option>
-          <option value="Critical">Severity: Critical</option>
-          <option value="High">Severity: High</option>
-          <option value="Medium">Severity: Medium</option>
-          <option value="Low">Severity: Low</option>
-        </select>
-
-        {/* Status Filter */}
-        <select
-          className="figma-filter-select"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="All">Status: All</option>
-          <option value="Open">Status: Open</option>
-          <option value="Investigating">Status: Investigating</option>
-          <option value="Resolved">Status: Resolved</option>
-        </select>
-
         {/* 16 Attack Categories Filter */}
         <select
           className="figma-filter-select"
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
+          style={{ maxWidth: '210px' }}
           title="Filter by any of the 16 specialized attack categories"
         >
           <option value="All">Attack: All (16 Types)</option>
@@ -558,41 +801,63 @@ const AlertsIncidentsTab = ({
           <option value="ddos">DDoS Volume Attacks</option>
         </select>
 
+        {/* Severity Filter */}
+        <select
+          className="figma-filter-select"
+          value={severityFilter}
+          onChange={(e) => setSeverityFilter(e.target.value)}
+          style={{ width: '130px' }}
+        >
+          <option value="All">Severity: All</option>
+          <option value="Critical">Critical</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+
+        {/* Status Filter */}
+        <select
+          className="figma-filter-select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ width: '120px' }}
+        >
+          <option value="All">Status: All</option>
+          <option value="Open">Open</option>
+          <option value="Investigating">Investigating</option>
+          <option value="Resolved">Resolved</option>
+        </select>
+
         {viewMode === 'findings' && (
           <select
             className="figma-filter-select"
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value)}
+            style={{ width: '120px' }}
           >
             <option value="All">Source: All</option>
-            <option value="LIVE">Source: LIVE</option>
-            <option value="CLOUD">Source: Cloud Audit</option>
-            <option value="IMPORTED">Source: IMPORTED</option>
+            <option value="LIVE">LIVE Telemetry</option>
+            <option value="CLOUD">Cloud Audit</option>
+            <option value="IMPORTED">Imported</option>
           </select>
         )}
 
-        {(fetchIncidents || fetchFindings) && (
+        {(categoryFilter !== 'All' || severityFilter !== 'All' || statusFilter !== 'All' || (viewMode === 'findings' && sourceFilter !== 'All') || searchTerm) && (
           <button
+            type="button"
             className="figma-btn-secondary"
-            style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             onClick={() => {
-              if (fetchIncidents) fetchIncidents();
-              if (fetchFindings) fetchFindings(findingsAttackMode);
+              setSearchTerm('');
+              setSeverityFilter('All');
+              setStatusFilter('All');
+              setCategoryFilter('All');
+              setSourceFilter('All');
             }}
+            style={{ padding: '6px 10px', fontSize: '11.5px', borderRadius: '6px', color: 'var(--accent-orange)' }}
           >
-            <RefreshCw size={12} /> Refresh
+            Clear Filters
           </button>
         )}
-
-        <button
-          type="button"
-          className="figma-btn-primary"
-          onClick={handleExportReport}
-          title="Download Executive Threat Incident Report"
-          style={{ padding: '7px 14px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-        >
-          <FileDown size={13} /> Export Threat Report
-        </button>
       </div>
 
       {/* 3A. CORRELATED INCIDENTS VIEW */}
@@ -632,8 +897,22 @@ const AlertsIncidentsTab = ({
                       onClick={() => setSelectedIncidentModal(inc)}
                       style={{ cursor: 'pointer' }}
                     >
-                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                        {inc.incident_id}
+                      <td style={{ width: '140px' }}>
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: 'var(--surface-muted)',
+                          border: '1px solid var(--border-subtle)',
+                          fontFamily: 'monospace',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          color: 'var(--text-primary)'
+                        }}>
+                          <span>{inc.incident_id}</span>
+                        </div>
                       </td>
                       <td>
                         <span className={`figma-dot-badge ${(inc.severity || 'high').toLowerCase()}`}>

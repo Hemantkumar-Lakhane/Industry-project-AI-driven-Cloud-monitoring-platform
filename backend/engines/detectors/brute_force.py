@@ -196,7 +196,7 @@ class BruteForceDetector(BaseDetector):
                     category_index=1,
                     title=f"Brute-Force Attack Detected: High-frequency password spray against '{identity}'",
                     description=f"[Brute Force Detector] Hostile source {src_ip} executed high-velocity authentication attempts against {identity} (Wazuh Rule 5712).",
-                    severity="critical" if attempts > 100 else "high",
+                    severity="critical" if attempts > 100 else ("high" if attempts > 25 else "medium"),
                     confidence=0.96,
                     detection_method="signature_and_correlation",
                     status="open",
@@ -267,7 +267,7 @@ class BruteForceDetector(BaseDetector):
                     burst_rate = len(window_events) / elapsed  # attempts per second
                     burst_score = min(1.0, round(burst_rate / 2.0, 4))  # normalized heuristic: 2/s = 1.0
 
-                    severity = "critical" if breach_occurred else "high"
+                    severity = "critical" if breach_occurred else ("high" if len(window_events) >= 20 else "medium")
                     confidence = 0.95 if breach_occurred else 0.88
 
                     title = (

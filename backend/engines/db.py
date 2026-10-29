@@ -368,6 +368,16 @@ def save_findings_db(findings: list):
             severity, confidence, detection_method, status, affected_resource,
             affected_principal, playbook_id, data_source, evidence_json, verification_status
         ))
+    try:
+        conn.execute("""
+            DELETE FROM findings 
+            WHERE status = 'open' 
+            AND rowid NOT IN (
+                SELECT rowid FROM findings WHERE status = 'open' ORDER BY timestamp DESC LIMIT 40
+            )
+        """)
+    except Exception:
+        pass
     conn.commit()
     conn.close()
 
@@ -408,18 +418,20 @@ def get_findings_db(limit: int = 100, severity: str = None) -> list:
 def get_findings_stats_db() -> dict:
     """Get count metrics across persisted findings."""
     conn = get_conn()
-    rows = conn.execute("SELECT severity, count(*) as cnt FROM findings GROUP BY severity").fetchall()
+    rows = conn.execute("SELECT severity, count(*) as cnt FROM findings WHERE status = 'open' GROUP BY severity").fetchall()
     total_row = conn.execute("SELECT count(*) as total FROM findings").fetchone()
     open_row = conn.execute("SELECT count(*) as open_cnt FROM findings WHERE status = 'open'").fetchone()
+    resolved_row = conn.execute("SELECT count(*) as res_cnt FROM findings WHERE status = 'resolved'").fetchone()
     conn.close()
 
-    stats = {"critical": 0, "high": 0, "medium": 0, "low": 0, "total": 0, "open": 0}
+    stats = {"critical": 0, "high": 0, "medium": 0, "low": 0, "total": 0, "open": 0, "resolved": 0}
     for r in rows:
         sev = (r["severity"] or "").lower()
         if sev in stats:
             stats[sev] = r["cnt"]
     stats["total"] = total_row["total"] if total_row else 0
     stats["open"] = open_row["open_cnt"] if open_row else stats["total"]
+    stats["resolved"] = resolved_row["res_cnt"] if resolved_row else 0
     return stats
 
 
@@ -647,6 +659,16 @@ def save_incidents_db(incidents: list):
             score, json.dumps(reasons), playbook_id,
             lead_cat, entity_key, created_at, updated_at, resolved_at, notes
         ))
+    try:
+        conn.execute("""
+            DELETE FROM incidents 
+            WHERE status = 'open' 
+            AND rowid NOT IN (
+                SELECT rowid FROM incidents WHERE status = 'open' ORDER BY last_seen DESC LIMIT 15
+            )
+        """)
+    except Exception:
+        pass
     conn.commit()
     conn.close()
 

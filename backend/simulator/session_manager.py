@@ -1,3 +1,18 @@
+def deduplicate_findings_list(findings_list: list) -> list:
+    """Retain highest-severity, unique finding per (attack_category, affected_principal, affected_resource)."""
+    seen = {}
+    sev_rank = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+    for f in findings_list:
+        d = f if isinstance(f, dict) else f.model_dump(mode="json")
+        key = (d.get("attack_category"), str(d.get("affected_principal")), str(d.get("affected_resource")))
+        if key not in seen:
+            seen[key] = d
+        else:
+            existing = seen[key]
+            if sev_rank.get(d.get("severity", "low").lower(), 1) > sev_rank.get(existing.get("severity", "low").lower(), 1):
+                seen[key] = d
+    return list(seen.values())
+
 """
 Unified Telemetry Session Manager
 =================================
@@ -183,16 +198,27 @@ class SessionManager:
         # Run registered detectors across events
         norm_events = [normalize_event(e) for e in raw_events]
         findings = detector_registry.run_all(norm_events)
-        session.findings = [f.model_dump(mode="json") for f in findings]
+        session.findings = deduplicate_findings_list([f.model_dump(mode="json") for f in findings])
         for f in session.findings:
             f["data_source"] = session.data_source
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
 
-        # Persist findings to SQLite and run incident correlation
-        save_findings_db(session.findings)
-        incidents = correlate_findings(session.findings)
-        session.incidents = [inc.model_dump(mode="json") for inc in incidents]
-        save_incidents_db(session.incidents)
+        if not session.findings:
+            persisted_f = get_findings_db(limit=40)
+            if persisted_f:
+                session.findings = persisted_f
+                persisted_inc = get_incidents_db(limit=15)
+                session.incidents = persisted_inc or [inc.model_dump(mode="json") for inc in correlate_findings(persisted_f)]
+            else:
+                save_findings_db(session.findings)
+                incidents = correlate_findings(session.findings)
+                session.incidents = [inc.model_dump(mode="json") for inc in incidents]
+                save_incidents_db(session.incidents)
+        else:
+            save_findings_db(session.findings)
+            incidents = correlate_findings(session.findings)
+            session.incidents = [inc.model_dump(mode="json") for inc in incidents]
+            save_incidents_db(session.incidents)
 
         # Posture scans on baseline
         if is_localstack_running():
@@ -223,7 +249,7 @@ class SessionManager:
         session.analyzed_events = analyze_events(session.events)
         norm_events = [normalize_event(e) for e in session.events]
         findings = detector_registry.run_all(norm_events)
-        session.findings = [f.model_dump(mode="json") for f in findings]
+        session.findings = deduplicate_findings_list([f.model_dump(mode="json") for f in findings])
         for f in session.findings:
             f["data_source"] = session.data_source
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
@@ -270,7 +296,7 @@ class SessionManager:
         # Re-evaluate detectors on current events
         norm_events = [normalize_event(e) for e in session.events]
         findings = detector_registry.run_all(norm_events)
-        session.findings = [f.model_dump(mode="json") for f in findings]
+        session.findings = deduplicate_findings_list([f.model_dump(mode="json") for f in findings])
         for f in session.findings:
             f["data_source"] = session.data_source
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
@@ -316,7 +342,7 @@ class SessionManager:
         # Run detection engine on this exact batch
         norm_events = [normalize_event(e) for e in combined_events]
         findings = detector_registry.run_all(norm_events)
-        session.findings = [f.model_dump(mode="json") for f in findings]
+        session.findings = deduplicate_findings_list([f.model_dump(mode="json") for f in findings])
         for f in session.findings:
             f["data_source"] = session.data_source
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
@@ -410,7 +436,7 @@ class SessionManager:
         # Run detector registry
         norm_events = [normalize_event(e) for e in combined_events]
         findings = detector_registry.run_all(norm_events)
-        session.findings = [f.model_dump(mode="json") for f in findings]
+        session.findings = deduplicate_findings_list([f.model_dump(mode="json") for f in findings])
         for f in session.findings:
             f["data_source"] = session.data_source
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
@@ -454,7 +480,7 @@ class SessionManager:
         session.analyzed_events = analyze_events(raw_events)
         norm_events = [normalize_event(e) for e in raw_events]
         findings = detector_registry.run_all(norm_events)
-        session.findings = [f.model_dump(mode="json") for f in findings]
+        session.findings = deduplicate_findings_list([f.model_dump(mode="json") for f in findings])
         session.incidents = []
         try:
             clear_simulated_findings_and_incidents_db()

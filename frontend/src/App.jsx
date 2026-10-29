@@ -468,7 +468,7 @@ const App = () => {
     },
     livelogs: {
       title: 'Live Log Stream',
-      subtitle: 'Real-time telemetry ingestion daemon · === Live Log Generator ===',
+      subtitle: 'Real-time telemetry ingestion daemon · PyOD ML & SIEM Rule Engine',
       action: null
     },
     datasources: {
@@ -740,26 +740,6 @@ const App = () => {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '11.5px',
-                padding: '3px 9px',
-                borderRadius: '6px',
-                background: 'var(--surface-muted)',
-                color: 'var(--text-secondary)',
-                border: '1px solid var(--border-subtle)',
-                fontWeight: 500
-              }}>
-                <span style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: 'var(--success-color)'
-                }}></span>
-                Live Telemetry · UTC
-              </span>
               {currentMeta.action}
             </div>
           </div>

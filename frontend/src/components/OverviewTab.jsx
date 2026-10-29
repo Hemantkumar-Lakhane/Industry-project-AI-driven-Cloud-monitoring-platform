@@ -1,20 +1,20 @@
 const ATTACK_CATEGORIES_CATALOG = [
-  { key: 'brute_force', name: 'Brute Force & Dictionary', tactic: 'Initial Access', detectorId: 'DET-BF-01' },
-  { key: 'data_exfiltration', name: 'Data Exfiltration (S3/Web)', tactic: 'Exfiltration', detectorId: 'DET-EX-02' },
-  { key: 'iam_privilege_escalation', name: 'IAM Privilege Escalation', tactic: 'Privilege Escalation', detectorId: 'DET-PE-03' },
-  { key: 'malware_ransomware', name: 'Malware & Ransomware', tactic: 'Execution / Impact', detectorId: 'DET-RW-04' },
-  { key: 'network_scanning', name: 'Network Port Scanning', tactic: 'Discovery', detectorId: 'DET-NS-05' },
-  { key: 'bola_ssrf', name: 'BOLA & SSRF Exploitation', tactic: 'Initial Access', detectorId: 'DET-API-06' },
-  { key: 'account_takeover', name: 'Account Takeover (ATO)', tactic: 'Credential Access', detectorId: 'DET-ATO-07' },
-  { key: 'defense_tampering', name: 'Defense & Log Tampering', tactic: 'Defense Evasion', detectorId: 'DET-DT-08' },
-  { key: 'suspicious_api_activity', name: 'CloudTrail Anomalous API', tactic: 'Defense Evasion', detectorId: 'DET-API-09' },
-  { key: 'container_k8s', name: 'Container & K8s Threats', tactic: 'Execution', detectorId: 'DET-K8S-10' },
-  { key: 'serverless_abuse', name: 'Serverless Function Abuse', tactic: 'Execution', detectorId: 'DET-LAM-11' },
-  { key: 'cryptomining', name: 'Hostile Cryptomining', tactic: 'Impact', detectorId: 'DET-MIN-12' },
-  { key: 'database_attacks', name: 'Database SQLi & Ransom', tactic: 'Collection', detectorId: 'DET-DB-13' },
-  { key: 'cloud_misconfiguration', name: 'Cloud Misconfiguration (CSPM)', tactic: 'Reconnaissance', detectorId: 'DET-CFG-14' },
-  { key: 'supply_chain', name: 'Supply Chain & CI/CD', tactic: 'Initial Access', detectorId: 'DET-SC-15' },
-  { key: 'ddos', name: 'Distributed Denial of Service', tactic: 'Impact', detectorId: 'DET-DOS-16' },
+  { key: 'brute_force', name: 'Brute Force & Credential Stuffing', tactic: 'Initial Access', detectorId: 'DET-BF-01', telemetry: 'Wazuh HIDS & Linux PAM', tacticColor: '#3b82f6' },
+  { key: 'data_exfiltration', name: 'Data Exfiltration (S3/Web)', tactic: 'Exfiltration', detectorId: 'DET-EX-02', telemetry: 'AWS S3 Access & VPC Flow', tacticColor: '#ef4444' },
+  { key: 'iam_privilege_escalation', name: 'IAM Privilege Escalation', tactic: 'Privilege Escalation', detectorId: 'DET-PE-03', telemetry: 'CloudTrail IAM Events', tacticColor: '#8b5cf6' },
+  { key: 'malware_ransomware', name: 'Malware & Ransomware', tactic: 'Impact', detectorId: 'DET-RW-04', telemetry: 'Auditd Syscalls & FIM', tacticColor: '#ef4444' },
+  { key: 'network_scanning', name: 'Network Port Scanning', tactic: 'Discovery', detectorId: 'DET-NS-05', telemetry: 'VPC Flow Logs & Security Groups', tacticColor: '#0ea5e9' },
+  { key: 'bola_ssrf', name: 'BOLA & SSRF Exploitation', tactic: 'Initial Access', detectorId: 'DET-API-06', telemetry: 'AWS WAF & ALB HTTP Logs', tacticColor: '#3b82f6' },
+  { key: 'account_takeover', name: 'Account Takeover (ATO)', tactic: 'Credential Access', detectorId: 'DET-ATO-07', telemetry: 'Cognito & Okta Auth Events', tacticColor: '#f59e0b' },
+  { key: 'defense_tampering', name: 'Defense & Log Tampering', tactic: 'Defense Evasion', detectorId: 'DET-DT-08', telemetry: 'CloudTrail StopLogging', tacticColor: '#f59e0b' },
+  { key: 'suspicious_api_activity', name: 'CloudTrail Anomalous API', tactic: 'Defense Evasion', detectorId: 'DET-API-09', telemetry: 'PyOD Anomaly Stream', tacticColor: '#8b5cf6' },
+  { key: 'container_k8s', name: 'Container & K8s Threats', tactic: 'Execution', detectorId: 'DET-K8S-10', telemetry: 'K8s Audit & Containerd', tacticColor: '#8b5cf6' },
+  { key: 'serverless_abuse', name: 'Serverless Function Abuse', tactic: 'Execution', detectorId: 'DET-LAM-11', telemetry: 'AWS Lambda Concurrency Logs', tacticColor: '#8b5cf6' },
+  { key: 'cryptomining', name: 'Hostile Cryptomining', tactic: 'Impact', detectorId: 'DET-MIN-12', telemetry: 'EC2 CPU & Network Egress', tacticColor: '#ef4444' },
+  { key: 'database_attacks', name: 'Database SQLi & Ransom', tactic: 'Collection', detectorId: 'DET-DB-13', telemetry: 'RDS Audit & Proxy Logs', tacticColor: '#f59e0b' },
+  { key: 'cloud_misconfiguration', name: 'Cloud Misconfiguration (CSPM)', tactic: 'Reconnaissance', detectorId: 'DET-CFG-14', telemetry: 'AWS Config & Resource Graph', tacticColor: '#0ea5e9' },
+  { key: 'supply_chain', name: 'Supply Chain & CI/CD', tactic: 'Initial Access', detectorId: 'DET-SC-15', telemetry: 'Pipeline Runners & Webhooks', tacticColor: '#3b82f6' },
+  { key: 'ddos', name: 'Distributed Denial of Service', tactic: 'Impact', detectorId: 'DET-DOS-16', telemetry: 'CloudFront & Shield Telemetry', tacticColor: '#ef4444' },
 ];
 
 import { ErrorBoundary } from './SharedComponents';
@@ -839,31 +839,46 @@ const OverviewTab = ({
         </div>
       </div>
 
-      {/* 5. 16 SPECIALIZED ATTACK DETECTION ENGINES MATRIX */}
-      <div className="figma-card" style={{ marginBottom: '24px', padding: '20px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+      {/* 5. 16 SPECIALIZED ATTACK DETECTION ENGINES COVERAGE MATRIX */}
+      <div className="figma-card" style={{ marginBottom: '24px', padding: '22px 24px', borderRadius: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShieldCheck size={18} style={{ color: 'var(--accent-orange)' }} />
-              <h3 style={{ fontSize: '15.5px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                16 Specialized Attack Detection Engines
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <ShieldCheck size={19} style={{ color: 'var(--accent-orange)' }} />
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.2px' }}>
+                Autonomous Threat Detection Engines
               </h3>
-
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: '12px',
+                background: 'rgba(16, 185, 129, 0.1)',
+                color: '#10b981',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981' }} />
+                16 / 16 Operational
+              </span>
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-              Autonomous detection modules continuously inspecting Wazuh host telemetry, AWS CloudTrail, VPC Flow logs, and IAM activity.
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', margin: 0, lineHeight: 1.5 }}>
+              Continuous multi-layered inspection across Wazuh host agents, CloudTrail API telemetry, VPC network flows, and PyOD anomaly models.
             </p>
           </div>
           <button
             className="figma-btn-secondary"
-            style={{ fontSize: '12px', padding: '6px 14px' }}
+            style={{ fontSize: '12px', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             onClick={() => onNavigateTab && onNavigateTab('alerts')}
           >
-            Filter by Detector in Alerts ↗
+            <span>View All Findings in Alerts</span>
+            <ArrowRight size={13} />
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
           {ATTACK_CATEGORIES_CATALOG.map((cat) => {
             const catCount = findings.filter(f =>
               (f.attack_category || '').toLowerCase() === cat.key.toLowerCase() ||
@@ -875,41 +890,112 @@ const OverviewTab = ({
               <div
                 key={cat.key}
                 onClick={() => onNavigateTab && onNavigateTab('alerts', cat.key)}
+                className="group cursor-pointer"
                 style={{
-                  padding: '12px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: 'var(--surface-muted)',
-                  border: catCount > 0 ? '1px solid rgba(240, 106, 26, 0.35)' : '1px solid var(--border-subtle)',
-                  cursor: 'pointer',
+                  padding: '14px 16px',
+                  borderRadius: '10px',
+                  backgroundColor: 'var(--surface-card)',
+                  border: catCount > 0 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-subtle)',
+                  boxShadow: catCount > 0 ? '0 1px 4px rgba(239, 68, 68, 0.08)' : '0 1px 2px rgba(0, 0, 0, 0.04)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '4px',
-                  transition: 'all 0.15s ease'
+                  gap: '8px',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}
-                title={`Filter ${cat.name} in Alerts`}
+                title={`Filter ${cat.name} in Alerts & Incidents`}
               >
+                {/* Subtle top tactic accent bar */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '2.5px',
+                  backgroundColor: catCount > 0 ? '#ef4444' : (cat.tacticColor || 'var(--accent-orange)'),
+                  opacity: catCount > 0 ? 0.9 : 0.6
+                }} />
+
+                {/* Top header row: tactic & engine ID */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.4px',
+                    color: cat.tacticColor || 'var(--text-tertiary)'
+                  }}>
                     {cat.tactic}
                   </span>
-                  <span style={{
-                    fontSize: '11px',
+                  <code style={{
+                    fontSize: '10px',
+                    fontFamily: 'monospace',
                     fontWeight: 600,
-                    color: catCount > 0 ? 'var(--accent-orange)' : 'var(--success-color)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    backgroundColor: 'var(--surface-muted)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border-subtle)'
                   }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: catCount > 0 ? 'var(--accent-orange)' : 'var(--success-color)' }} />
-                    {catCount > 0 ? `${catCount} Alert${catCount > 1 ? 's' : ''}` : 'Active'}
-                  </span>
+                    {cat.detectorId}
+                  </code>
                 </div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+
+                {/* Engine Name */}
+                <div style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  lineHeight: 1.35,
+                  minHeight: '34px'
+                }}>
                   {cat.name}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Detector ID: <code>{cat.detectorId}</code></span>
-                  <span style={{ fontSize: '10.5px', color: 'var(--accent-orange)', fontWeight: 600 }}>Filter Alerts ↗</span>
+
+                {/* Telemetry Sensor Label */}
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>Sensor:</span>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{cat.telemetry}</span>
+                </div>
+
+                {/* Bottom status & interaction */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingTop: '6px',
+                  marginTop: 'auto',
+                  borderTop: '1px solid var(--border-subtle)'
+                }}>
+                  {catCount > 0 ? (
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      color: '#ef4444',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444', boxShadow: '0 0 6px rgba(239, 68, 68, 0.6)' }} />
+                      {catCount} Active Alert{catCount > 1 ? 's' : ''}
+                    </span>
+                  ) : (
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 500,
+                      color: 'var(--text-secondary)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}>
+                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+                      Normal Baseline
+                    </span>
+                  )}
+                  <span style={{ fontSize: '11px', color: 'var(--accent-orange)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                    Inspect →
+                  </span>
                 </div>
               </div>
             );
