@@ -164,7 +164,32 @@ const RemediationTabInner = ({
     }
   ], []);
 
-  const displayIncidents = liveIncidents.length > 0 ? liveIncidents : demoIncidents;
+  const displayIncidents = useMemo(() => {
+    if (!liveIncidents || liveIncidents.length === 0) return demoIncidents;
+
+    // Prioritize multi-stage correlated campaigns & critical severity
+    const sorted = [...liveIncidents].sort((a, b) => {
+      const cntA = a.rawIncident?.finding_count || 1;
+      const cntB = b.rawIncident?.finding_count || 1;
+      if (cntB !== cntA) return cntB - cntA;
+      if (a.severity === 'critical' && b.severity !== 'critical') return -1;
+      if (b.severity === 'critical' && a.severity !== 'critical') return 1;
+      return 0;
+    });
+
+    // Deduplicate repetitive single findings sharing the same category and target
+    const seen = new Set();
+    const unique = [];
+    for (const inc of sorted) {
+      const key = (inc.attackType || "threat") + ":" + (inc.target || "target");
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(inc);
+      }
+    }
+
+    return unique.slice(0, 8);
+  }, [liveIncidents, demoIncidents]);
 
   // Sync selected incident when prop changes or on initial mount
   useEffect(() => {

@@ -321,7 +321,7 @@ def evaluate_finding_pair_correlation(
     elif same_resource:
         if not both_principals_distinct and not both_ips_distinct and not is_hub_resource:
             # Dedicated workload multi-vector attack without conflicting identities or IPs
-            if cat_a != cat_b and delta_sec <= 180:
+            if delta_sec <= 600:
                 reasons.append(f"Multi-vector threat activity targeting dedicated resource '{res_a}' within {int(delta_sec)}s")
 
     is_correlated = len(reasons) > 0

@@ -18,12 +18,14 @@ export const ForensicsBanner = ({ incident, explainable }) => {
     }}>
       <div>
         <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Globe size={12} style={{ color: 'var(--accent-orange)' }} /> Attacker Source IP
+          <Globe size={12} style={{ color: 'var(--accent-orange)' }} /> {explainable?.attackerLabel || 'Attacker Source IP'}
         </span>
         <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-          <code>{explainable.attackerIp || incident.attacker_ip || '185.220.101.5'}</code>
+          <code>{explainable?.attackerIp || incident.attacker_ip || '185.220.101.5'}</code>
         </div>
-        <span style={{ fontSize: '11px', color: 'var(--sev-high)' }}>Untrusted Ingress</span>
+        <span style={{ fontSize: '11px', color: 'var(--sev-high)' }}>
+          {explainable?.attackerLabel?.includes('Egress') ? 'Rogue Stratum Egress' : 'Untrusted Ingress'}
+        </span>
       </div>
 
       <div>

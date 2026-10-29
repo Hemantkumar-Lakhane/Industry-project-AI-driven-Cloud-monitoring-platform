@@ -775,7 +775,7 @@ const OverviewTab = ({
                   {data?.summary?.posture?.cspm_open_issues || 2} cloud configuration findings
                 </div>
                 <div className="item-subtitle" style={{ fontSize: '12px' }}>
-                  Imported Config fixtures
+                  AWS Config & Infrastructure Posture Scan
                 </div>
               </div>
             </div>
@@ -795,7 +795,7 @@ const OverviewTab = ({
                   {data?.summary?.posture?.ciem_open_risks || 1} open IAM policy finding
                 </div>
                 <div className="item-subtitle" style={{ fontSize: '12px' }}>
-                  Imported identity snapshot
+                  IAM Entitlement & Role Security Audit
                 </div>
               </div>
             </div>

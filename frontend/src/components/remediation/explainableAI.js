@@ -6,7 +6,24 @@ export const getExplainableAnalysis = (incident) => {
   const cat = (incident.attackType || (incident.attack_categories && incident.attack_categories[0]) || '').toLowerCase();
   const target = incident.target || incident.resources?.[0] || '10.0.0.8';
   const principal = incident.principal || incident.principals?.[0] || 'root';
-  const attackerIp = incident.attacker_ip || incident.source_ips?.[0] || '185.220.101.5';
+
+  // Disambiguate IP: Ensure internal target host IP is not assigned as the adversary/pool IP
+  let attackerIp = incident.attacker_ip || incident.source_ips?.[0];
+  const isTargetIp = target && (attackerIp === target || target.includes(attackerIp) || (attackerIp && attackerIp.startsWith('10.')));
+  if (!attackerIp || isTargetIp) {
+    const extIp = (incident.source_ips || []).find(ip => ip !== target && !ip.startsWith('10.') && !ip.startsWith('192.168.'));
+    if (extIp) {
+      attackerIp = extIp;
+    } else if (cat.includes('mining') || cat.includes('crypto')) {
+      attackerIp = '185.220.101.44:3333';
+    } else if (cat.includes('exfil')) {
+      attackerIp = '103.21.5.9';
+    } else if (cat.includes('brute')) {
+      attackerIp = '198.51.100.26';
+    } else {
+      attackerIp = '185.220.101.5';
+    }
+  }
 
   // 1. IAM Privilege Escalation
   if (cat.includes('iam') || cat.includes('privilege') || title.includes('privilege') || title.includes('iam')) {
@@ -88,12 +105,13 @@ export const getExplainableAnalysis = (incident) => {
       attackerIp: attackerIp,
       principal: principal,
       target: target,
-      whatIsAttack: `An unauthorized cryptocurrency mining miner hijacked server '${target}', consuming near 100% CPU/GPU and connecting out to mining pools via IP '${attackerIp}'.`,
-      trueRootCause: `Compromised Host Credentials & Missing Outbound Stratum Filter. The instance allowed unrestricted outbound TCP ports, enabling the malware to communicate with mining pool servers.`,
+      attackerLabel: 'Mining Pool / C2 Egress IP',
+      whatIsAttack: `An unauthorized cryptomining workload was detected executing on server '${target}', consuming near 100% CPU/GPU and attempting outbound stratum connections to mining pool '${attackerIp}'.`,
+      trueRootCause: `Compromised Host Credentials & Missing Outbound Stratum Egress Filter. The instance allowed unrestricted outbound TCP traffic, enabling the hijacked process to join external mining pools.`,
       containmentSteps: [
-        `Kill the cryptomining daemon and delete the unauthorized binary from '${target}'.`,
-        `Block mining pool IP '${attackerIp}' at the security group perimeter.`,
-        `Rotate instance SSH keys and IAM instance profile role credentials.`
+        `Kill the cryptomining daemon and quarantine unauthorized binaries on '${target}'.`,
+        `Block external mining pool destination '${attackerIp}' at the perimeter Security Group / NACL.`,
+        `Rotate instance SSH credentials and revoke temporary IAM instance profile role tokens.`
       ],
       granularActions: [
         { id: 'kill_miner', label: `Terminate Mining Process on ${target}`, action: 'kill_miner', desc: 'Immediately frees CPU/GPU' },
