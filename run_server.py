@@ -23,3 +23,4 @@ if __name__ == "__main__":
     host = os.environ.get("HOST", "0.0.0.0")
     print(f"[*] Starting AegisCloud Backend from root runner on {host}:{port}...", flush=True)
     uvicorn.run("main:app", host=host, port=port, log_level="info")
+

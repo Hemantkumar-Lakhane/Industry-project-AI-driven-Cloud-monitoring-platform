@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, ConfigDict
 import uvicorn
 from typing import Optional, List, Dict, Any
 import asyncio
+from contextlib import asynccontextmanager
 import json
 import csv
 import io
@@ -129,9 +130,27 @@ tags_metadata = [
 ]
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    port = os.environ.get("PORT", "8000")
+    print(f"[*] AegisCloud API operational and listening on port {port}", flush=True)
+    def _warmup():
+        try:
+            from engines.ml_engine import _ensure_loaded
+            _ensure_loaded()
+            from simulator.session_manager import session_manager
+            session_manager.get_session()
+            print("[*] Background initialization complete: telemetry session and ML models ready.", flush=True)
+        except Exception as e:
+            print(f"[!] Background warmup notice: {e}", flush=True)
+    asyncio.create_task(asyncio.to_thread(_warmup))
+    yield
+
+
 app = FastAPI(
     title="Advanced Cloud Security API",
     version="1.0.0",
+    lifespan=lifespan,
     description="""
 # RAM Antivirus - AI-Driven Cloud Security & Workload Monitoring Platform API
 
@@ -220,20 +239,7 @@ def health_check():
     return {"status": "ok"}
 
 
-@app.on_event("startup")
-async def startup_event():
-    port = os.environ.get("PORT", "8000")
-    print(f"[*] AegisCloud API operational and listening on port {port}", flush=True)
-    def _warmup():
-        try:
-            from engines.ml_engine import _ensure_loaded
-            _ensure_loaded()
-            from simulator.session_manager import session_manager
-            session_manager.get_session()
-            print("[*] Background initialization complete: telemetry session and ML models ready.", flush=True)
-        except Exception as e:
-            print(f"[!] Background warmup notice: {e}", flush=True)
-    asyncio.create_task(asyncio.to_thread(_warmup))
+
 
 
 ALLOWED_ORIGINS = [
