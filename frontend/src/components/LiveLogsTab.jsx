@@ -229,38 +229,6 @@ const LiveLogsTab = ({ showToast }) => {
         </div>
       </div>
 
-      {/* 3. METRICS ROW */}
-      <div className="figma-grid-4col" style={{ marginBottom: '16px' }}>
-        <div className="figma-card" style={{ padding: '14px 18px' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Buffer Depth</span>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
-            {logs.length} Events In-Memory
-          </div>
-        </div>
-
-        <div className="figma-card" style={{ padding: '14px 18px' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Stream Status</span>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: isStreaming ? 'var(--success-color)' : 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isStreaming ? 'var(--success-color)' : 'var(--text-muted)' }} />
-            {isStreaming ? 'LIVE STREAMING' : 'STREAM PAUSED'}
-          </div>
-        </div>
-
-        <div className="figma-card" style={{ padding: '14px 18px' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Processing Latency</span>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
-            ~12.4 ms
-          </div>
-        </div>
-
-        <div className="figma-card" style={{ padding: '14px 18px' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Ingestion Daemon</span>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
-            PyOD + Rule Engine Active
-          </div>
-        </div>
-      </div>
-
       {/* 4. SEARCH & FILTER TOOLBAR */}
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap' }}>
         <input
@@ -437,6 +405,40 @@ const LiveLogsTab = ({ showToast }) => {
           </div>
         </div>
       )}
+
+{/* 5. STREAM HEALTH & TELEMETRY STATS (AT BOTTOM) */}
+      <div className="figma-grid-4col" style={{ marginTop: '20px', marginBottom: '12px' }}>
+        <div className="figma-card" style={{ padding: '14px 18px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Buffer Depth</span>
+          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
+            {logs.length} Events In-Memory
+          </div>
+        </div>
+
+        <div className="figma-card" style={{ padding: '14px 18px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Stream Status</span>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: isStreaming ? 'var(--success-color)' : 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isStreaming ? 'var(--success-color)' : 'var(--text-muted)' }} />
+            {isStreaming ? 'LIVE STREAMING' : 'STREAM PAUSED'}
+          </div>
+        </div>
+
+        <div className="figma-card" style={{ padding: '14px 18px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Processing Latency</span>
+          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
+            ~12.4 ms
+          </div>
+        </div>
+
+        <div className="figma-card" style={{ padding: '14px 18px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Ingestion Daemon</span>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
+            PyOD + Rule Engine Active
+          </div>
+        </div>
+      </div>
+
+      
     </div>
   );
 };

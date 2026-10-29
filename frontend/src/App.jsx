@@ -556,12 +556,7 @@ const Dashboard = () => {
           {!sidebarCollapsed && <span>RAM Antivirus</span>}
         </div>
 
-        {!sidebarCollapsed && (
-          <div className="figma-workspace-select">
-            <span>Enterprise Cloud</span>
-            <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} />
-          </div>
-        )}
+
 
         <nav className="figma-nav-list" aria-label="Main Navigation">
           {navTabs.filter(hasTabAccess).map((tab) => {
@@ -644,19 +639,6 @@ const Dashboard = () => {
           </div>
 
           <div className="figma-header-right">
-            <div className="figma-user-profile" title={`Role: ${user?.role || 'Admin'} (@${user?.username})`}>
-              <div className="figma-avatar">
-                {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : (user?.username || 'U').substring(0, 2).toUpperCase()}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <span className="figma-user-name">{user?.full_name || user?.username || 'Authenticated User'}</span>
-                <span className={`figma-role-badge role-${user?.role || 'viewer'}`}>
-                  {(user?.role || 'viewer').toUpperCase()}
-                </span>
-              </div>
-              <ChevronDown size={13} style={{ color: 'var(--text-tertiary)' }} />
-            </div>
-
             {/* Segmented Light/Dark control from Figma header */}
             <div className="figma-theme-toggle">
               <button
@@ -702,23 +684,22 @@ const Dashboard = () => {
               <span style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                fontSize: '11px',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                background: wsConnected ? 'rgba(16, 185, 129, 0.12)' : 'rgba(59, 130, 246, 0.12)',
-                color: wsConnected ? '#10b981' : '#3b82f6',
-                border: `1px solid ${wsConnected ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+                gap: '6px',
+                fontSize: '11.5px',
+                padding: '3px 9px',
+                borderRadius: '6px',
+                background: 'var(--surface-muted)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border-subtle)',
                 fontWeight: 500
               }}>
                 <span style={{
                   width: '6px',
                   height: '6px',
                   borderRadius: '50%',
-                  background: wsConnected ? '#10b981' : '#3b82f6',
-                  boxShadow: wsConnected ? '0 0 6px #10b981' : 'none'
+                  background: wsConnected ? 'var(--text-secondary)' : 'var(--text-muted)'
                 }}></span>
-                {wsConnected ? 'WebSocket Live' : 'HTTP Poll (5s)'}
+                {wsConnected ? 'Stream Active' : 'Polling (5s)'}
               </span>
               {currentMeta.action}
             </div>
@@ -790,7 +771,7 @@ const Dashboard = () => {
 
           {activeTab === 'compliance' && <ComplianceTab showToast={showToast} />}
 
-          {activeTab === 'simulation' && <AttackSimulationTab showToast={showToast} />}
+          {activeTab === 'simulation' && <AttackSimulationTab showToast={showToast} onNavigateTab={handleNavigateTab} />}
 
           {activeTab === 'livelogs' && <LiveLogsTab showToast={showToast} />}
 
@@ -810,6 +791,50 @@ const Dashboard = () => {
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* PROFESSIONAL BOTTOM-RIGHT USER PROFILE CHIP */}
+      {user && (
+        <div style={{
+          position: 'fixed',
+          bottom: '16px',
+          right: '20px',
+          zIndex: 999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '6px 12px 6px 8px',
+          backgroundColor: 'var(--surface-card)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '24px',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
+          fontSize: '12px',
+          transition: 'all 0.2s ease'
+        }}>
+          <div style={{
+            width: '26px',
+            height: '26px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--surface-muted)',
+            border: '1px solid var(--border-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '11px',
+            fontWeight: 700,
+            color: 'var(--text-primary)'
+          }}>
+            {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : (user?.username || 'U').substring(0, 2).toUpperCase()}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '12px' }}>
+              {user?.full_name || user?.username}
+            </span>
+            <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>
+              {user?.role || 'operator'} &bull; online
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

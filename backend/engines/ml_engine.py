@@ -374,7 +374,14 @@ def compare_models(events: List[Dict]) -> Dict:
         all_scores = _score_all(X_raw)
         for name, probs in all_scores.items():
             display = MODEL_DISPLAY.get(name, name)
-            predictions = (probs > 0.5).astype(int)
+            max_p = float(np.max(probs)) if len(probs) > 0 else 0.0
+            if max_p > 0.5 and np.sum(probs > 0.5) > 0:
+                thresh = 0.5
+            elif max_p > 1e-4:
+                thresh = max_p * 0.5
+            else:
+                thresh = 0.5
+            predictions = (probs >= thresh).astype(int)
             tp = int(np.sum((predictions == 1) & (y_true == 1)))
             fp = int(np.sum((predictions == 1) & (y_true == 0)))
             fn = int(np.sum((predictions == 0) & (y_true == 1)))

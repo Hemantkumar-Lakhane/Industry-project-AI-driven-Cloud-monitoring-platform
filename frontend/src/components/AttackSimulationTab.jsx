@@ -68,7 +68,7 @@ const SCENARIO_PLAYBOOKS = {
   }
 };
 
-const AttackSimulationTab = ({ showToast }) => {
+const AttackSimulationTab = ({ showToast, onNavigateTab }) => {
   const [selectedIntensity, setSelectedIntensity] = useState('high');
   const [activeScenarioKey, setActiveScenarioKey] = useState(null);
   const [simResult, setSimResult] = useState(null);
@@ -280,6 +280,28 @@ const AttackSimulationTab = ({ showToast }) => {
               </div>
             </div>
           </div>
+
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => onNavigateTab && onNavigateTab('remediation')}
+              className="figma-btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                borderRadius: '6px',
+                background: 'var(--accent-orange)',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <Shield size={14} /> Remediate All Attack Scenarios in Console &rarr;
+            </button>
+          </div>
         </div>
       )}
 
@@ -331,28 +353,37 @@ const AttackSimulationTab = ({ showToast }) => {
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => runScenario(sc.id)}
-                    disabled={executing || runningFullSim}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '7px 14px',
-                      backgroundColor: '#e03e2d',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '5px',
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      cursor: (executing || runningFullSim) ? 'not-allowed' : 'pointer',
-                      flexShrink: 0,
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <Play size={12} className={isSimulatingThis ? 'animate-spin' : ''} />
-                    {isSimulatingThis ? 'Simulating...' : 'Simulate'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+                    <button
+                      onClick={() => runScenario(sc.id)}
+                      disabled={executing || runningFullSim}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '7px 14px',
+                        backgroundColor: '#e03e2d',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '5px',
+                        fontSize: '12.5px',
+                        fontWeight: 600,
+                        cursor: (executing || runningFullSim) ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <Play size={12} className={isSimulatingThis ? 'animate-spin' : ''} />
+                      {isSimulatingThis ? 'Simulating...' : 'Simulate'}
+                    </button>
+                    <button
+                      onClick={() => onNavigateTab && onNavigateTab('remediation')}
+                      className="figma-btn-secondary"
+                      title="Open incident playbook in Remediation Console"
+                      style={{ padding: '6px 10px', fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Shield size={12} /> Remediate
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -548,6 +579,40 @@ const AttackSimulationTab = ({ showToast }) => {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* Direct Link to Remediation Console */}
+                <div style={{
+                  marginTop: '18px',
+                  paddingTop: '14px',
+                  borderTop: '1px solid #1f293d',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  flexWrap: 'wrap'
+                }}>
+                  <span style={{ fontSize: '12px', color: '#8b949e' }}>
+                    Incident signature active. Containment playbook ready in console.
+                  </span>
+                  <button
+                    onClick={() => onNavigateTab && onNavigateTab('remediation')}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 14px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      borderRadius: '5px',
+                      backgroundColor: 'var(--accent-orange)',
+                      color: '#ffffff',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Shield size={13} /> Open Remediation Console &rarr;
+                  </button>
                 </div>
               </div>
 

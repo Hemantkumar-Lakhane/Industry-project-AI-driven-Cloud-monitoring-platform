@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Gauge, RefreshCw, AlertTriangle, TrendingUp, CheckCircle, ShieldAlert, ArrowRight, ShieldCheck, Activity } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import { API_URL } from '../config';
 
 const RiskScoreTab = ({
@@ -195,94 +195,131 @@ const RiskScoreTab = ({
           </div>
         </div>
 
-        {/* Right Card: Factor Inputs Table */}
-        <div className="figma-card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              Factor inputs
-            </h3>
-            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-              Contribution weights
-            </span>
+        {/* Right Card: Clean Visual Factor Inputs Donut & Progress */}
+        <div className="figma-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  Risk Factor Weights
+                </h3>
+                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                  4-Pillar composite model contribution
+                </span>
+              </div>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '3px 8px',
+                borderRadius: '6px',
+                background: 'var(--surface-muted)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border-subtle)'
+              }}>
+                Weighted Formula
+              </span>
+            </div>
+
+            {/* Donut Chart & Simple Breakdown */}
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ width: '120px', height: '120px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Threat Incidents', value: 35, color: '#ef4444' },
+                        { name: 'ML Anomalies', value: 25, color: '#8b5cf6' },
+                        { name: 'Cloud Posture', value: 20, color: '#3b82f6' },
+                        { name: 'IAM Identity', value: 20, color: '#06b6d4' }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={34}
+                      outerRadius={54}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      <Cell fill="#ef4444" />
+                      <Cell fill="#8b5cf6" />
+                      <Cell fill="#3b82f6" />
+                      <Cell fill="#06b6d4" />
+                    </Pie>
+                    <Tooltip
+                      formatter={(val, name) => [`${val}% Weight`, name]}
+                      contentStyle={{ backgroundColor: 'var(--surface-card)', borderColor: 'var(--border-subtle)', borderRadius: '6px', fontSize: '11.5px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Simple Clear Terms */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, marginBottom: '3px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
+                      Threat Incidents
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>35% weight</span>
+                  </div>
+                  <div style={{ width: '100%', height: '5px', backgroundColor: 'var(--surface-muted)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: '35%', height: '100%', backgroundColor: '#ef4444', borderRadius: '3px' }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, marginBottom: '3px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#8b5cf6' }} />
+                      ML Anomalies
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>25% weight</span>
+                  </div>
+                  <div style={{ width: '100%', height: '5px', backgroundColor: 'var(--surface-muted)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: '25%', height: '100%', backgroundColor: '#8b5cf6', borderRadius: '3px' }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, marginBottom: '3px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6' }} />
+                      Cloud Misconfigs
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>20% weight</span>
+                  </div>
+                  <div style={{ width: '100%', height: '5px', backgroundColor: 'var(--surface-muted)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: '20%', height: '100%', backgroundColor: '#3b82f6', borderRadius: '3px' }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, marginBottom: '3px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#06b6d4' }} />
+                      Identity & IAM Risks
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>20% weight</span>
+                  </div>
+                  <div style={{ width: '100%', height: '5px', backgroundColor: 'var(--surface-muted)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: '20%', height: '100%', backgroundColor: '#06b6d4', borderRadius: '3px' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <table className="figma-table">
-            <thead>
-              <tr>
-                <th>Factor</th>
-                <th>Active input stream</th>
-                <th style={{ textAlign: 'right' }}>Score / Weight</th>
-              </tr>
-            </thead>
-            <tbody>
-              {risk?.risk_breakdown_chart ? (
-                risk.risk_breakdown_chart.map((c, i) => {
-                  let inputLabel = 'Live security stream';
-                  if (c.name.includes('Incident')) inputLabel = 'Task-1 Correlated Campaigns';
-                  else if (c.name.includes('ML')) inputLabel = 'Active flow anomaly stream';
-                  else if (c.name.includes('CSPM')) inputLabel = 'Cloud posture & exposure scan';
-                  else if (c.name.includes('CIEM')) inputLabel = 'IAM entitlement & privilege audit';
-                  return (
-                    <tr key={i}>
-                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{inputLabel}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600, color: c.color || 'var(--accent-orange)' }}>
-                        {c.score}% ({(c.weight * 100).toFixed(0)}%)
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <>
-                  <tr>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#8b5cf6' }} />
-                        ML/AI detection
-                      </div>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                      Wazuh SIEM stream & CloudTrail logs
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                      35.1% <span style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>(35%)</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
-                        CSPM cloud posture
-                      </div>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                      AWS S3 bucket & Security Group ingress
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--sev-critical)', fontFamily: 'var(--font-mono)' }}>
-                      100% <span style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>(35%)</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
-                        CIEM identity
-                      </div>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                      IAM policy analyzer & privilege escalation
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--sev-critical)', fontFamily: 'var(--font-mono)' }}>
-                      100% <span style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>(30%)</span>
-                    </td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
-
-          <div style={{ marginTop: '16px', fontSize: '12px', color: 'var(--text-muted)' }}>
-            Real-time telemetry verified continuously · Weighted multi-factor risk formula.
+          <div style={{
+            fontSize: '11.5px',
+            color: 'var(--text-tertiary)',
+            paddingTop: '10px',
+            borderTop: '1px solid var(--border-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <span>Real-time continuous evaluation</span>
+            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Active telemetry input</span>
           </div>
         </div>
       </div>
