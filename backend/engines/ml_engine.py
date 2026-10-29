@@ -23,9 +23,17 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Any, Optional
 
-from pyod.models.iforest import IForest
-from pyod.models.knn import KNN
-from pyod.models.hbos import HBOS
+try:
+    from pyod.models.iforest import IForest
+    from pyod.models.knn import KNN
+    from pyod.models.hbos import HBOS
+    PYOD_AVAILABLE = True
+except (ImportError, OSError) as e:
+    IForest = None
+    KNN = None
+    HBOS = None
+    PYOD_AVAILABLE = False
+    print(f"[ML Engine] WARNING: PyOD models could not be imported ({e}). Dynamic fallback enabled.")
 
 from engines.feature_extractor import (
     FEATURE_NAMES,
@@ -58,7 +66,7 @@ def _load():
     Load all 3 specialist models + unified scaler from disk.
     Returns (models, scaler, meta) or (None, None, None).
     """
-    if not os.path.exists(MODELS_DIR):
+    if not PYOD_AVAILABLE or not os.path.exists(MODELS_DIR):
         return None, None, None
 
     models = {}
@@ -259,9 +267,16 @@ def analyze_events(events: List[Dict]) -> List[Dict]:
             best_model_idx = np.zeros(len(events), dtype=int)
     else:
         print("[ML Engine] WARNING: Pretrained models not available or dimension mismatch. Falling back to dynamic fit.")
-        clf = IForest(contamination=0.15, random_state=42, n_estimators=50, n_jobs=1)
-        clf.fit(X_flow)
-        flow_scores = clf.predict_proba(X_flow)[:, 1]
+        if IForest is not None:
+            try:
+                clf = IForest(contamination=0.15, random_state=42, n_estimators=50, n_jobs=1)
+                clf.fit(X_flow)
+                flow_scores = clf.predict_proba(X_flow)[:, 1]
+            except Exception as e:
+                print(f"[ML Engine] Fallback IForest failed: {e}")
+                flow_scores = np.zeros(len(events))
+        else:
+            flow_scores = np.zeros(len(events))
         score_matrix = flow_scores.reshape(-1, 1)
         model_names = ["iforest"]
         best_model_idx = np.zeros(len(events), dtype=int)
@@ -359,9 +374,15 @@ def compare_models(events: List[Dict]) -> Dict:
             per_event_scores[display] = [_safe(p) for p in probs]
     else:
         # Fallback dynamic fit
-        clf = IForest(contamination=0.15, random_state=42, n_estimators=50, n_jobs=1)
-        clf.fit(X_raw)
-        probs = clf.predict_proba(X_raw)[:, 1]
+        if IForest is not None:
+            try:
+                clf = IForest(contamination=0.15, random_state=42, n_estimators=50, n_jobs=1)
+                clf.fit(X_raw)
+                probs = clf.predict_proba(X_raw)[:, 1]
+            except Exception:
+                probs = np.zeros(len(X_raw))
+        else:
+            probs = np.zeros(len(X_raw))
         display = "Isolation Forest (Fallback Dynamic)"
         predictions = (probs > 0.65).astype(int)
         tp = int(np.sum((predictions == 1) & (y_true == 1)))
