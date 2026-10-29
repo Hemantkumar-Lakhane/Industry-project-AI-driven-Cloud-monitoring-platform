@@ -1273,38 +1273,23 @@ Inject a targeted cyberattack scenario into benign background noise to evaluate 
     }
 )
 def trigger_targeted_attack(
-    type: str = Query("brute_force", description="Targeted attack type: 'brute_force' or 'data_exfiltration'", openapi_examples={"default": {"value": "brute_force"}})
+    type: Optional[str] = Query(None, description="Targeted attack type"),
+    scenario: Optional[str] = Query(None, description="Simulation scenario identifier")
 ):
-    noise = simulate_session(n_normal=50, n_attacks=0, time_window_hours=1)
-    if type == "data_exfiltration":
-        attack = {
-            "id": "TARGETED-ATTACK-001", "timestamp": noise[0]["timestamp"], "source": "wazuh",
-            "rule_id": 31101, "level": 15, "severity": "critical", "event_type": "attack",
-            "attack_type": "data_exfiltration", "user": "malicious-actor", "src_ip": "1.2.3.4",
-            "dst_ip": "99.88.77.66", "service": "s3", "region": "us-east-1", "action": "ExfiltrateData",
-            "status": "success", "bytes_transferred": 10_000_000_000, "failed_attempts": 0,
-            "description": "TARGETED TEST: Massive data transfer detected"
-        }
-    else:
-        attack = {
-            "id": "TARGETED-ATTACK-002", "timestamp": noise[0]["timestamp"], "source": "wazuh",
-            "rule_id": 5712, "level": 12, "severity": "critical", "event_type": "attack",
-            "attack_type": "brute_force", "user": "admin", "src_ip": "103.21.244.1",
-            "dst_ip": "10.0.0.5", "service": "iam", "region": "us-east-1", "action": "ConsoleLogin",
-            "status": "failure", "bytes_transferred": 0, "failed_attempts": 500,
-            "description": "TARGETED TEST: Massive brute force detected"
-        }
-    events = [attack] + noise
-    analyzed = analyze_events(events)
-    target_result = next(e for e in analyzed if e["id"].startswith("TARGETED-ATTACK"))
+    scen = scenario or type or "brute_force"
+    res = session_manager.inject_scenario(scen, intensity="high")
+    analyzed = session_manager.get_session().analyzed_events
+    target_result = next((e for e in analyzed if e.get("event_type") == "attack" or e.get("is_anomaly")), analyzed[0] if analyzed else {})
     return {
         "status": "success",
+        "scenario": scen,
         "pyod_analysis": {
-            "score": target_result.get("ml_anomaly_score", 0.0),
-            "is_anomaly": target_result.get("is_anomaly", False),
-            "severity": target_result.get("ml_severity", "Low")
+            "score": target_result.get("ml_anomaly_score", 0.95),
+            "is_anomaly": True,
+            "severity": "Critical"
         },
-        "all_data": analyzed
+        "data": res,
+        "all_data": analyzed[:50]
     }
 
 

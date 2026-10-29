@@ -454,7 +454,14 @@ def correlate_findings(
         correlation_reasons = sorted(list(reasons_set))
         if not correlation_reasons:
             if len(cluster_items) == 1:
-                correlation_reasons = ["Atomic security finding evaluated independently."]
+                item0 = cluster_items[0]
+                cat0 = (item0.get("attack_category") or "Threat").replace("_", " ").title()
+                princ0 = item0.get("affected_principal") or (principals[0] if principals else "Host Principal")
+                res0 = item0.get("affected_resource") or (resources[0] if resources else "Cloud Resource")
+                ip0 = item0.get("source_ip") or (source_ips[0] if source_ips else "Remote Ingress")
+                correlation_reasons = [
+                    f"Direct telemetry signal: {cat0} activity targeting '{res0}' via principal '{princ0}' from IP '{ip0}'."
+                ]
             else:
                 correlation_reasons = ["Correlated by multi-signal entity and temporal alignment."]
 

@@ -209,10 +209,81 @@ def simulate_abnormal_access(intensity: str = "high") -> Dict:
         "description": f"Abnormal access: {user} logged in from unusual geo-location and accessed secrets"
     }
 
+
+def simulate_network_scanning(intensity: str = "high") -> Dict:
+    """Simulate aggressive network port scanning across VPC subnets."""
+    profile = _profile(intensity)
+    src_ip = f"198.51.100.{random.randint(2, 45)}"
+    target_ip = f"10.0.0.{random.randint(5, 20)}"
+    events = []
+    ports = [22, 80, 443, 3306, 5432, 6379, 8080, 27017, 9200, 11211]
+    for p in ports:
+        events.append({
+            "id": f"SIM-NS-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+            "source": "wazuh", "rule_id": 40101, "level": 10, "severity": "high",
+            "event_type": "attack", "attack_type": "network_scanning", "user": "unauthenticated-scanner",
+            "src_ip": src_ip, "dst_ip": target_ip, "service": f"port-{p}", "region": "us-east-1",
+            "action": f"Port scan detected on TCP port {p}", "status": "blocked", "bytes_transferred": 64,
+            "failed_attempts": 0, "description": f"SYN scan probe to port {p} on {target_ip}"
+        })
+    return {
+        **_simulation_meta("SIM-NS"),
+        "scenario": "network_scanning", "intensity": intensity, "target_user": "unauthenticated-scanner",
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Network Port Scanning: Aggressive sweep from {src_ip} against {target_ip}"
+    }
+
+def simulate_cryptomining(intensity: str = "high") -> Dict:
+    """Simulate hostile cryptomining workload consuming 99% CPU."""
+    profile = _profile(intensity)
+    user = random.choice(["svc-worker", "svc-backup", "ubuntu"])
+    target_ip = f"10.0.2.{random.randint(5, 18)}"
+    pool_ip = f"185.220.101.{random.randint(10, 40)}"
+    events = [
+        {"id": f"SIM-MIN-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 87100, "level": 12, "severity": "critical",
+         "event_type": "attack", "attack_type": "cryptomining", "user": user,
+         "src_ip": target_ip, "dst_ip": pool_ip, "service": "stratum+tcp", "region": "us-east-1",
+         "action": "Cryptomining process detected (XMRig miner active)", "status": "detected", "bytes_transferred": 2048,
+         "failed_attempts": 0, "description": f"High CPU mining process detected on {target_ip} connected to {pool_ip}"}
+    ]
+    return {
+        **_simulation_meta("SIM-MIN"),
+        "scenario": "cryptomining", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Hostile Cryptomining: Unauthorized mining process on {target_ip}"
+    }
+
+def simulate_malware_ransomware(intensity: str = "high") -> Dict:
+    """Simulate early-stage ransomware file enumeration and backup tampering."""
+    profile = _profile(intensity)
+    user = random.choice(["root", "svc-data-sync", "bob"])
+    target_ip = f"10.0.1.{random.randint(5, 18)}"
+    events = [
+        {"id": f"SIM-MAL-{str(uuid.uuid4())[:8]}", "timestamp": _timestamp(),
+         "source": "wazuh", "rule_id": 60100, "level": 14, "severity": "critical",
+         "event_type": "attack", "attack_type": "malware_ransomware", "user": user,
+         "src_ip": target_ip, "dst_ip": "unknown", "service": "shadowcopy", "region": "us-east-1",
+         "action": "Ransomware precursor — mass file enumeration & backup tampering", "status": "detected",
+         "bytes_transferred": 0, "failed_attempts": 0,
+         "description": f"Destructive anti-recovery actions observed on host {target_ip}"}
+    ]
+    return {
+        **_simulation_meta("SIM-MAL"),
+        "scenario": "malware_ransomware", "intensity": intensity, "target_user": user,
+        "total_events": len(events), "events": events, "expected_detection": True,
+        "description": f"Ransomware Precursor: Mass enumeration and backup tampering on {target_ip}"
+    }
+
 SCENARIOS = {
     "brute_force": simulate_brute_force,
     "privilege_escalation": simulate_privilege_escalation,
     "data_exfiltration": simulate_data_exfiltration,
+    "network_scanning": simulate_network_scanning,
+    "port_scan": simulate_network_scanning,
+    "cryptomining": simulate_cryptomining,
+    "malware_ransomware": simulate_malware_ransomware,
+    "ransomware": simulate_malware_ransomware,
     "abnormal_access": simulate_abnormal_access,
 }
 

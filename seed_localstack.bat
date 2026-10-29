@@ -8,3 +8,4 @@ echo.
 python seed_localstack.py
 echo.
 pause
+

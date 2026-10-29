@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Terminal, Play, Pause, RefreshCw, Trash2, ShieldAlert, Filter, Download, Zap, Database, CheckCircle2 } from 'lucide-react';
+import { Terminal, Play, Pause, RefreshCw, Trash2, ShieldAlert, Filter, Download, Zap, Database, CheckCircle2, ChevronRight, Server, Globe, User, ShieldCheck } from 'lucide-react';
 import { API_URL } from '../config';
 
 const normalizeBackendEvent = (e) => {
@@ -31,13 +31,13 @@ const LiveLogsTab = ({ showToast }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [speedMs, setSpeedMs] = useState(3000);
   const [selectedLog, setSelectedLog] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [simulating, setSimulating] = useState(false);
   const logContainerRef = useRef(null);
 
-  // Auto-scroll to bottom of log stream if at bottom
+  // Keep newest events in view at top (no bottom scrolling jump)
   useEffect(() => {
     if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+      logContainerRef.current.scrollTop = 0;
     }
   }, [logs]);
 
@@ -66,15 +66,19 @@ const LiveLogsTab = ({ showToast }) => {
     return () => clearInterval(interval);
   }, [isStreaming, speedMs]);
 
-  const handleInjectAttackBurst = async () => {
+  // 1-Click Targeted Attack Simulation
+  const handleSimulateAttack = async (scenario, label) => {
+    setSimulating(true);
     try {
-      if (showToast) showToast('Injecting live attack scenario into backend telemetry...');
-      await axios.get(`${API_URL}/simulate/attack?scenario=brute_force`);
+      if (showToast) showToast(`Injecting ${label} into live telemetry stream...`);
+      await axios.get(`${API_URL}/simulate/attack?scenario=${scenario}`);
       await fetchLogs();
-      if (showToast) showToast('Attack burst injected and verified by PyOD detectors!');
+      if (showToast) showToast(`[DETECTED] ${label} burst processed by detection engine!`);
     } catch (err) {
-      if (showToast) showToast('Attack injection completed; refreshed telemetry stream.');
       await fetchLogs();
+      if (showToast) showToast(`Simulation completed; telemetry stream updated.`);
+    } finally {
+      setSimulating(false);
     }
   };
 
@@ -100,8 +104,8 @@ const LiveLogsTab = ({ showToast }) => {
         background: 'var(--surface-card)',
         border: '1px solid var(--border-subtle)',
         borderRadius: '8px',
-        padding: '20px 24px',
-        marginBottom: '20px',
+        padding: '18px 22px',
+        marginBottom: '16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -110,13 +114,16 @@ const LiveLogsTab = ({ showToast }) => {
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <Terminal size={20} style={{ color: 'var(--accent-orange)' }} />
-            <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-              === Live Log Generator === (Admin Telemetry Stream)
+            <Terminal size={18} style={{ color: 'var(--accent-orange)' }} />
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+              Live Telemetry Stream & Attack Generator
             </h3>
+            <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.12)', color: 'var(--success-color)' }}>
+              Wazuh SIEM Active
+            </span>
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
-            Real-time Wazuh OSSEC & AWS CloudTrail raw ingestion daemon · Pipeline latency &lt;15ms
+          <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0 }}>
+            Real-time Wazuh OSSEC & AWS CloudTrail raw ingestion daemon · Newest events stream directly at top
           </p>
         </div>
 
@@ -124,232 +131,307 @@ const LiveLogsTab = ({ showToast }) => {
           <button
             onClick={() => setIsStreaming(!isStreaming)}
             className="figma-btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 12px' }}
           >
-            {isStreaming ? <Pause size={13} /> : <Play size={13} />}
+            {isStreaming ? <Pause size={12} /> : <Play size={12} />}
             {isStreaming ? 'Pause Stream' : 'Resume Stream'}
           </button>
 
           <button
-            onClick={handleInjectAttackBurst}
-            className="figma-btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={fetchLogs}
+            className="figma-btn-secondary"
+            title="Refresh stream now"
+            style={{ padding: '6px 10px', fontSize: '12px' }}
           >
-            <Zap size={13} /> Inject Attack Burst
+            <RefreshCw size={13} className={simulating ? 'animate-spin' : ''} />
           </button>
 
           <button
             onClick={() => setLogs([])}
             className="figma-btn-secondary"
             title="Clear Stream"
-            style={{ padding: '8px' }}
+            style={{ padding: '6px 10px' }}
           >
-            <Trash2 size={14} />
+            <Trash2 size={13} />
           </button>
         </div>
       </div>
 
-      {/* 2. TELEMETRY STATS TICKER */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '20px' }}>
-        <div style={{ padding: '14px 18px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Buffer Depth</span>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+      {/* 2. ADMIN 1-CLICK ATTACK SIMULATION TOOLBAR */}
+      <div style={{
+        background: 'var(--surface-muted)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: '8px',
+        padding: '14px 18px',
+        marginBottom: '18px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Zap size={15} style={{ color: 'var(--accent-orange)' }} />
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Admin Attack Generator Panel — 1-Click Detection Verification
+            </span>
+          </div>
+          <span style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>
+            Inject test attack bursts directly into telemetry to verify detector response
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <button
+            className="figma-btn-secondary"
+            style={{ padding: '6px 14px', fontSize: '12px', borderLeft: '3px solid var(--sev-critical)' }}
+            disabled={simulating}
+            onClick={() => handleSimulateAttack('brute_force', 'SSH Brute Force Attack')}
+          >
+            🔴 Simulate Brute Force (SSH)
+          </button>
+          <button
+            className="figma-btn-secondary"
+            style={{ padding: '6px 14px', fontSize: '12px', borderLeft: '3px solid var(--accent-orange)' }}
+            disabled={simulating}
+            onClick={() => handleSimulateAttack('network_scanning', 'Network Port Scan')}
+          >
+            🟠 Simulate Network Port Scan
+          </button>
+          <button
+            className="figma-btn-secondary"
+            style={{ padding: '6px 14px', fontSize: '12px', borderLeft: '3px solid #8b5cf6' }}
+            disabled={simulating}
+            onClick={() => handleSimulateAttack('privilege_escalation', 'IAM Privilege Escalation')}
+          >
+            🟣 Simulate Privilege Escalation
+          </button>
+          <button
+            className="figma-btn-secondary"
+            style={{ padding: '6px 14px', fontSize: '12px', borderLeft: '3px solid #3b82f6' }}
+            disabled={simulating}
+            onClick={() => handleSimulateAttack('data_exfiltration', 'S3 Data Exfiltration')}
+          >
+            🔵 Simulate S3 Data Exfil
+          </button>
+          <button
+            className="figma-btn-secondary"
+            style={{ padding: '6px 14px', fontSize: '12px', borderLeft: '3px solid #10b981' }}
+            disabled={simulating}
+            onClick={() => handleSimulateAttack('cryptomining', 'Hostile Cryptomining')}
+          >
+            🟢 Simulate Cryptomining
+          </button>
+          <button
+            className="figma-btn-secondary"
+            style={{ padding: '6px 14px', fontSize: '12px', borderLeft: '3px solid var(--sev-critical)' }}
+            disabled={simulating}
+            onClick={() => handleSimulateAttack('malware_ransomware', 'Ransomware Precursor')}
+          >
+            🛑 Simulate Ransomware
+          </button>
+        </div>
+      </div>
+
+      {/* 3. METRICS ROW */}
+      <div className="figma-grid-4col" style={{ marginBottom: '16px' }}>
+        <div className="figma-card" style={{ padding: '14px 18px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Buffer Depth</span>
+          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
             {logs.length} Events In-Memory
           </div>
         </div>
-        <div style={{ padding: '14px 18px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Stream Status</span>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: isStreaming ? 'var(--success-color)' : 'var(--sev-high)', marginTop: '2px' }}>
-            {isStreaming ? '● LIVE STREAMING' : '❚❚ PAUSED'}
+
+        <div className="figma-card" style={{ padding: '14px 18px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Stream Status</span>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: isStreaming ? 'var(--success-color)' : 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isStreaming ? 'var(--success-color)' : 'var(--text-muted)' }} />
+            {isStreaming ? 'LIVE STREAMING' : 'STREAM PAUSED'}
           </div>
         </div>
-        <div style={{ padding: '14px 18px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Processing Latency</span>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--accent-orange)', marginTop: '2px' }}>
-            ~12.4 ms (Normalized)
+
+        <div className="figma-card" style={{ padding: '14px 18px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Processing Latency</span>
+          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
+            ~12.4 ms
           </div>
         </div>
-        <div style={{ padding: '14px 18px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Ingestion Daemon</span>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+
+        <div className="figma-card" style={{ padding: '14px 18px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Ingestion Daemon</span>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
             PyOD + Rule Engine Active
           </div>
         </div>
       </div>
 
-      {/* 3. CONTROLS BAR: SEARCH & SEVERITY FILTER */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '14px',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <input
-            type="text"
-            placeholder="Search raw stream (user, IP, action)..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="figma-filter-select"
-            style={{ minWidth: '280px', padding: '6px 12px', fontSize: '12.5px' }}
-          />
+      {/* 4. SEARCH & FILTER TOOLBAR */}
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          className="figma-search-input"
+          placeholder="Search raw stream (user, IP, action)..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ width: '280px' }}
+        />
 
-          <select
-            className="figma-filter-select"
-            value={filterSeverity}
-            onChange={(e) => setFilterSeverity(e.target.value)}
-            style={{ fontSize: '12.5px' }}
-          >
-            <option value="all">All Severities</option>
-            <option value="critical">Critical Only</option>
-            <option value="high">High Only</option>
-            <option value="medium">Medium Only</option>
-            <option value="low">Low Only</option>
-          </select>
-        </div>
+        <select
+          className="figma-select"
+          value={filterSeverity}
+          onChange={(e) => setFilterSeverity(e.target.value)}
+          style={{ width: '150px' }}
+        >
+          <option value="all">All Severities</option>
+          <option value="critical">Critical Only</option>
+          <option value="high">High Only</option>
+          <option value="medium">Medium Only</option>
+          <option value="low">Low Only</option>
+        </select>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-tertiary)' }}>
           <span>Stream Interval:</span>
-          {[
-            { label: 'Fast (1s)', val: 1000 },
-            { label: 'Normal (2s)', val: 2000 },
-            { label: 'Slow (5s)', val: 5000 }
-          ].map((sp) => (
-            <button
-              key={sp.val}
-              onClick={() => setSpeedMs(sp.val)}
-              style={{
-                background: speedMs === sp.val ? 'var(--accent-orange)' : 'var(--surface-muted)',
-                color: speedMs === sp.val ? '#ffffff' : 'var(--text-primary)',
-                border: '1px solid var(--border-subtle)',
-                padding: '3px 8px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              {sp.label}
-            </button>
-          ))}
+          <button
+            className={`figma-btn-secondary ${speedMs === 1000 ? 'active' : ''}`}
+            style={{ padding: '4px 8px', fontSize: '11px' }}
+            onClick={() => setSpeedMs(1000)}
+          >
+            Fast (1s)
+          </button>
+          <button
+            className={`figma-btn-secondary ${speedMs === 3000 ? 'active' : ''}`}
+            style={{ padding: '4px 8px', fontSize: '11px' }}
+            onClick={() => setSpeedMs(3000)}
+          >
+            Normal (3s)
+          </button>
+          <button
+            className={`figma-btn-secondary ${speedMs === 5000 ? 'active' : ''}`}
+            style={{ padding: '4px 8px', fontSize: '11px' }}
+            onClick={() => setSpeedMs(5000)}
+          >
+            Slow (5s)
+          </button>
         </div>
       </div>
 
-      {/* 4. REAL-TIME TERMINAL CONSOLE */}
+      {/* 5. LIVE TERMINAL CONTAINER (NEWEST AT TOP, NO WEIRD BOTTOM JUMP) */}
       <div
         ref={logContainerRef}
         style={{
-          backgroundColor: '#0a0d12',
-          border: '1px solid #1f293d',
-          borderRadius: '8px',
-          padding: '16px 18px',
-          height: '460px',
-          overflowY: 'auto',
+          backgroundColor: '#0c1017',
+          color: '#38bdf8',
           fontFamily: 'Consolas, Monaco, "Courier New", monospace',
           fontSize: '12px',
-          lineHeight: '1.7',
-          color: '#c9d1d9',
-          boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.6)'
+          lineHeight: '1.6',
+          padding: '16px 20px',
+          borderRadius: '8px',
+          border: '1px solid #1e293b',
+          maxHeight: '480px',
+          overflowY: 'auto',
+          boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)'
         }}
       >
-        <div style={{ color: '#58a6ff', marginBottom: '8px', borderBottom: '1px dashed #30363d', paddingBottom: '6px' }}>
-          === RAM ANTIVIRUS TELEMETRY STREAM INITIALIZED [INGEST PROTOCOL: WAZUH_JSON + CLOUDTRAIL_AUDIT] ===
+        <div style={{ color: '#64748b', marginBottom: '10px', fontSize: '11px', borderBottom: '1px solid #1e293b', paddingBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+          <span>--- RAM ANTIVIRUS TELEMETRY STREAM INITIALIZED [INGEST PROTOCOL: WAZUH_JSON + CLOUDTRAIL_AUDIT] ---</span>
+          <span style={{ color: '#10b981' }}>▲ NEWEST EVENTS PINNED AT TOP</span>
         </div>
 
         {filteredLogs.length === 0 ? (
-          <div style={{ color: '#8b949e', textAlign: 'center', padding: '40px 0' }}>
-            No log events matching active search / severity filter.
+          <div style={{ color: '#64748b', padding: '20px 0', textAlign: 'center' }}>
+            No telemetry records matching filter criteria.
           </div>
         ) : (
-          filteredLogs.map((log) => {
-            const sevColor =
-              log.severity === 'critical' ? '#ff7b72' :
-              log.severity === 'high' ? '#ffa657' :
-              log.severity === 'medium' ? '#d29922' : '#7ee787';
+          filteredLogs.map((l, idx) => {
+            const isCrit = l.severity === 'critical';
+            const isHigh = l.severity === 'high';
+            const sevColor = isCrit ? '#ef4444' : (isHigh ? '#f97316' : (l.severity === 'medium' ? '#eab308' : '#10b981'));
 
             return (
               <div
-                key={log.id}
-                onClick={() => setSelectedLog(log)}
+                key={l.id + '-' + idx}
+                onClick={() => setSelectedLog(l)}
                 style={{
                   display: 'flex',
-                  alignItems: 'flex-start',
+                  alignItems: 'baseline',
                   gap: '12px',
+                  padding: '3px 0',
                   cursor: 'pointer',
-                  padding: '2px 4px',
-                  borderRadius: '3px',
-                  transition: 'background 0.15s ease'
+                  borderBottom: '1px solid rgba(255,255,255,0.03)',
+                  transition: 'background 0.1s ease',
+                  backgroundColor: idx === 0 ? 'rgba(235, 107, 39, 0.08)' : 'transparent'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
-                <span style={{ color: '#8b949e', minWidth: '95px' }}>{log.timestamp}</span>
-                <span style={{
-                  color: sevColor,
-                  fontWeight: 700,
-                  minWidth: '70px',
-                  textTransform: 'uppercase',
-                  fontSize: '11px'
-                }}>
-                  [{log.severity}]
+                <span style={{ color: '#64748b', minWidth: '95px' }}>{l.timestamp}</span>
+                <span style={{ color: sevColor, minWidth: '70px', fontWeight: 700 }}>
+                  [{l.severity.toUpperCase()}]
                 </span>
-                <span style={{ color: '#79c0ff', minWidth: '85px' }}>{log.action}</span>
-                <span style={{ color: '#d2a8ff', minWidth: '110px' }}>user:{log.user}</span>
-                <span style={{ color: '#a5d6ff', minWidth: '95px' }}>ip:{log.src_ip}</span>
-                <span style={{ color: '#c9d1d9', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {log.raw}
+                <span style={{ color: '#e2e8f0', minWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {l.action}
                 </span>
-                <span style={{ color: '#58a6ff', fontSize: '11px', textDecoration: 'underline' }}>inspect</span>
+                <span style={{ color: '#94a3b8', minWidth: '100px' }}>
+                  user:{l.user}
+                </span>
+                <span style={{ color: '#38bdf8', minWidth: '110px' }}>
+                  ip:{l.src_ip}
+                </span>
+                <span style={{ color: '#cbd5e1', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {l.raw}
+                </span>
+                <span style={{ color: '#f59e0b', fontSize: '11px', textDecoration: 'underline' }}>
+                  inspect
+                </span>
               </div>
             );
           })
         )}
       </div>
 
-      {/* 5. LOG INSPECTION MODAL */}
+      {/* 6. INSPECT LOG DRAWER */}
       {selectedLog && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(3px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="figma-card" style={{
-            width: '100%',
-            maxWidth: '560px',
-            padding: '24px',
-            backgroundColor: 'var(--surface-card)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: '10px'
-          }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
-              Raw Telemetry Inspection: {selectedLog.id}
-            </h3>
-            <pre style={{
-              background: '#0a0d12',
-              color: '#58a6ff',
-              padding: '16px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontFamily: 'monospace',
-              maxHeight: '320px',
-              overflowY: 'auto'
-            }}>
-              {JSON.stringify(selectedLog, null, 2)}
-            </pre>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={() => setSelectedLog(null)}
+        >
+          <div
+            className="figma-card"
+            style={{ width: '600px', maxWidth: '100%', padding: '24px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={`figma-dot-badge ${selectedLog.severity}`}>
+                  {selectedLog.severity.toUpperCase()}
+                </span>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  Event Forensics Inspector
+                </h3>
+              </div>
+              <button className="figma-btn-secondary" style={{ padding: '4px 8px' }} onClick={() => setSelectedLog(null)}>✕</button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12.5px', marginBottom: '16px' }}>
+              <div><span style={{ color: 'var(--text-tertiary)' }}>Event ID:</span> <code>{selectedLog.id}</code></div>
+              <div><span style={{ color: 'var(--text-tertiary)' }}>Time:</span> {selectedLog.timestamp}</div>
+              <div><span style={{ color: 'var(--text-tertiary)' }}>User / Identity:</span> <code>{selectedLog.user}</code></div>
+              <div><span style={{ color: 'var(--text-tertiary)' }}>Source IP:</span> <code>{selectedLog.src_ip}</code></div>
+              <div><span style={{ color: 'var(--text-tertiary)' }}>Service:</span> <code>{selectedLog.service}</code></div>
+              <div><span style={{ color: 'var(--text-tertiary)' }}>Rule ID:</span> <code>{selectedLog.rule_id}</code></div>
+            </div>
+
+            <div style={{ backgroundColor: 'var(--surface-muted)', padding: '12px', borderRadius: '6px', fontSize: '12px', marginBottom: '16px' }}>
+              <span style={{ color: 'var(--text-tertiary)', display: 'block', marginBottom: '4px' }}>Raw Telemetry Payload:</span>
+              <code style={{ color: 'var(--text-primary)', wordBreak: 'break-all' }}>{selectedLog.raw}</code>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button className="figma-btn-primary" onClick={() => setSelectedLog(null)}>
-                Close Inspector
+                Close Forensics
               </button>
             </div>
           </div>

@@ -241,7 +241,7 @@ class SessionManager:
         """Get the current active session. Refreshes if new logs arrived on disk."""
         if self._session is None:
             self._init_baseline_session()
-        elif is_wazuh_available() and getattr(self._session, "data_source", "SIMULATED") == "LIVE":
+        elif is_wazuh_available():
             log_path = get_wazuh_log_path()
             if os.path.exists(log_path):
                 mtime = os.path.getmtime(log_path)

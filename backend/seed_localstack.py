@@ -105,3 +105,4 @@ if __name__ == "__main__":
         print("Please ensure Docker Desktop is running and LocalStack container is started:")
         print("  docker run -d --name localstack -p 4566:4566 -e SERVICES=s3,iam localstack/localstack")
         sys.exit(1)
+

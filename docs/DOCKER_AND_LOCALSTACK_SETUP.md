@@ -98,3 +98,4 @@ Response when LocalStack is running:
 ## ☁️ 5. Cloud Deployment (Render / AWS / GCP)
 
 On cloud providers like **Render** where Docker-in-Docker is not supported on free tiers, AegisCloud seamlessly uses its native Cloud Policy Audit Engine. No Docker daemon is required on Render.
+

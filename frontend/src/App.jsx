@@ -35,7 +35,7 @@ import LiveLogsTab from './components/LiveLogsTab';
 import UserManagementTab from './components/UserManagementTab';
 import DataSourcesTab from './components/DataSourcesTab';
 import WorkspaceSettingsTab from './components/WorkspaceSettingsTab';
-import { Toast } from './components/SharedComponents';
+import { Toast, ErrorBoundary } from './components/SharedComponents';
 import { API_URL, WS_URL } from './config';
 import './index.css';
 
@@ -99,6 +99,31 @@ const Dashboard = () => {
   const [incidents, setIncidents] = useState([]);
   const [incidentsLoading, setIncidentsLoading] = useState(false);
   const [incidentsStats, setIncidentsStats] = useState(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
+  const [targetRemediationIncidentId, setTargetRemediationIncidentId] = useState(null);
+
+  const handleNavigateTab = (tabId, category = null) => {
+    setActiveTab(tabId);
+    if (category) {
+      setSelectedCategoryFilter(category);
+    }
+  };
+
+  const handleInvestigateFinding = (finding, incident = null) => {
+    if (incident) {
+      setTargetRemediationIncidentId(incident.incident_id || incident.id);
+    } else if (finding) {
+      const fid = finding.finding_id || finding.id;
+      const princ = finding.affected_principal || finding.user;
+      const matchingInc = (incidents || []).find(inc =>
+        (inc.finding_ids && inc.finding_ids.includes(fid)) ||
+        (inc.findings && inc.findings.some(f => f.finding_id === fid)) ||
+        (princ && inc.principals && inc.principals.includes(princ))
+      );
+      setTargetRemediationIncidentId(matchingInc ? matchingInc.incident_id : fid);
+    }
+    setActiveTab('remediation');
+  };
 
   // Figma Light/Dark theme (defaulting to light as in the wireframes, toggleable to dark)
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
@@ -700,6 +725,7 @@ const Dashboard = () => {
           </div>
 
           {/* PAGE ROUTING (ALL 10 FIGMA MODULES) */}
+          <ErrorBoundary>
           {activeTab === 'overview' && (
             <OverviewTab
               data={data}
@@ -708,10 +734,8 @@ const Dashboard = () => {
               findingsError={findingsError}
               fetchFindings={fetchFindings}
               liveTime={liveTime}
-              onInvestigateFinding={(finding) => {
-                setActiveTab('remediation');
-              }}
-              onNavigateTab={(tabId) => setActiveTab(tabId)}
+              onInvestigateFinding={handleInvestigateFinding}
+              onNavigateTab={handleNavigateTab}
             />
           )}
 
@@ -729,9 +753,9 @@ const Dashboard = () => {
               vulnerabilities={data.vulnerabilities || []}
               onScanVulnerabilities={handleScanVulnerabilities}
               onSyncNVD={handleSyncNvd}
-              onInvestigateFinding={(finding) => {
-                setActiveTab('remediation');
-              }}
+              categoryFilter={selectedCategoryFilter}
+              setCategoryFilter={setSelectedCategoryFilter}
+              onInvestigateFinding={handleInvestigateFinding}
             />
           )}
 
@@ -741,10 +765,8 @@ const Dashboard = () => {
               findings={findings}
               liveTime={liveTime}
               showToast={showToast}
-              onNavigateTab={setActiveTab}
-              onInvestigateFinding={(finding) => {
-                setActiveTab('remediation');
-              }}
+              onNavigateTab={handleNavigateTab}
+              onInvestigateFinding={handleInvestigateFinding}
             />
           )}
 
@@ -758,6 +780,7 @@ const Dashboard = () => {
               ciem={data.ciem}
               findings={findings}
               incidents={incidents}
+              targetIncidentId={targetRemediationIncidentId}
               onRefreshData={() => {
                 fetchIncidents();
                 fetchFindings(findingsAttackMode);
@@ -782,6 +805,7 @@ const Dashboard = () => {
               showToast={showToast}
             />
           )}
+          </ErrorBoundary>
         </main>
       </div>
 

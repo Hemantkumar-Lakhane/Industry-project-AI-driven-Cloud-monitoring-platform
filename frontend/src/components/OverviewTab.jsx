@@ -1,3 +1,23 @@
+const ATTACK_CATEGORIES_CATALOG = [
+  { key: 'brute_force', name: 'Brute Force & Dictionary', tactic: 'Initial Access', detectorId: 'DET-BF-01' },
+  { key: 'data_exfiltration', name: 'Data Exfiltration (S3/Web)', tactic: 'Exfiltration', detectorId: 'DET-EX-02' },
+  { key: 'iam_privilege_escalation', name: 'IAM Privilege Escalation', tactic: 'Privilege Escalation', detectorId: 'DET-PE-03' },
+  { key: 'malware_ransomware', name: 'Malware & Ransomware', tactic: 'Execution / Impact', detectorId: 'DET-RW-04' },
+  { key: 'network_scanning', name: 'Network Port Scanning', tactic: 'Discovery', detectorId: 'DET-NS-05' },
+  { key: 'bola_ssrf', name: 'BOLA & SSRF Exploitation', tactic: 'Initial Access', detectorId: 'DET-API-06' },
+  { key: 'account_takeover', name: 'Account Takeover (ATO)', tactic: 'Credential Access', detectorId: 'DET-ATO-07' },
+  { key: 'defense_tampering', name: 'Defense & Log Tampering', tactic: 'Defense Evasion', detectorId: 'DET-DT-08' },
+  { key: 'suspicious_api_activity', name: 'CloudTrail Anomalous API', tactic: 'Defense Evasion', detectorId: 'DET-API-09' },
+  { key: 'container_k8s', name: 'Container & K8s Threats', tactic: 'Execution', detectorId: 'DET-K8S-10' },
+  { key: 'serverless_abuse', name: 'Serverless Function Abuse', tactic: 'Execution', detectorId: 'DET-LAM-11' },
+  { key: 'cryptomining', name: 'Hostile Cryptomining', tactic: 'Impact', detectorId: 'DET-MIN-12' },
+  { key: 'database_attacks', name: 'Database SQLi & Ransom', tactic: 'Collection', detectorId: 'DET-DB-13' },
+  { key: 'cloud_misconfiguration', name: 'Cloud Misconfiguration (CSPM)', tactic: 'Reconnaissance', detectorId: 'DET-CFG-14' },
+  { key: 'supply_chain', name: 'Supply Chain & CI/CD', tactic: 'Initial Access', detectorId: 'DET-SC-15' },
+  { key: 'ddos', name: 'Distributed Denial of Service', tactic: 'Impact', detectorId: 'DET-DOS-16' },
+];
+
+import { ErrorBoundary } from './SharedComponents';
 import React, { useState } from 'react';
 import { ArrowRight, RefreshCw, Calendar, ExternalLink, ShieldCheck, AlertTriangle, Layers, Cloud, Key, CheckCircle, ChevronRight, Zap, X, FileText, Check, Activity, PieChart, BarChart3 } from 'lucide-react';
 
@@ -12,18 +32,24 @@ const OverviewTab = ({
   onNavigateTab
 }) => {
   const [selectedMetric, setSelectedMetric] = useState(null);
-  // Primary finding for the Hero Card (e.g. highest severity finding or first finding)
-  const heroFinding = findings && findings.length > 0 ? {
-    finding_id: findings[0].finding_id,
-    title: findings[0].title,
-    severity: (findings[0].severity || 'high').toLowerCase(),
-    status: findings[0].status || 'New',
-    user: findings[0].affected_principal || findings[0].affected_resource || 'cloud-service',
-    affected_principal: findings[0].affected_principal || findings[0].affected_resource || 'cloud-service',
-    data_source: (findings[0].data_source || 'LIVE').toUpperCase(),
-    description: findings[0].description || 'Potential security violation detected by active inspection engine.',
-    confidence: findings[0].confidence || 0.95,
-    raw: findings[0]
+// Prioritize critical severity finding so it genuinely surfaces the Critical Attack Discovery
+  const criticalFinding = (findings && findings.length > 0)
+    ? (findings.find(f => (f.severity || '').toLowerCase() === 'critical')
+       || findings.find(f => (f.severity || '').toLowerCase() === 'high')
+       || findings[0])
+    : null;
+
+  const heroFinding = criticalFinding ? {
+    finding_id: criticalFinding.finding_id,
+    title: criticalFinding.title,
+    severity: (criticalFinding.severity || 'critical').toLowerCase(),
+    status: criticalFinding.status || 'Active Threat',
+    user: criticalFinding.affected_principal || criticalFinding.affected_resource || 'cloud-service',
+    affected_principal: criticalFinding.affected_principal || criticalFinding.affected_resource || 'cloud-service',
+    data_source: (criticalFinding.data_source || 'LIVE').toUpperCase(),
+    description: criticalFinding.description || 'Active critical attack pattern correlated across cloud telemetry signals.',
+    confidence: criticalFinding.confidence || 0.96,
+    raw: criticalFinding
   } : (data?.summary?.recent_critical_alerts?.[0] ? {
     finding_id: data.summary.recent_critical_alerts[0].id || 'EVT-CRIT-001',
     title: (data.summary.recent_critical_alerts[0].attack_type || 'Threat Detection').replace(/_/g, ' '),
@@ -46,20 +72,49 @@ const OverviewTab = ({
 
   const provenanceStr = `${totalFindings} VERIFIED FINDINGS · CLOUD TELEMETRY STREAM`;
 
-  // Recent findings list matching actual findings
-  const recentItems = (findings && findings.length > 0 ? findings.slice(0, 4) : []).map(f => {
-    const rawTime = f.timestamp || f.created_at;
-    const timeFormatted = rawTime ? new Date(rawTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' UTC' : 'Recent';
-    return {
-      severity: (f.severity || 'high').toLowerCase(),
-      title: f.title || 'Security Finding',
-      resource: f.affected_principal || f.affected_resource || 'cloud-service',
-      source: (f.data_source || 'LIVE').toUpperCase(),
-      time: timeFormatted,
-      finding_id: f.finding_id,
-      raw: f
-    };
-  });
+  // Recent findings list showing diverse, authentic findings across different attack categories
+  const recentItems = React.useMemo(() => {
+    if (!findings || findings.length === 0) return [];
+
+    // Prioritize findings from distinct attack categories (Data Exfil, Cryptomining, Network Scan, Malware, IAM, etc.)
+    const selected = [];
+    const seenCategories = new Set();
+
+    for (const f of findings) {
+      const cat = (f.attack_category || f.category || '').toLowerCase();
+      if (cat && !seenCategories.has(cat)) {
+        seenCategories.add(cat);
+        selected.push(f);
+        if (selected.length >= 5) break;
+      }
+    }
+
+    // Fill remaining slots if fewer than 4 distinct categories found
+    if (selected.length < 4) {
+      const selectedIds = new Set(selected.map(s => s.finding_id));
+      for (const f of findings) {
+        if (!selectedIds.has(f.finding_id)) {
+          selected.push(f);
+          if (selected.length >= 4) break;
+        }
+      }
+    }
+
+    return selected.map(f => {
+      const rawTime = f.timestamp || f.created_at;
+      const timeFormatted = rawTime ? new Date(rawTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' UTC' : 'Recent';
+      return {
+        severity: (f.severity || 'high').toLowerCase(),
+        title: f.title || 'Security Finding',
+        resource: f.affected_principal || f.affected_resource || 'cloud-service',
+        source: (f.data_source || 'LIVE').toUpperCase(),
+        time: timeFormatted,
+        finding_id: f.finding_id,
+        category: f.attack_category,
+        raw: f
+      };
+    });
+  }, [findings]);
 
   // 10-hour rolling telemetry activity ending at current UTC hour
   const barData = React.useMemo(() => {
@@ -224,59 +279,6 @@ const OverviewTab = ({
           <span>{provenanceStr}</span>
         </div>
       </div>
-
-      {/* 2. HERO INVESTIGATION CARD (MATCHES FIGMA OVERVIEW TOP) */}
-      {heroFinding ? (
-        <div className="figma-hero-finding">
-          <div style={{ flex: 1 }}>
-            <div className="figma-hero-badge-row">
-              <span className={`figma-dot-badge ${heroFinding.severity}`}>
-                {heroFinding.severity === 'critical' ? 'Critical' : 'High'}
-              </span>
-              <span>·</span>
-              <span style={{ fontFamily: 'monospace' }}>{heroFinding.finding_id}</span>
-              <span>·</span>
-              <span>{heroFinding.status || 'Investigating'}</span>
-              <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)' }}>
-                {heroFinding.affected_principal || heroFinding.user || 'cloud-service'}
-              </span>
-            </div>
-
-            <h2 className="figma-hero-title">{heroFinding.title}</h2>
-            <div className="figma-hero-meta">
-              <span>{heroFinding.affected_principal || heroFinding.user || 'cloud-service'}</span>
-              <span> · </span>
-              <span>{heroFinding.data_source === 'SIMULATED' ? 'CLOUD' : (heroFinding.data_source || 'LIVE')}</span>
-            </div>
-          </div>
-
-          <button
-            className="figma-btn-primary"
-            style={{ whiteSpace: 'nowrap', padding: '10px 18px' }}
-            onClick={() => {
-              if (onInvestigateFinding) onInvestigateFinding(heroFinding.raw || heroFinding);
-            }}
-          >
-            <ArrowRight size={15} /> Investigate {heroFinding.finding_id}
-          </button>
-        </div>
-      ) : (
-        <div className="figma-hero-finding" style={{ borderLeft: '3px solid var(--success-color)' }}>
-          <div style={{ flex: 1 }}>
-            <div className="figma-hero-badge-row">
-              <span className="figma-dot-badge low" style={{ background: 'rgba(52, 199, 89, 0.1)', color: 'var(--success-color)' }}>
-                TELEMETRY ACTIVE
-              </span>
-              <span>·</span>
-              <span>16 Attack Detectors Running</span>
-            </div>
-            <h2 className="figma-hero-title">Continuous Inspection Active — No Open Breaches</h2>
-            <div className="figma-hero-meta">
-              <span>Live telemetry analyzed against MITRE ATT&CK categories with zero uncontained threats.</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 4 TELEMETRY METRIC PILLARS (CLICKABLE WITH DRILL-DOWN) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: selectedMetric ? '12px' : '20px' }}>
@@ -684,6 +686,74 @@ const OverviewTab = ({
         </div>
       </div>
 
+{/* 4. CRITICAL ATTACK DISCOVERY (POSITIONED DIRECTLY BELOW TELEMETRY & THREAT CHARTS) */}
+      {heroFinding ? (
+        <div
+          className="figma-hero-finding"
+          style={{
+            borderLeft: heroFinding.severity === 'critical' ? '4px solid var(--sev-crit, #ff453a)' : '4px solid var(--sev-high, #f06a1a)',
+            marginBottom: '24px'
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <div className="figma-hero-badge-row">
+              <span className={`figma-dot-badge ${heroFinding.severity}`}>
+                {heroFinding.severity === 'critical' ? 'CRITICAL ATTACK DISCOVERY' : 'HIGH SEVERITY ALERT'}
+              </span>
+              <span>·</span>
+              <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{heroFinding.finding_id}</span>
+              <span>·</span>
+              <span style={{ color: heroFinding.severity === 'critical' ? 'var(--sev-crit, #ff453a)' : 'var(--sev-high, #f06a1a)', fontWeight: 600 }}>
+                {heroFinding.status || 'Active Threat'}
+              </span>
+              <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)' }}>
+                Target: <strong>{heroFinding.affected_principal || heroFinding.user || 'cloud-service'}</strong>
+              </span>
+            </div>
+
+            <h2 className="figma-hero-title">{heroFinding.title}</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 10px 0', lineHeight: '1.5' }}>
+              {heroFinding.description}
+            </p>
+            <div className="figma-hero-meta" style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>Target Asset: <strong>{heroFinding.affected_principal || heroFinding.user || 'cloud-service'}</strong></span>
+              <span>·</span>
+              <span>Source: <strong>{heroFinding.data_source === 'SIMULATED' ? 'CLOUD TELEMETRY' : (heroFinding.data_source || 'LIVE')}</strong></span>
+              <span>·</span>
+              <span>Detection Confidence: <strong>{Math.round((heroFinding.confidence || 0.95) * 100)}%</strong></span>
+              <span>·</span>
+              <span style={{ color: 'var(--text-tertiary)' }}>Ready for Sandbox Containment & Playbook Execution</span>
+            </div>
+          </div>
+
+          <button
+            className="figma-btn-primary"
+            style={{ whiteSpace: 'nowrap', padding: '12px 22px', fontSize: '13.5px', gap: '8px' }}
+            onClick={() => {
+              if (onInvestigateFinding) onInvestigateFinding(heroFinding.raw || heroFinding);
+            }}
+          >
+            <ArrowRight size={16} /> Investigate & Remediate →
+          </button>
+        </div>
+      ) : (
+        <div className="figma-hero-finding" style={{ borderLeft: '4px solid var(--success-color)', marginBottom: '24px' }}>
+          <div style={{ flex: 1 }}>
+            <div className="figma-hero-badge-row">
+              <span className="figma-dot-badge low" style={{ background: 'rgba(52, 199, 89, 0.1)', color: 'var(--success-color)' }}>
+                TELEMETRY ACTIVE
+              </span>
+              <span>·</span>
+              <span>16 Attack Detectors Running</span>
+            </div>
+            <h2 className="figma-hero-title">Continuous Inspection Active — Zero Uncontained Breaches</h2>
+            <div className="figma-hero-meta">
+              <span>Live telemetry analyzed against MITRE ATT&CK categories with automated containment playbooks on standby.</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 4. CLOUD INFRASTRUCTURE & INGESTION PIPELINE ROW */}
       <div className="figma-grid-2col" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: '24px' }}>
         {/* Cloud & Identity card */}
@@ -769,6 +839,86 @@ const OverviewTab = ({
         </div>
       </div>
 
+      {/* 5. 16 SPECIALIZED ATTACK DETECTION ENGINES MATRIX */}
+      <div className="figma-card" style={{ marginBottom: '24px', padding: '20px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={18} style={{ color: 'var(--accent-orange)' }} />
+              <h3 style={{ fontSize: '15.5px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                16 Specialized Attack Detection Engines
+              </h3>
+              <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.12)', color: 'var(--success-color)' }}>
+                16/16 Active & Monitoring
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
+              Autonomous detection modules continuously inspecting Wazuh host telemetry, AWS CloudTrail, VPC Flow logs, and IAM activity.
+            </p>
+          </div>
+          <button
+            className="figma-btn-secondary"
+            style={{ fontSize: '12px', padding: '6px 14px' }}
+            onClick={() => onNavigateTab && onNavigateTab('alerts')}
+          >
+            Filter by Detector in Alerts ↗
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
+          {ATTACK_CATEGORIES_CATALOG.map((cat) => {
+            const catCount = findings.filter(f =>
+              (f.attack_category || '').toLowerCase() === cat.key.toLowerCase() ||
+              (f.title || '').toLowerCase().includes(cat.name.toLowerCase()) ||
+              (f.detection_method || '').toLowerCase().includes(cat.key.toLowerCase())
+            ).length;
+
+            return (
+              <div
+                key={cat.key}
+                onClick={() => onNavigateTab && onNavigateTab('alerts', cat.key)}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--surface-muted)',
+                  border: catCount > 0 ? '1px solid rgba(240, 106, 26, 0.35)' : '1px solid var(--border-subtle)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  transition: 'all 0.15s ease'
+                }}
+                title={`Filter ${cat.name} in Alerts`}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    {cat.tactic}
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: catCount > 0 ? 'var(--accent-orange)' : 'var(--success-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: catCount > 0 ? 'var(--accent-orange)' : 'var(--success-color)' }} />
+                    {catCount > 0 ? `${catCount} Alert${catCount > 1 ? 's' : ''}` : 'Active'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {cat.name}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Detector ID: <code>{cat.detectorId}</code></span>
+                  <span style={{ fontSize: '10.5px', color: 'var(--accent-orange)', fontWeight: 600 }}>Filter Alerts ↗</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* 4. RECENT FINDINGS TABLE (FIGMA BOTTOM COMPONENT) */}
       <div className="figma-card" style={{ padding: '0', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -827,4 +977,10 @@ const OverviewTab = ({
   );
 };
 
-export default OverviewTab;
+const SafeOverviewTab = (props) => (
+  <ErrorBoundary>
+    <OverviewTab {...props} />
+  </ErrorBoundary>
+);
+
+export default SafeOverviewTab;

@@ -114,12 +114,15 @@
   padding: 0;
 }
 
-body {
+html, body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--bg-color);
   color: var(--text-primary);
   line-height: 1.5;
   min-height: 100vh;
+  max-width: 100vw;
+  width: 100%;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -127,6 +130,9 @@ body {
 .figma-app-container {
   display: flex;
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   background-color: var(--bg-color);
 }
 
@@ -264,6 +270,9 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background-color: var(--bg-color);
 }
 
@@ -395,6 +404,9 @@ body {
   max-width: 1440px;
   width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 /* PAGE HEADER ROW IN FIGMA (Title + UTC timestamp + Action Button) */
@@ -1968,4 +1980,53 @@ body {
   background-color: var(--success-bg);
   color: var(--success-color);
   border: 1px solid rgba(2, 122, 72, 0.3);
+}
+
+/* FIGMA PAGINATION CONTROLS */
+.figma-pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-subtle);
+  background-color: var(--surface-card);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+.figma-pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.figma-page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.figma-page-btn:hover:not(:disabled) {
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+.figma-page-btn.active {
+  background-color: var(--accent-orange);
+  border-color: var(--accent-orange);
+  color: #ffffff;
+  font-weight: 700;
+}
+.figma-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

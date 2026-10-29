@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search, ChevronDown, ArrowUpDown, ArrowRight, ExternalLink, ShieldCheck, X,
   AlertTriangle, Layers, Clock, Users, Globe, Database, Tag, ChevronRight,
@@ -30,13 +30,21 @@ const AlertsIncidentsTab = ({
   vulnerabilities = [],
   onScanVulnerabilities,
   onSyncNVD,
-  onInvestigateFinding
+  onInvestigateFinding,
+  categoryFilter: propCategoryFilter,
+  setCategoryFilter: propSetCategoryFilter
 }) => {
   const [viewMode, setViewMode] = useState('incidents'); // 'incidents' | 'findings' | 'vulnerabilities'
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState('All');
+  const [incidentPage, setIncidentPage] = useState(1);
+  const [findingPage, setFindingPage] = useState(1);
+  const pageSize = 10;
   const [statusFilter, setStatusFilter] = useState('All');
   const [sourceFilter, setSourceFilter] = useState('All');
+  const [internalCategoryFilter, setInternalCategoryFilter] = useState('All');
+  const categoryFilter = propCategoryFilter !== undefined ? propCategoryFilter : internalCategoryFilter;
+  const setCategoryFilter = propSetCategoryFilter || setInternalCategoryFilter;
 
   // Modals / Drawers state
   const [selectedIncidentModal, setSelectedIncidentModal] = useState(null);
@@ -136,6 +144,11 @@ const AlertsIncidentsTab = ({
   });
 
   // Filter correlated incidents
+  useEffect(() => {
+    setIncidentPage(1);
+    setFindingPage(1);
+  }, [searchTerm, severityFilter, statusFilter, categoryFilter, sourceFilter]);
+
   const filteredIncidents = (incidents || []).filter(inc => {
     const matchesSearch = !searchTerm ||
       (inc.incident_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -146,8 +159,12 @@ const AlertsIncidentsTab = ({
 
     const matchesSeverity = severityFilter === 'All' || (inc.severity || '').toLowerCase() === severityFilter.toLowerCase();
     const matchesStatus = statusFilter === 'All' || (inc.status || '').toLowerCase() === statusFilter.toLowerCase();
+    const matchesCategory = categoryFilter === 'All' ||
+      (inc.attack_categories || []).some(cat => cat.toLowerCase().includes(categoryFilter.toLowerCase())) ||
+      (inc.title || '').toLowerCase().includes(categoryFilter.toLowerCase().replace(/_/g, ' ')) ||
+      (inc.description || '').toLowerCase().includes(categoryFilter.toLowerCase().replace(/_/g, ' '));
 
-    return matchesSearch && matchesSeverity && matchesStatus;
+    return matchesSearch && matchesSeverity && matchesStatus && matchesCategory;
   });
 
   // Filter atomic findings
@@ -160,9 +177,18 @@ const AlertsIncidentsTab = ({
     const matchesSeverity = severityFilter === 'All' || item.severity.toLowerCase() === severityFilter.toLowerCase();
     const matchesStatus = statusFilter === 'All' || item.status.toLowerCase() === statusFilter.toLowerCase();
     const matchesSource = sourceFilter === 'All' || item.source.toLowerCase() === sourceFilter.toLowerCase();
+    const matchesCategory = categoryFilter === 'All' ||
+      (item.raw?.attack_category || '').toLowerCase().includes(categoryFilter.toLowerCase()) ||
+      (item.title || '').toLowerCase().includes(categoryFilter.toLowerCase().replace(/_/g, ' '));
 
-    return matchesSearch && matchesSeverity && matchesStatus && matchesSource;
+    return matchesSearch && matchesSeverity && matchesStatus && matchesSource && matchesCategory;
   });
+
+  const totalIncidentPages = Math.max(1, Math.ceil(filteredIncidents.length / pageSize));
+  const paginatedIncidents = filteredIncidents.slice((incidentPage - 1) * pageSize, incidentPage * pageSize);
+
+  const totalFindingPages = Math.max(1, Math.ceil(filteredFindings.length / pageSize));
+  const paginatedFindings = filteredFindings.slice((findingPage - 1) * pageSize, findingPage * pageSize);
 
   // Incident metrics
   const totalIncidents = incidents.length;
@@ -424,6 +450,32 @@ const AlertsIncidentsTab = ({
           <option value="Resolved">Status: Resolved</option>
         </select>
 
+        {/* 16 Attack Categories Filter */}
+        <select
+          className="figma-filter-select"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          title="Filter by any of the 16 specialized attack categories"
+        >
+          <option value="All">Attack: All (16 Types)</option>
+          <option value="brute_force">Brute Force & Credential Stuffing</option>
+          <option value="data_exfiltration">Data Exfiltration</option>
+          <option value="iam_privilege_escalation">IAM Privilege Escalation</option>
+          <option value="malware_ransomware">Malware & Ransomware</option>
+          <option value="network_scanning">Network Port Scanning</option>
+          <option value="bola_ssrf">BOLA / SSRF Exploitation</option>
+          <option value="account_takeover">Account Takeover (ATO)</option>
+          <option value="defense_tampering">Defense & Log Tampering</option>
+          <option value="suspicious_api_activity">Suspicious API Activity</option>
+          <option value="container_k8s">Container & K8s Threats</option>
+          <option value="serverless_abuse">Serverless Abuse</option>
+          <option value="cryptomining">Cryptomining</option>
+          <option value="database_attacks">Database Attacks (SQLi)</option>
+          <option value="cloud_misconfiguration">Cloud Misconfiguration (CSPM)</option>
+          <option value="supply_chain">Supply Chain & Pipeline</option>
+          <option value="ddos">DDoS Volume Attacks</option>
+        </select>
+
         {viewMode === 'findings' && (
           <select
             className="figma-filter-select"
@@ -475,7 +527,7 @@ const AlertsIncidentsTab = ({
                   </td>
                 </tr>
               ) : (
-                filteredIncidents.map((inc) => {
+                paginatedIncidents.map((inc) => {
                   const entitiesList = [
                     ...(inc.principals || []),
                     ...(inc.source_ips || []),
@@ -504,12 +556,37 @@ const AlertsIncidentsTab = ({
                         {entitiesList || 'cluster-wide'}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
-                          {(inc.kill_chain_stages || []).slice(0, 2).map((s, idx) => (
-                            <span key={idx} style={{ fontSize: '10.5px', padding: '1px 5px', borderRadius: '4px', background: 'var(--surface-muted)' }}>
-                              {s}
-                            </span>
-                          ))}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {(() => {
+                            const stages = (inc.attack_stages && inc.attack_stages.length > 0)
+                              ? inc.attack_stages
+                              : (inc.kill_chain_stages && inc.kill_chain_stages.length > 0)
+                              ? inc.kill_chain_stages
+                              : (inc.attack_categories && inc.attack_categories.length > 0)
+                              ? inc.attack_categories.map(cat => cat.replace(/_/g, ' '))
+                              : ['Initial Access'];
+                            return stages.slice(0, 2).map((s, idx) => (
+                              <span
+                                key={idx}
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 500,
+                                  padding: '2px 7px',
+                                  borderRadius: '4px',
+                                  background: s.toLowerCase().includes('impact') || s.toLowerCase().includes('exfiltration') || s.toLowerCase().includes('malware')
+                                    ? 'rgba(239, 68, 68, 0.12)'
+                                    : 'rgba(240, 106, 26, 0.12)',
+                                  color: s.toLowerCase().includes('impact') || s.toLowerCase().includes('exfiltration') || s.toLowerCase().includes('malware')
+                                    ? 'var(--sev-crit, #ef4444)'
+                                    : 'var(--accent-orange, #f06a1a)',
+                                  border: '1px solid var(--border-subtle)',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {s}
+                              </span>
+                            ));
+                          })()}
                         </div>
                       </td>
                       <td style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
@@ -519,15 +596,19 @@ const AlertsIncidentsTab = ({
                         {inc.finding_count || (inc.findings || []).length || 1}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <button
-                          className="figma-link-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedIncidentModal(inc);
-                          }}
-                        >
-                          Investigate →
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                          <button
+                            className="figma-btn-secondary"
+                            style={{ padding: '5px 12px', fontSize: '12px', fontWeight: 600, color: 'var(--accent-orange)', borderColor: 'var(--accent-orange)', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onInvestigateFinding) onInvestigateFinding(null, inc);
+                            }}
+                            title="Open incident in Remediation Console for Explainable AI root-cause analysis and 1-click containment"
+                          >
+                            Investigate & Remediate →
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -535,6 +616,40 @@ const AlertsIncidentsTab = ({
               )}
             </tbody>
           </table>
+
+          {/* FIGMA PAGINATION BAR FOR INCIDENTS */}
+          {filteredIncidents.length > 0 && (
+            <div className="figma-pagination-container">
+              <div>
+                Showing <strong>{Math.min(filteredIncidents.length, (incidentPage - 1) * pageSize + 1)}</strong> to <strong>{Math.min(filteredIncidents.length, incidentPage * pageSize)}</strong> of <strong>{filteredIncidents.length}</strong> correlated incidents
+              </div>
+              <div className="figma-pagination-actions">
+                <button
+                  className="figma-page-btn"
+                  onClick={() => setIncidentPage(p => Math.max(1, p - 1))}
+                  disabled={incidentPage === 1}
+                >
+                  &larr; Prev
+                </button>
+                {Array.from({ length: totalIncidentPages }, (_, i) => i + 1).map(p => (
+                  <button
+                    key={p}
+                    className={`figma-page-btn ${incidentPage === p ? 'active' : ''}`}
+                    onClick={() => setIncidentPage(p)}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  className="figma-page-btn"
+                  onClick={() => setIncidentPage(p => Math.min(totalIncidentPages, p + 1))}
+                  disabled={incidentPage === totalIncidentPages}
+                >
+                  Next &rarr;
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -643,6 +758,41 @@ const AlertsIncidentsTab = ({
               )}
             </tbody>
           </table>
+
+          {/* FIGMA PAGINATION BAR FOR ATOMIC FINDINGS */}
+          {filteredFindings.length > 0 && (
+            <div className="figma-pagination-container">
+              <div>
+                Showing <strong>{Math.min(filteredFindings.length, (findingPage - 1) * pageSize + 1)}</strong> to <strong>{Math.min(filteredFindings.length, findingPage * pageSize)}</strong> of <strong>{filteredFindings.length}</strong> atomic findings
+              </div>
+              <div className="figma-pagination-actions">
+                <button
+                  className="figma-page-btn"
+                  onClick={() => setFindingPage(p => Math.max(1, p - 1))}
+                  disabled={findingPage === 1}
+                >
+                  &larr; Prev
+                </button>
+                {Array.from({ length: totalFindingPages }, (_, i) => i + 1).slice(0, 7).map(p => (
+                  <button
+                    key={p}
+                    className={`figma-page-btn ${findingPage === p ? 'active' : ''}`}
+                    onClick={() => setFindingPage(p)}
+                  >
+                    {p}
+                  </button>
+                ))}
+                {totalFindingPages > 7 && <span style={{ padding: '0 4px' }}>...</span>}
+                <button
+                  className="figma-page-btn"
+                  onClick={() => setFindingPage(p => Math.min(totalFindingPages, p + 1))}
+                  disabled={findingPage === totalFindingPages}
+                >
+                  Next &rarr;
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -811,8 +961,9 @@ const AlertsIncidentsTab = ({
                   className="figma-btn-primary"
                   onClick={() => {
                     const firstF = (selectedIncidentModal.findings || [])[0] || selectedIncidentModal;
+                    const incObj = selectedIncidentModal;
                     setSelectedIncidentModal(null);
-                    if (onInvestigateFinding) onInvestigateFinding(firstF);
+                    if (onInvestigateFinding) onInvestigateFinding(firstF, incObj);
                   }}
                 >
                   Open in Remediation Console →

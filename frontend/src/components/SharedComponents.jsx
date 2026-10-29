@@ -74,3 +74,39 @@ export const Toast = ({ message, type = 'success', onClose }) => {
     </div>
   );
 };
+
+export class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('ErrorBoundary caught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '24px', background: 'var(--surface-card)', borderRadius: '12px', border: '1px solid var(--sev-crit, #ef4444)', margin: '20px 0' }}>
+          <h3 style={{ color: 'var(--sev-crit, #ef4444)', margin: '0 0 8px 0', fontSize: '16px' }}>Component Error Recovered</h3>
+          <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '13px', margin: '0 0 12px 0' }}>
+            {this.state.error?.message || 'An unexpected rendering error occurred in this section.'}
+          </p>
+          <button
+            className="figma-btn-primary"
+            onClick={() => this.setState({ hasError: false, error: null })}
+            style={{ fontSize: '12px', padding: '6px 14px', cursor: 'pointer' }}
+          >
+            Retry Section
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
