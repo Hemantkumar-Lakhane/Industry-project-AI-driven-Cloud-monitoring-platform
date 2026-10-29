@@ -107,8 +107,32 @@ def _load():
     return models, scaler, meta
 
 
-_MODELS, _SCALER, _META = _load()
-PRETRAINED = _MODELS is not None and _SCALER is not None
+_MODELS = None
+_SCALER = None
+_META = None
+_IS_LOADED = False
+
+def _ensure_loaded():
+    global _MODELS, _SCALER, _META, _IS_LOADED
+    if not _IS_LOADED:
+        _IS_LOADED = True
+        try:
+            _MODELS, _SCALER, _META = _load()
+        except Exception as e:
+            print(f"[ML Engine] Model load warning: {e}", flush=True)
+            _MODELS, _SCALER, _META = None, None, None
+
+def is_pretrained() -> bool:
+    _ensure_loaded()
+    return _MODELS is not None and _SCALER is not None
+
+class _PretrainedProxy:
+    def __bool__(self):
+        return is_pretrained()
+    def __repr__(self):
+        return str(is_pretrained())
+
+PRETRAINED = _PretrainedProxy()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -175,6 +199,7 @@ def _compute_cloud_behavioral_score(vec: np.ndarray) -> float:
 
 def _scale_for(name: str, X: np.ndarray) -> np.ndarray:
     """Apply the fitted 9-dimensional scaler with strict dimension validation."""
+    _ensure_loaded()
     if X.ndim != 2 or X.shape[1] != FEATURE_DIM:
         raise ValueError(
             f"Incompatible feature dimension for model '{name}'. "
@@ -184,6 +209,7 @@ def _scale_for(name: str, X: np.ndarray) -> np.ndarray:
 
 
 def _score_all(X_raw: np.ndarray) -> Dict[str, np.ndarray]:
+    _ensure_loaded()
     """
     Score X_raw with every loaded specialist model.
     Validates input dimension before scoring.
@@ -242,6 +268,7 @@ def score_flow_features(X_flow: np.ndarray) -> Dict[str, Any]:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def analyze_events(events: List[Dict]) -> List[Dict]:
+    _ensure_loaded()
     """
     Score each event using calibrated 9D specialist models and 8D cloud behavioral analyzer.
     Calibrated score = max(flow_score, cloud_behavior_score).
@@ -329,6 +356,7 @@ def analyze_events(events: List[Dict]) -> List[Dict]:
 
 
 def compare_models(events: List[Dict]) -> Dict:
+    _ensure_loaded()
     """
     Compare all 3 specialist models on the current event batch.
     Shows per-model metrics against ground-truth event_type labels.
@@ -441,6 +469,7 @@ def compare_models(events: List[Dict]) -> Dict:
 
 
 def get_model_info() -> Dict:
+    _ensure_loaded()
     """Return verified metadata about the loaded 9D flow specialist models."""
     if not PRETRAINED:
         return {

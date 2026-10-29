@@ -16,7 +16,7 @@ class FindingEvidence(BaseModel):
     Forensic evidence backing a security finding.
     Strictly distinguishes observed, verifiable facts from inferred explanations.
     """
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", protected_namespaces=())
 
     triggering_event_ids: List[str] = Field(default_factory=list, description="UUIDs of telemetry events that triggered detection")
     observed_facts: List[str] = Field(default_factory=list, description="Verifiable facts directly observable in raw telemetry")
@@ -29,7 +29,7 @@ class RecommendedResponse(BaseModel):
     """
     Actionable remediation guidance, guarded with safe dry-run defaults.
     """
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", protected_namespaces=())
 
     playbook_id: Optional[str] = Field(default=None, description="Associated remediation playbook ID (e.g., PB-BF-001)")
     action_summary: str = Field(default="Review and investigate incident telemetry.", description="High-level analyst guidance")
@@ -43,7 +43,7 @@ class SecurityFinding(BaseModel):
     Unified security finding produced by detection engines.
     Exposed across the REST API, WebSocket streams, and UI investigation views.
     """
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", protected_namespaces=())
 
     finding_id: str = Field(default_factory=lambda: f"FIND-{str(uuid.uuid4())[:8].upper()}", description="Unique finding identifier")
     attack_category: str = Field(..., description="One of the 16 cloud attack categories (e.g., brute_force, iam_privilege_escalation)")

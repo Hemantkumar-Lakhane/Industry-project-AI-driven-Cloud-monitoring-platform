@@ -145,7 +145,7 @@ class SessionManager:
 
     def __init__(self):
         self._session: Optional[ActiveTelemetrySession] = None
-        self._init_baseline_session()
+        # Lazy initialization: baseline session is prepared on first access or background warmup
 
     @classmethod
     def get_instance(cls) -> 'SessionManager':

@@ -220,6 +220,22 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.on_event("startup")
+async def startup_event():
+    port = os.environ.get("PORT", "8000")
+    print(f"[*] AegisCloud API operational and listening on port {port}", flush=True)
+    def _warmup():
+        try:
+            from engines.ml_engine import _ensure_loaded
+            _ensure_loaded()
+            from simulator.session_manager import session_manager
+            session_manager.get_session()
+            print("[*] Background initialization complete: telemetry session and ML models ready.", flush=True)
+        except Exception as e:
+            print(f"[!] Background warmup notice: {e}", flush=True)
+    asyncio.create_task(asyncio.to_thread(_warmup))
+
+
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -3184,4 +3200,6 @@ async def websocket_events(websocket: WebSocket):
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    host = os.environ.get("HOST", "0.0.0.0")
+    uvicorn.run("main:app", host=host, port=port)
