@@ -1,28 +1,28 @@
 {
-  "TC-TNY-01": {
+  "TC-SEC-01": {
     "status": "PASS",
     "description": "Admin login & JWT issuance",
-    "latency_ms": 142.37,
+    "latency_ms": 268.87,
     "user": "admin",
     "role": "admin",
     "permissions_count": 17
   },
-  "TC-TNY-02": {
+  "TC-SEC-02": {
     "status": "PASS",
     "description": "Viewer login & negative password rejection",
     "negative_test_status_code": 401,
     "negative_test_detail": "Invalid username or password"
   },
-  "TC-TNY-03": {
+  "TC-SEC-03": {
     "status": "PASS",
     "description": "Registration endpoint lockdown (unauth=401, viewer=403)",
     "unauth_code": 401,
     "viewer_code": 403
   },
-  "TC-TNY-04": {
+  "TC-SEC-04": {
     "status": "PASS",
     "description": "WebSocket ticket creation, handshake, event stream, and single-use exhaustion",
-    "ticket_prefix": "wstk_edcArjk",
+    "ticket_prefix": "wstk_oTn9PGn",
     "handshake_response": {
       "type": "auth_ok",
       "username": "admin",
@@ -30,21 +30,24 @@
     },
     "event_stream_total": 300
   },
-  "TC-TNY-05": {
+  "TC-SEC-05": {
     "status": "PASS",
     "description": "Asset discovery and compute workload inventory",
-    "total_assets": 8,
+    "total_assets": 48,
     "critical_risk_assets": 1,
     "assets_by_type": {
       "iam_role": 1,
       "ec2_instance": 2,
       "rds_database": 1,
+      "host_compute": 1,
+      "network_service": 36,
+      "web_service": 3,
       "s3_bucket": 2,
       "iam_user": 1,
       "security_group": 1
     }
   },
-  "TC-TNY-06": {
+  "TC-SEC-06": {
     "status": "PASS",
     "description": "Connector health probe",
     "connectors_detected": [
@@ -54,15 +57,15 @@
       "host_workload"
     ]
   },
-  "TC-TNY-07": {
+  "TC-SEC-07": {
     "status": "PASS",
     "description": "Playbook execution, durable rollback, and 404 on invalid execution ID",
     "executed_playbook": "brute_force",
-    "execution_id": "EXEC-A7EE0EF5",
+    "execution_id": "EXEC-F0EBCAC2",
     "rollback_status": "success",
     "invalid_rollback_code": 404
   },
-  "TC-TNY-08": {
+  "TC-SEC-08": {
     "status": "PASS",
     "description": "Detector Group A (8 detectors) verified registered and responsive",
     "detectors": [
@@ -76,7 +79,7 @@
       "defense_tampering"
     ]
   },
-  "TC-HMT-01": {
+  "TC-ANL-01": {
     "status": "PASS",
     "description": "8D Cloud behavioral feature extraction",
     "feature_names": [
@@ -100,7 +103,7 @@
       1.0
     ]
   },
-  "TC-HMT-02": {
+  "TC-ANL-02": {
     "status": "PASS",
     "description": "ML specialist models and ensemble benchmark",
     "models": [
@@ -120,19 +123,19 @@
     ],
     "ensemble_total_analyzed": null
   },
-  "TC-HMT-03": {
+  "TC-ANL-03": {
     "status": "PASS",
     "description": "CSPM scan and misconfiguration detection",
-    "findings_count": 7,
+    "findings_count": 6,
     "source": "simulated"
   },
-  "TC-HMT-04": {
+  "TC-ANL-04": {
     "status": "PASS",
     "description": "CIEM scan and identity entitlement risks",
-    "risks_count": 21,
+    "risks_count": 17,
     "source": "simulated"
   },
-  "TC-HMT-05": {
+  "TC-ANL-05": {
     "status": "PASS",
     "description": "Workload vulnerabilities and NIST NVD connector status",
     "total_vulns": 8,
@@ -140,38 +143,38 @@
     "nvd_base_url": "https://services.nvd.nist.gov/rest/json/cves/2.0",
     "nvd_advisories": 8
   },
-  "TC-HMT-06": {
+  "TC-ANL-06": {
     "status": "PASS",
     "description": "Incident correlation and attack campaign grouping",
-    "total_incidents": 14,
+    "total_incidents": 10,
     "stats": {
-      "total_incidents": 14,
-      "open_incidents": 14,
-      "critical": 10,
+      "total_incidents": 10,
+      "open_incidents": 10,
+      "critical": 6,
       "high": 4,
       "medium": 0,
       "low": 0,
-      "avg_findings_per_incident": 4.2
+      "avg_findings_per_incident": 7.8
     }
   },
-  "TC-HMT-07": {
+  "TC-ANL-07": {
     "status": "PASS",
     "description": "Unified dynamic risk scoring",
-    "risk_score": 80.8,
+    "risk_score": 82.4,
     "risk_category": "critical",
     "key_drivers_count": 3
   },
-  "TC-HMT-08": {
+  "TC-ANL-08": {
     "status": "PASS",
     "description": "Compliance dashboard across CIS, NIST, ISO, GDPR",
-    "overall_score": 33.1,
+    "overall_score": 30.9,
     "frameworks": [
       "ISO27001",
       "SOC2",
       "GDPR"
     ]
   },
-  "TC-HMT-09": {
+  "TC-ANL-09": {
     "status": "PASS",
     "description": "Detector Group B (8 detectors) verified registered and responsive",
     "detectors": [
