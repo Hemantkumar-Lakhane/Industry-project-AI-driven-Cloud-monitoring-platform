@@ -222,33 +222,63 @@ html, body {
   flex: 1;
 }
 
+/* UIVERSE-INSPIRED SEGMENTED NAV & RADIO INTERACTION */
 .figma-nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 9px 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 13.5px;
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   text-align: left;
   width: 100%;
-  transition: all 0.15s ease;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 .figma-nav-item:hover {
   background-color: var(--surface-hover);
   color: var(--text-primary);
+  transform: translateX(2px);
 }
 
-/* Active tab style from Figma (Warm Orange background tint, solid orange text & icon) */
+.figma-nav-item:hover svg {
+  transform: scale(1.12);
+  transition: transform 0.2s ease-in-out;
+}
+
+.figma-nav-item svg {
+  transition: transform 0.2s ease-in-out, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* Active tab style: subtle elevation, crisp accent border & scaled icon */
 .figma-nav-item.active {
   background-color: var(--accent-orange-subtle);
   color: var(--accent-orange);
+  border: 1px solid var(--accent-orange-border);
+  box-shadow: 0 2px 8px rgba(235, 107, 39, 0.1);
   font-weight: 600;
+}
+
+.figma-nav-item.active svg {
+  transform: scale(1.15);
+  color: var(--accent-orange);
+}
+
+.sidebar-user-card {
+  transition: all 0.2s ease;
+}
+
+.sidebar-user-card:hover {
+  background-color: var(--surface-card) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-color: var(--border-strong) !important;
 }
 
 .figma-nav-divider {
@@ -371,31 +401,62 @@ html, body {
 }
 
 /* Exact Figma Light/Dark Toggle Segmented Control */
-.figma-theme-toggle {
-  display: inline-flex;
+/* UIVERSE.IO INSPIRED THEME SWITCHER (by andrew-demchenk0) */
+.theme-switcher {
   padding: 3px;
-  background-color: var(--surface-muted);
+  width: -moz-fit-content;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 9999px;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  background-color: var(--surface-muted);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: all 0.25s ease;
 }
 
-.figma-theme-toggle button {
-  padding: 4px 12px;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
+.theme-switcher_switch {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 0;
+  background: none;
   cursor: pointer;
-  background: transparent;
   color: var(--text-tertiary);
-  transition: all 0.15s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
-.figma-theme-toggle button.active {
+.theme-switcher_switch:hover {
+  color: var(--text-primary);
+  background-color: rgba(128, 128, 128, 0.15);
+}
+
+.theme-switcher_switch:active {
+  background-color: rgba(128, 128, 128, 0.3);
+}
+
+.theme-switcher_switch.active {
   background-color: var(--surface-card);
   color: var(--text-primary);
-  box-shadow: var(--shadow-xs);
-  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+}
+
+.theme-switcher_switch .theme-switcher-icon {
+  transition: transform 0.25s ease, stroke 0.25s ease;
+}
+
+.theme-switcher_switch:hover .theme-switcher-icon {
+  transform: scale(1.15) rotate(8deg);
+}
+
+.theme-switcher_switch.active .theme-switcher-icon {
+  transform: scale(1.08);
+  stroke: var(--accent-orange);
 }
 
 /* PAGE CONTENT WRAPPER */

@@ -20,7 +20,9 @@ import {
   PanelLeftOpen,
   Play,
   Zap,
-  Terminal
+  Terminal,
+  Sun,
+  Moon
 } from 'lucide-react';
 import logoUrl from './assets/LOGO.png';
 import LoginPage from './components/LoginPage';
@@ -592,6 +594,90 @@ const Dashboard = () => {
           })}
         </nav>
 
+        {/* USER PROFILE IN LEFT SIDEBAR */}
+        <div
+          className="sidebar-user-card"
+          title={`Logged in as ${user?.full_name || 'Security Analyst'} (@${user?.username || 'analyst'})`}
+          style={{
+            marginTop: 'auto',
+            marginBottom: '8px',
+            padding: sidebarCollapsed ? '8px 4px' : '10px 12px',
+            backgroundColor: 'var(--surface-muted)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <div
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--surface-card)',
+              border: '1px solid var(--border-subtle)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              fontWeight: 700,
+              color: 'var(--accent-orange)',
+              flexShrink: 0,
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)'
+            }}
+          >
+            {user?.full_name
+              ? user.full_name
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .substring(0, 2)
+                  .toUpperCase()
+              : 'SA'}
+          </div>
+
+          {!sidebarCollapsed && (
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+              <span
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                {user?.full_name || 'Security Analyst'}
+              </span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--text-tertiary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  marginTop: '1px'
+                }}
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: '#10b981',
+                    boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)'
+                  }}
+                />
+                {user?.role || 'analyst'} &bull; online
+              </span>
+            </div>
+          )}
+        </div>
+
         <div className="figma-sidebar-footer">
           <button
             className="figma-nav-item"
@@ -639,19 +725,25 @@ const Dashboard = () => {
           </div>
 
           <div className="figma-header-right">
-            {/* Segmented Light/Dark control from Figma header */}
-            <div className="figma-theme-toggle">
+            {/* Sleek Theme Switcher (From Uiverse.io by andrew-demchenk0) */}
+            <div className="theme-switcher" role="radiogroup" aria-label="Theme mode switcher">
               <button
-                className={theme === 'light' ? 'active' : ''}
+                type="button"
+                className={`theme-switcher_switch ${theme === 'light' ? 'active' : ''}`}
                 onClick={() => toggleTheme('light')}
+                title="Switch to Light mode"
+                aria-label="Light mode"
               >
-                Light
+                <Sun size={15} className="theme-switcher-icon" />
               </button>
               <button
-                className={theme === 'dark' ? 'active' : ''}
+                type="button"
+                className={`theme-switcher_switch ${theme === 'dark' ? 'active' : ''}`}
                 onClick={() => toggleTheme('dark')}
+                title="Switch to Dark mode"
+                aria-label="Dark mode"
               >
-                Dark
+                <Moon size={15} className="theme-switcher-icon" />
               </button>
             </div>
 
@@ -792,51 +884,8 @@ const Dashboard = () => {
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* PROFESSIONAL BOTTOM-RIGHT USER PROFILE CHIP */}
-      {user && (
-        <div style={{
-          position: 'fixed',
-          bottom: '16px',
-          right: '20px',
-          zIndex: 999,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: '6px 12px 6px 8px',
-          backgroundColor: 'var(--surface-card)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: '24px',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
-          fontSize: '12px',
-          transition: 'all 0.2s ease'
-        }}>
-          <div style={{
-            width: '26px',
-            height: '26px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--surface-muted)',
-            border: '1px solid var(--border-subtle)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '11px',
-            fontWeight: 700,
-            color: 'var(--text-primary)'
-          }}>
-            {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : (user?.username || 'U').substring(0, 2).toUpperCase()}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-            <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '12px' }}>
-              {user?.full_name || user?.username}
-            </span>
-            <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>
-              {user?.role || 'operator'} &bull; online
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
   );
 };
 
-export default Dashboard;
+export default App;
