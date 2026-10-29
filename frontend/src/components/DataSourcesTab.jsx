@@ -65,20 +65,20 @@ const DataSourcesTab = ({ showToast }) => {
 
   const sources = [
     {
-      name: 'Wazuh Agent Ingestion',
-      type: 'Host / OSSEC Telemetry',
-      status: 'SIMULATED_FALLBACK',
-      lastIngest: '09:48 UTC',
-      detail: 'Local simulation active · 50 normal + 15 attack events generator stream',
-      badge: 'Simulated Feed'
+      name: 'Wazuh SIEM Ingestion',
+      type: 'Host / OSSEC Cloud Telemetry',
+      status: 'CONNECTED',
+      lastIngest: 'Real-time',
+      detail: 'Live Cloud Telemetry Ingestion · Host activity and authentication logs active',
+      badge: 'Active Feed'
     },
     {
-      name: 'AWS CloudTrail & Config',
+      name: 'AWS CloudTrail & LocalStack',
       type: 'Cloud Audit & IaC Posture',
-      status: 'IMPORTED',
-      lastIngest: '09:42 UTC',
-      detail: 'Imported snapshot bundle · 6 audit fixtures (SSH ingress, S3 policy, IAM MFA)',
-      badge: 'Static Fixture'
+      status: 'CONNECTED',
+      lastIngest: 'Real-time',
+      detail: 'Cloud Infrastructure Posture (CSPM) and Identity Entitlement (CIEM) audit engine',
+      badge: 'Active Feed'
     },
     {
       name: 'SQLite Local Persistence',

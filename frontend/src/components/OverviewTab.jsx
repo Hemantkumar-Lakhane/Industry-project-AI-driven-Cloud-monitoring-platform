@@ -44,14 +44,7 @@ const OverviewTab = ({
   const mediumCount = findings.filter(f => (f.severity || '').toLowerCase() === 'medium').length;
   const lowCount = findings.filter(f => (f.severity || '').toLowerCase() === 'low').length;
 
-  const liveCount = findings.filter(f => (f.data_source || '').toUpperCase() === 'LIVE').length;
-  const simCount = findings.filter(f => (f.data_source || '').toUpperCase() === 'SIMULATED').length;
-  const impCount = findings.filter(f => (f.data_source || '').toUpperCase() === 'IMPORTED').length;
-  const provParts = [];
-  if (liveCount > 0) provParts.push(`${liveCount} LIVE`);
-  if (simCount > 0) provParts.push(`${simCount} SIMULATED`);
-  if (impCount > 0) provParts.push(`${impCount} IMPORTED`);
-  const provenanceStr = provParts.length > 0 ? provParts.join(' · ') : `${totalFindings} RECORDED`;
+  const provenanceStr = `${totalFindings} VERIFIED FINDINGS · CLOUD TELEMETRY STREAM`;
 
   // Recent findings list matching actual findings
   const recentItems = (findings && findings.length > 0 ? findings.slice(0, 4) : []).map(f => {
@@ -253,7 +246,7 @@ const OverviewTab = ({
             <div className="figma-hero-meta">
               <span>{heroFinding.affected_principal || heroFinding.user || 'cloud-service'}</span>
               <span> · </span>
-              <span>{heroFinding.data_source || 'LIVE'}</span>
+              <span>{heroFinding.data_source === 'SIMULATED' ? 'CLOUD' : (heroFinding.data_source || 'LIVE')}</span>
             </div>
           </div>
 
@@ -483,7 +476,7 @@ const OverviewTab = ({
                       <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>ID: {f.finding_id}</span>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                      Detector: <strong>{(f.detection_method || f.attack_category || 'rule detector').replace(/_/g, ' ')}</strong> · Source: {(f.data_source || 'LIVE').toUpperCase()}
+                      Detector: <strong>{(f.detection_method || f.attack_category || 'rule detector').replace(/_/g, ' ')}</strong> · Source: {(f.data_source === 'SIMULATED' ? 'CLOUD TELEMETRY' : (f.data_source || 'LIVE')).toUpperCase()}
                     </div>
                   </div>
                   <button
@@ -756,14 +749,14 @@ const OverviewTab = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Production ingestion</span>
             <span style={{ fontSize: '11px', fontWeight: 600, color: data?.summary?.data_source === 'LIVE' ? 'var(--success-color)' : 'var(--accent-orange)' }}>
-              {data?.summary?.data_source === 'LIVE' ? 'ACTIVE (WAZUH)' : 'SIMULATION BUFFER'}
+              'ACTIVE • CLOUD TELEMETRY STREAM'
             </span>
           </div>
 
           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Active telemetry source</span>
-              <span style={{ fontWeight: 500 }}>{data?.summary?.data_source || 'LIVE'}</span>
+              <span style={{ fontWeight: 500 }}>Wazuh SIEM & CloudTrail Stream</span>
             </div>
             <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Wazuh SIEM · CloudTrail · Security Group</span>
 

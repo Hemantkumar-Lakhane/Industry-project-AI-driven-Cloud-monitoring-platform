@@ -79,6 +79,28 @@ Industry(Ram)/
 
 ---
 
+---
+
+## 🐳 Docker & LocalStack AWS Setup (Optional for Emulated Cloud)
+
+AegisCloud includes built-in support for **LocalStack** to emulate AWS S3 and IAM resources locally.
+
+> **Note:** If Docker is not running, AegisCloud automatically uses its built-in Cloud Policy Audit Engine. Docker is **optional** and not required for normal dashboard operation or cloud deployment (Render).
+
+### Quick 3-Step Launch:
+1. **Open Docker Desktop** on Windows.
+2. **Start LocalStack Container:**
+   ```cmd
+   docker run -d --name localstack -p 4566:4566 -e SERVICES=s3,iam localstack/localstack
+   ```
+3. **Seed Sample S3 & IAM Assets:**
+   Double-click `seed_localstack.bat` or run:
+   ```cmd
+   python backend/seed_localstack.py
+   ```
+
+Detailed instructions and troubleshooting are available in [`docs/DOCKER_AND_LOCALSTACK_SETUP.md`](docs/DOCKER_AND_LOCALSTACK_SETUP.md).
+
 ## Prerequisites
 
 | Tool    | Version | Download           |

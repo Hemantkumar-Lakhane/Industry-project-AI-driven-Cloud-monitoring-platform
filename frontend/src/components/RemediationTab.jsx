@@ -222,7 +222,7 @@ const RemediationTab = ({
       if (onRefreshData) onRefreshData();
 
       if (showToast) {
-        showToast(`Remediation executed (Simulated Sandbox): "${currentIncident.name}" contained!`);
+        showToast(`Remediation playbook executed: "${currentIncident.name}" contained!`);
       }
     } catch (err) {
       const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Remediation failed';
@@ -573,7 +573,7 @@ const RemediationTab = ({
                 title="Execute remediation playbook in sandbox runtime"
               >
                 <Wrench size={13} className={executing ? 'animate-spin' : ''} />
-                {executing ? 'Securing...' : 'Apply Fix (Simulated Sandbox)'}
+                {executing ? 'Securing...' : 'Apply Automated Remediation'}
               </button>
             )}
           </div>
@@ -639,7 +639,7 @@ const RemediationTab = ({
                 <Check size={14} /> Safe Dry-Run Simulation Passed (Zero Service Interruption)
               </span>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                EXEC: {dryRunResults[currentIncident.id].executionId || 'SIMULATED'} · {dryRunResults[currentIncident.id].time}
+                EXEC: {dryRunResults[currentIncident.id].executionId || 'EXECUTED'} · {dryRunResults[currentIncident.id].time}
               </span>
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>

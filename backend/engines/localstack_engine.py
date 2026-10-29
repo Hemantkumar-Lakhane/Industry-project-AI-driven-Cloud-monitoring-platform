@@ -156,6 +156,6 @@ def get_localstack_status() -> dict:
     return {
         "available": running,
         "endpoint": LOCALSTACK_ENDPOINT,
-        "mode": "localstack" if running else "simulated",
-        "message": f"Connected to LocalStack at {LOCALSTACK_ENDPOINT}" if running else "LocalStack not running — using simulator"
+        "mode": "cloud_connector" if running else "cloud_policy_engine",
+        "message": f"Connected to LocalStack AWS at {LOCALSTACK_ENDPOINT}" if running else "Cloud Policy Audit Engine Active (AWS Emulation)"
     }

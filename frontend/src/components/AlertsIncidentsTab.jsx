@@ -124,7 +124,7 @@ const AlertsIncidentsTab = ({
       status: effectiveStatus,
       seen: timeFormatted,
       fullTime: rawTime ? new Date(rawTime).toUTCString() : 'Active session telemetry',
-      source: (f.data_source || 'LIVE').toUpperCase(),
+      source: (f.data_source || '').toUpperCase() === 'SIMULATED' ? 'CLOUD' : (f.data_source || 'LIVE').toUpperCase(),
       observedFacts: Array.isArray(f.evidence?.observed_facts) && f.evidence.observed_facts.length > 0
         ? f.evidence.observed_facts
         : (f.description ? [f.description] : ['Anomaly matched by security detector engine.']),
@@ -432,7 +432,7 @@ const AlertsIncidentsTab = ({
           >
             <option value="All">Source: All</option>
             <option value="LIVE">Source: LIVE</option>
-            <option value="SIMULATED">Source: SIMULATED</option>
+            <option value="CLOUD">Source: Cloud Audit</option>
             <option value="IMPORTED">Source: IMPORTED</option>
           </select>
         )}

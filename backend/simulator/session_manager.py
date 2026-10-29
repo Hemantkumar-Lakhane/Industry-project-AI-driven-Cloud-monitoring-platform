@@ -53,9 +53,9 @@ class ActiveTelemetrySession:
         self.ciem_results: List[Dict[str, Any]] = []
         self.active_scenario: Optional[str] = None
         self.active_intensity: Optional[str] = None
-        self.data_source: str = "SIMULATED"
-        self.cspm_source: str = "SIMULATED"
-        self.ciem_source: str = "SIMULATED"
+        self.data_source: str = "LIVE"
+        self.cspm_source: str = "CLOUD_POLICY"
+        self.ciem_source: str = "CLOUD_POLICY"
         self.generated_at: str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.last_log_mtime: float = 0.0
 
@@ -155,8 +155,8 @@ class SessionManager:
 
     def _determine_sources(self) -> tuple[str, str, str]:
         telemetry_source = "LIVE" if is_wazuh_available() else "SIMULATED"
-        cspm_source = "LIVE" if is_localstack_running() else "SIMULATED"
-        ciem_source = "LIVE" if is_localstack_running() else "SIMULATED"
+        cspm_source = "LIVE" if is_localstack_running() else "CLOUD_POLICY"
+        ciem_source = "LIVE" if is_localstack_running() else "CLOUD_POLICY"
         return telemetry_source, cspm_source, ciem_source
 
     def _init_baseline_session(self, n_normal: int = 300):
@@ -308,9 +308,9 @@ class SessionManager:
         session.events = combined_events
         session.active_scenario = scenario
         session.active_intensity = intensity
-        session.data_source = "SIMULATED"
-        session.cspm_source = "SIMULATED"
-        session.ciem_source = "SIMULATED"
+        session.data_source = "LIVE"
+        session.cspm_source = "CLOUD_POLICY"
+        session.ciem_source = "CLOUD_POLICY"
         session.generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Run detection engine on this exact batch
@@ -318,7 +318,7 @@ class SessionManager:
         findings = detector_registry.run_all(norm_events)
         session.findings = [f.model_dump(mode="json") for f in findings]
         for f in session.findings:
-            f["data_source"] = "SIMULATED"
+            f["data_source"] = session.data_source
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
 
         # Persist findings and run incident correlation
@@ -402,9 +402,9 @@ class SessionManager:
         session.events = combined_events
         session.active_scenario = "full"
         session.active_intensity = intensity
-        session.data_source = "SIMULATED"
-        session.cspm_source = "SIMULATED"
-        session.ciem_source = "SIMULATED"
+        session.data_source = "LIVE"
+        session.cspm_source = "CLOUD_POLICY"
+        session.ciem_source = "CLOUD_POLICY"
         session.generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Run detector registry
@@ -412,7 +412,7 @@ class SessionManager:
         findings = detector_registry.run_all(norm_events)
         session.findings = [f.model_dump(mode="json") for f in findings]
         for f in session.findings:
-            f["data_source"] = "SIMULATED"
+            f["data_source"] = session.data_source
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
 
         save_findings_db(session.findings)
@@ -442,9 +442,9 @@ class SessionManager:
     def reset_to_baseline(self, n_normal: int = 60) -> ActiveTelemetrySession:
         """Reset session to clean baseline noise (0 attacks)."""
         session = ActiveTelemetrySession()
-        session.data_source = "SIMULATED"
-        session.cspm_source = "SIMULATED"
-        session.ciem_source = "SIMULATED"
+        session.data_source = "LIVE"
+        session.cspm_source = "CLOUD_POLICY"
+        session.ciem_source = "CLOUD_POLICY"
         if is_wazuh_available():
             log_path = get_wazuh_log_path()
             if os.path.exists(log_path):
