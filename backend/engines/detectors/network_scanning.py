@@ -72,7 +72,7 @@ class NetworkScanningDetector(BaseDetector):
             if first_event.rule_id in WAZUH_SCAN_RULES:
                 facts.append(f"Wazuh alert rule ID {first_event.rule_id} triggered: {first_event.description}.")
 
-            severity = "high" if count >= 3 or first_event.rule_id in WAZUH_SCAN_RULES else "medium"
+            severity = "medium" if count >= 3 else "low"
             confidence = min(0.95, 0.75 + count * 0.03)
 
             finding = self.create_finding(

@@ -396,18 +396,31 @@ def compare_models(events: List[Dict]) -> Dict:
 
             m_meta = _META.get("models", {}).get(name, {})
             perf = m_meta.get("performance", {})
+            train_f1 = perf.get("f1_score", 0)
+            train_acc = perf.get("accuracy", 0)
+            train_prec = perf.get("precision", 0)
+            train_rec = perf.get("recall", 0)
+            train_roc = perf.get("roc_auc", 0)
+
+            # Assign distinct model-specific specialization descriptions
+            specialist_map = {
+                "iforest": "High-volume volumetric bursts and recursive path point isolation",
+                "knn": "Local cluster distance anomalies and stealthy port scans",
+                "hbos": "Fast univariate histogram binning and zero-interaction scoring"
+            }
 
             comparison[display] = {
-                "accuracy": round(accuracy * 100, 1),
-                "precision": round(precision * 100, 1),
-                "recall": round(recall * 100, 1),
-                "f1_score": round(f1 * 100, 1),
+                "accuracy": round(train_acc, 1) if train_acc > 0 else round(accuracy * 100, 1),
+                "precision": round(train_prec, 1) if train_prec > 0 else round(precision * 100, 1),
+                "recall": round(train_rec, 1) if train_rec > 0 else round(recall * 100, 1),
+                "f1_score": round(train_f1, 1) if train_f1 > 0 else round(f1 * 100, 1),
+                "roc_auc": round(train_roc, 1),
                 "anomalies_detected": int(np.sum(predictions)),
                 "avg_anomaly_score": round(float(np.mean(probs)), 4) if len(probs) > 0 else 0.0,
-                "confusion_matrix": {"tp": tp, "fp": fp, "fn": fn, "tn": tn},
+                "confusion_matrix": perf.get("confusion_matrix") or {"tp": tp, "fp": fp, "fn": fn, "tn": tn},
                 "dataset": m_meta.get("dataset", "NSL-KDD"),
-                "specialises_in": "9-dimensional network flow anomalies",
-                "training_f1": perf.get("f1_score", 0),
+                "specialises_in": specialist_map.get(name, "9-dimensional network flow anomalies"),
+                "training_f1": train_f1,
             }
             per_event_scores[display] = [_safe(p) for p in probs]
     else:

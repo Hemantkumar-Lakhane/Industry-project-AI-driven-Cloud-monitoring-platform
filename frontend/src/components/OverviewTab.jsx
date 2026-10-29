@@ -530,7 +530,7 @@ const OverviewTab = ({
               <BarChart3 size={16} style={{ color: 'var(--accent-orange)' }} />
               <h3>Event activity</h3>
             </div>
-            <span>{totalEventVolume.toLocaleString()} events analyzed · Rolling 10h window</span>
+            <span>{totalEventVolume.toLocaleString()} events analyzed · Ingestion Daemon</span>
           </div>
 
           <div className="figma-bar-column-wrap">
@@ -848,9 +848,7 @@ const OverviewTab = ({
               <h3 style={{ fontSize: '15.5px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
                 16 Specialized Attack Detection Engines
               </h3>
-              <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.12)', color: 'var(--success-color)' }}>
-                16/16 Active & Monitoring
-              </span>
+
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
               Autonomous detection modules continuously inspecting Wazuh host telemetry, AWS CloudTrail, VPC Flow logs, and IAM activity.

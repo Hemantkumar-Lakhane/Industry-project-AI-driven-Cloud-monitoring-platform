@@ -296,16 +296,7 @@ const LiveLogsTab = ({ showToast }) => {
             <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               Live Telemetry Stream & Attack Simulation Console
             </h3>
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              padding: '2px 8px',
-              borderRadius: '12px',
-              background: 'rgba(16, 185, 129, 0.12)',
-              color: 'var(--success-color)'
-            }}>
-              16/16 Detectors Active
-            </span>
+
           </div>
           <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0 }}>
             Inspect real-time cloud and host logs. Inject any of the 16 specialized attacks below to verify detection.

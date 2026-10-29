@@ -4,7 +4,7 @@ import {
   Search, ChevronDown, ArrowUpDown, ArrowRight, ExternalLink, ShieldCheck, X,
   AlertTriangle, Layers, Clock, Users, Globe, Database, Tag, ChevronRight,
   CheckCircle2, Copy, Check, Shield, Activity, Terminal, User, Server, FileText,
-  Play, RefreshCw, Eye
+  Play, RefreshCw, Eye, FileDown
 } from 'lucide-react';
 
 const formatDuration = (seconds) => {
@@ -33,7 +33,8 @@ const AlertsIncidentsTab = ({
   onSyncNVD,
   onInvestigateFinding,
   categoryFilter: propCategoryFilter,
-  setCategoryFilter: propSetCategoryFilter
+  setCategoryFilter: propSetCategoryFilter,
+  showToast
 }) => {
   const [viewMode, setViewMode] = useState('incidents'); // 'incidents' | 'findings' | 'vulnerabilities'
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,6 +53,62 @@ const AlertsIncidentsTab = ({
   const [selectedIncidentModal, setSelectedIncidentModal] = useState(null);
   const [selectedFinding, setSelectedFinding] = useState(null);
   const [activeDrawerTab, setActiveDrawerTab] = useState('evidence'); // 'evidence' | 'analysis' | 'remediation'
+
+  // Report generation for detected attacks
+  const handleExportReport = () => {
+    const activeList = filteredIncidents.length > 0 ? filteredIncidents : incidents;
+    const nowIso = new Date().toISOString();
+    const dateStr = nowIso.slice(0, 10);
+
+    const reportLines = [
+      '# RAM Antivirus — Executive Threat Incident Report',
+      `Generated: ${new Date().toUTCString()}`,
+      `Scope: Real-Time Correlated Threat Incidents & Forensic Analysis`,
+      '',
+      '## Executive Summary',
+      `- Total Correlated Incidents: ${activeList.length}`,
+      `- Critical Severity: ${activeList.filter(i => (i.severity || '').toLowerCase() === 'critical').length}`,
+      `- High Severity: ${activeList.filter(i => (i.severity || '').toLowerCase() === 'high').length}`,
+      `- Medium Severity: ${activeList.filter(i => (i.severity || '').toLowerCase() === 'medium').length}`,
+      `- Low Severity: ${activeList.filter(i => (i.severity || '').toLowerCase() === 'low').length}`,
+      '',
+      '## Correlated Attack Campaigns & Root Cause Analysis',
+      ...activeList.map((inc, i) => {
+        const cats = Array.isArray(inc.attack_categories) ? inc.attack_categories.join(', ') : (inc.attack_categories || 'N/A');
+        const ips = Array.isArray(inc.source_ips) ? inc.source_ips.join(', ') : (inc.source_ips || 'N/A');
+        const princs = Array.isArray(inc.principals) ? inc.principals.join(', ') : (inc.principals || 'N/A');
+        const res = Array.isArray(inc.resources) ? inc.resources.join(', ') : (inc.resources || 'N/A');
+        return [
+          `### ${i + 1}. [${(inc.severity || 'HIGH').toUpperCase()}] ${inc.title}`,
+          `- Incident ID: ${inc.incident_id || inc.id}`,
+          `- Status: ${inc.status || 'open'}`,
+          `- Attack Categories: ${cats}`,
+          `- Attacking Source IPs: ${ips}`,
+          `- Compromised Principals: ${princs}`,
+          `- Targeted Cloud Assets: ${res}`,
+          `- Correlated Findings Count: ${inc.finding_count || inc.findings?.length || 1}`,
+          `- Root Cause Analysis: ${inc.description || 'Observed anomalous activity in host and cloud telemetry.'}`,
+          `- Recommended Response Playbook: ${inc.primary_playbook_id || 'Standard Automated Containment'}`,
+          ''
+        ].join('\n');
+      })
+    ];
+
+    const reportContent = reportLines.join('\n');
+    const blob = new Blob([reportContent], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `RAM_Antivirus_Threat_Report_${dateStr}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    if (showToast) {
+      showToast('Executive Threat Report exported successfully!');
+    }
+  };
   const [copiedId, setCopiedId] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
   const [statusUpdates, setStatusUpdates] = useState({});
@@ -141,6 +198,7 @@ const AlertsIncidentsTab = ({
       hypothesis: f.evidence?.inferred_hypothesis || `Adversary activity detected matching ${f.attack_category || 'unauthorized behavior'}.`,
       missingEvidence: f.evidence?.missing_evidence || 'Cross-region VPC flow logs and host memory dump.',
       forensics,
+      attackCategory: (f.attack_category || f.category || f.attack_type || '').toLowerCase(),
       raw: f
     };
   });
@@ -161,10 +219,15 @@ const AlertsIncidentsTab = ({
 
     const matchesSeverity = severityFilter === 'All' || (inc.severity || '').toLowerCase() === severityFilter.toLowerCase();
     const matchesStatus = statusFilter === 'All' || (inc.status || '').toLowerCase() === statusFilter.toLowerCase();
+    const q = categoryFilter.toLowerCase();
+    const qClean = q.replace(/_/g, ' ');
     const matchesCategory = categoryFilter === 'All' ||
-      (inc.attack_categories || []).some(cat => cat.toLowerCase().includes(categoryFilter.toLowerCase())) ||
-      (inc.title || '').toLowerCase().includes(categoryFilter.toLowerCase().replace(/_/g, ' ')) ||
-      (inc.description || '').toLowerCase().includes(categoryFilter.toLowerCase().replace(/_/g, ' '));
+      (inc.attack_categories || []).some(cat => {
+        const c = cat.toLowerCase();
+        return c === q || c.includes(q) || q.includes(c);
+      }) ||
+      (inc.title || '').toLowerCase().includes(qClean) ||
+      (inc.description || '').toLowerCase().includes(qClean);
 
     return matchesSearch && matchesSeverity && matchesStatus && matchesCategory;
   });
@@ -179,9 +242,11 @@ const AlertsIncidentsTab = ({
     const matchesSeverity = severityFilter === 'All' || item.severity.toLowerCase() === severityFilter.toLowerCase();
     const matchesStatus = statusFilter === 'All' || item.status.toLowerCase() === statusFilter.toLowerCase();
     const matchesSource = sourceFilter === 'All' || item.source.toLowerCase() === sourceFilter.toLowerCase();
+    const q = categoryFilter.toLowerCase();
+    const qClean = q.replace(/_/g, ' ');
     const matchesCategory = categoryFilter === 'All' ||
-      (item.raw?.attack_category || '').toLowerCase().includes(categoryFilter.toLowerCase()) ||
-      (item.title || '').toLowerCase().includes(categoryFilter.toLowerCase().replace(/_/g, ' '));
+      (item.attackCategory || '').includes(q) ||
+      (item.title || '').toLowerCase().includes(qClean);
 
     return matchesSearch && matchesSeverity && matchesStatus && matchesSource && matchesCategory;
   });
@@ -267,9 +332,24 @@ const AlertsIncidentsTab = ({
         {viewMode === 'incidents' ? (
           <>
             <div className="figma-ticker-left">
-              <span className="count-bold">{openIncidents}</span>
-              <span>open incidents</span>
+              <span className="count-bold">{filteredIncidents.length}</span>
+              <span>{categoryFilter !== 'All' || severityFilter !== 'All' || statusFilter !== 'All' || searchTerm ? 'matching incidents' : 'open incidents'}</span>
               <span style={{ color: 'var(--text-muted)' }}>/ {totalIncidents} total correlated</span>
+              {(categoryFilter !== 'All' || severityFilter !== 'All' || statusFilter !== 'All' || searchTerm) && (
+                <button
+                  type="button"
+                  className="figma-btn-secondary"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSeverityFilter('All');
+                    setStatusFilter('All');
+                    setCategoryFilter('All');
+                  }}
+                  style={{ padding: '2px 8px', fontSize: '11px', marginLeft: '6px', borderRadius: '4px' }}
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
 
             <div className="figma-ticker-severities">
@@ -494,7 +574,7 @@ const AlertsIncidentsTab = ({
         {(fetchIncidents || fetchFindings) && (
           <button
             className="figma-btn-secondary"
-            style={{ padding: '7px 12px' }}
+            style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             onClick={() => {
               if (fetchIncidents) fetchIncidents();
               if (fetchFindings) fetchFindings(findingsAttackMode);
@@ -503,6 +583,16 @@ const AlertsIncidentsTab = ({
             <RefreshCw size={12} /> Refresh
           </button>
         )}
+
+        <button
+          type="button"
+          className="figma-btn-primary"
+          onClick={handleExportReport}
+          title="Download Executive Threat Incident Report"
+          style={{ padding: '7px 14px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <FileDown size={13} /> Export Threat Report
+        </button>
       </div>
 
       {/* 3A. CORRELATED INCIDENTS VIEW */}

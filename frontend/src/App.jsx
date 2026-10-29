@@ -415,28 +415,18 @@ const App = () => {
       title: 'Overview',
       subtitle: 'Production telemetry · Wazuh SIEM & CloudTrail active stream',
       action: (
-        <>
-          <div className="figma-date-badge">
-            <Calendar size={13} /> {liveTime.dateRangeBadge}
-          </div>
-          <button className="figma-btn-secondary" onClick={fetchDashboardData} disabled={loading}>
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
-          </button>
-        </>
+        <button className="figma-btn-secondary" onClick={fetchDashboardData} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+        </button>
       )
     },
     alerts: {
       title: 'Alerts & Incidents',
       subtitle: 'Production telemetry · Wazuh SIEM & CloudTrail active stream',
       action: (
-        <>
-          <div className="figma-date-badge">
-            <Calendar size={13} /> {liveTime.dateRangeBadge}
-          </div>
-          <button className="figma-btn-secondary" onClick={() => fetchFindings(findingsAttackMode)} disabled={findingsLoading}>
-            <RefreshCw size={13} className={findingsLoading ? 'animate-spin' : ''} /> Refresh
-          </button>
-        </>
+        <button className="figma-btn-secondary" onClick={() => fetchFindings(findingsAttackMode)} disabled={findingsLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <RefreshCw size={13} className={findingsLoading ? 'animate-spin' : ''} /> Refresh
+        </button>
       )
     },
     risk: {
@@ -451,11 +441,7 @@ const App = () => {
     ml: {
       title: 'ML Comparison',
       subtitle: 'Specialist anomaly detection benchmarks & PyOD evaluation',
-      action: (
-        <button className="figma-btn-primary" onClick={() => { setActiveTab('ml'); showToast('ML comparison evaluation initiated'); }}>
-          <Play size={13} /> Run comparison
-        </button>
-      )
+      action: null
     },
     remediation: {
       title: 'Remediation',
@@ -469,11 +455,7 @@ const App = () => {
     simulation: {
       title: 'Attack Simulation',
       subtitle: 'MITRE ATT&CK sandbox runner & adversary emulation',
-      action: (
-        <button className="figma-btn-primary" onClick={() => { setActiveTab('simulation'); }}>
-          <Play size={13} /> Run attack simulation
-        </button>
-      )
+      action: null
     },
     users: {
       title: 'Users',
@@ -758,9 +740,6 @@ const App = () => {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginRight: '4px' }}>
-                {liveTime.headerBadge}
-              </span>
               <span style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -777,9 +756,9 @@ const App = () => {
                   width: '6px',
                   height: '6px',
                   borderRadius: '50%',
-                  background: wsConnected ? 'var(--text-secondary)' : 'var(--text-muted)'
+                  background: 'var(--success-color)'
                 }}></span>
-                {wsConnected ? 'Stream Active' : 'Polling (5s)'}
+                Live Telemetry · UTC
               </span>
               {currentMeta.action}
             </div>
@@ -817,6 +796,7 @@ const App = () => {
               categoryFilter={selectedCategoryFilter}
               setCategoryFilter={setSelectedCategoryFilter}
               onInvestigateFinding={handleInvestigateFinding}
+              showToast={showToast}
             />
           )}
 

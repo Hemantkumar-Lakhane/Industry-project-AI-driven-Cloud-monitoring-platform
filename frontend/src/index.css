@@ -1630,10 +1630,10 @@ html, body {
 }
 
 /* TOAST COMPONENT */
-/* MINIMIZED SLEEK TOAST (TOP-RIGHT, UNOBTRUSIVE) */
+/* SLEEK TOAST NOTIFICATION (BOTTOM-RIGHT, SMOOTH ENTRANCE) */
 .toast {
   position: fixed;
-  top: 24px;
+  bottom: 24px;
   right: 24px;
   max-width: 360px;
   width: auto;
@@ -1647,7 +1647,7 @@ html, body {
   gap: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.08);
   z-index: 9999;
-  animation: slideInRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: toastSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   color: var(--text-primary);
   font-size: 12.5px;
   font-weight: 500;
@@ -1655,13 +1655,13 @@ html, body {
   pointer-events: auto;
 }
 
-@keyframes slideInRight {
+@keyframes toastSlideUp {
   from {
-    transform: translateX(110%);
+    transform: translateY(24px);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateY(0);
     opacity: 1;
   }
 }
