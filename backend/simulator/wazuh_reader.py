@@ -17,8 +17,10 @@ from typing import List, Dict
 
 def get_wazuh_log_path() -> str:
     env_path = os.environ.get("WAZUH_LOG_PATH")
-    if env_path and os.path.exists(env_path):
-        return env_path
+    if env_path:
+        env_path = env_path.strip()
+        if os.path.exists(env_path):
+            return env_path
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     candidates = [
@@ -28,9 +30,25 @@ def get_wazuh_log_path() -> str:
         "/var/ossec/logs/alerts/alerts.json",
         r"C:\Program Files (x86)\ossec-agent\logs\alerts.json"
     ]
+    if env_path:
+        candidates.insert(0, os.path.join(base_dir, env_path))
+        candidates.insert(0, os.path.join(os.getcwd(), env_path))
+
     for p in candidates:
-        if os.path.exists(p):
+        if os.path.exists(p) and os.path.getsize(p) > 0:
             return p
+
+    # Auto-seed baseline alerts.json if missing so Wazuh is always available
+    default_log = os.path.join(base_dir, "data", "alerts.json")
+    try:
+        os.makedirs(os.path.dirname(default_log), exist_ok=True)
+        from simulator.log_generator import generate_batch, append_to_log
+        append_to_log(generate_batch())
+        if os.path.exists(default_log):
+            return default_log
+    except Exception:
+        pass
+
     return env_path or "/var/ossec/logs/alerts/alerts.json"
 
 WAZUH_LOG_PATH = get_wazuh_log_path()
