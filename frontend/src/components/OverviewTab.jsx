@@ -840,32 +840,17 @@ const OverviewTab = ({
       </div>
 
       {/* 5. 16 SPECIALIZED ATTACK DETECTION ENGINES COVERAGE MATRIX */}
-      <div className="figma-card" style={{ marginBottom: '24px', padding: '22px 24px', borderRadius: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="figma-card" style={{ marginBottom: '24px', padding: '20px 22px', borderRadius: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <ShieldCheck size={19} style={{ color: 'var(--accent-orange)' }} />
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.2px' }}>
-                Autonomous Threat Detection Engines
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={18} style={{ color: 'var(--text-secondary)' }} />
+              <h3 style={{ fontSize: '15.5px', fontWeight: 600, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.2px' }}>
+                Threat Detection Engines
               </h3>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: '12px',
-                background: 'rgba(16, 185, 129, 0.1)',
-                color: '#10b981',
-                border: '1px solid rgba(16, 185, 129, 0.25)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981' }} />
-                16 / 16 Operational
-              </span>
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', margin: 0, lineHeight: 1.5 }}>
-              Continuous multi-layered inspection across Wazuh host agents, CloudTrail API telemetry, VPC network flows, and PyOD anomaly models.
+            <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '3px', margin: 0 }}>
+              Continuous inspection across Wazuh host agents, CloudTrail API telemetry, VPC network flows, and PyOD anomaly models.
             </p>
           </div>
           <button
@@ -878,7 +863,7 @@ const OverviewTab = ({
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(255px, 1fr))', gap: '12px' }}>
           {ATTACK_CATEGORIES_CATALOG.map((cat) => {
             const catCount = findings.filter(f =>
               (f.attack_category || '').toLowerCase() === cat.key.toLowerCase() ||
@@ -892,49 +877,36 @@ const OverviewTab = ({
                 onClick={() => onNavigateTab && onNavigateTab('alerts', cat.key)}
                 className="group cursor-pointer"
                 style={{
-                  padding: '14px 16px',
-                  borderRadius: '10px',
+                  padding: '13px 15px',
+                  borderRadius: '8px',
                   backgroundColor: 'var(--surface-card)',
-                  border: catCount > 0 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-subtle)',
-                  boxShadow: catCount > 0 ? '0 1px 4px rgba(239, 68, 68, 0.08)' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                  border: catCount > 0 ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid var(--border-subtle)',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '8px',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                  transition: 'all 0.15s ease'
                 }}
                 title={`Filter ${cat.name} in Alerts & Incidents`}
               >
-                {/* Subtle top tactic accent bar */}
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '2.5px',
-                  backgroundColor: catCount > 0 ? '#ef4444' : (cat.tacticColor || 'var(--accent-orange)'),
-                  opacity: catCount > 0 ? 0.9 : 0.6
-                }} />
-
                 {/* Top header row: tactic & engine ID */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{
                     fontSize: '10px',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     textTransform: 'uppercase',
                     letterSpacing: '0.4px',
-                    color: cat.tacticColor || 'var(--text-tertiary)'
+                    color: 'var(--text-tertiary)'
                   }}>
                     {cat.tactic}
                   </span>
                   <code style={{
                     fontSize: '10px',
                     fontFamily: 'monospace',
-                    fontWeight: 600,
+                    fontWeight: 500,
                     padding: '1px 5px',
                     borderRadius: '4px',
-                    backgroundColor: 'var(--surface-muted)',
+                    backgroundColor: 'var(--surface-sunken)',
                     color: 'var(--text-secondary)',
                     border: '1px solid var(--border-subtle)'
                   }}>
@@ -964,20 +936,24 @@ const OverviewTab = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  paddingTop: '6px',
+                  paddingTop: '8px',
                   marginTop: 'auto',
                   borderTop: '1px solid var(--border-subtle)'
                 }}>
                   {catCount > 0 ? (
                     <span style={{
                       fontSize: '11px',
-                      fontWeight: 700,
-                      color: '#ef4444',
+                      fontWeight: 600,
+                      color: '#dc2626',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '5px'
+                      gap: '5px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                      padding: '2px 7px',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(239, 68, 68, 0.2)'
                     }}>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444', boxShadow: '0 0 6px rgba(239, 68, 68, 0.6)' }} />
+                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
                       {catCount} Active Alert{catCount > 1 ? 's' : ''}
                     </span>
                   ) : (
@@ -993,7 +969,7 @@ const OverviewTab = ({
                       Normal Baseline
                     </span>
                   )}
-                  <span style={{ fontSize: '11px', color: 'var(--accent-orange)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
                     Inspect →
                   </span>
                 </div>

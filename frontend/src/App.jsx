@@ -468,7 +468,7 @@ const App = () => {
     },
     livelogs: {
       title: 'Live Log Stream',
-      subtitle: 'Real-time telemetry ingestion daemon · PyOD ML & SIEM Rule Engine',
+      subtitle: 'Real-time multi-cloud telemetry and behavioral anomaly stream',
       action: null
     },
     datasources: {

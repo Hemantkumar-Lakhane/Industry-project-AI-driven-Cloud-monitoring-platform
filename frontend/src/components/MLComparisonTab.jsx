@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { AlertCircle, RefreshCw, Trophy, BarChart3, ShieldCheck, Cpu, Zap, Activity } from 'lucide-react';
+import { RefreshCw, Cpu, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { API_URL } from '../config';
 
@@ -29,39 +29,31 @@ const MLComparisonTab = ({ showToast }) => {
 
   return (
     <div className="animate-fade-in">
-      {/* 1. HEADER NOTICE */}
-      <div className="figma-callout" style={{ marginBottom: '18px' }}>
-        <Cpu size={18} className="figma-callout-icon" style={{ color: 'var(--accent-orange)' }} />
-        <div className="figma-callout-content">
-          <h4>PyOD Multi-Model Anomaly Detection Ensemble</h4>
-          <p>
-            Continuous behavioral anomaly detection across 9 network flow dimensions. Each specialist model operates on distinct mathematical principles to detect different attack profiles.
-          </p>
-        </div>
-      </div>
-
-      {/* 2. MODEL COMPARISON CARD */}
+      {/* 1. BENCHMARK TABLE & EVALUATION MATRIX */}
       <div className="figma-card" style={{ padding: '0', overflow: 'hidden', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-              Model Benchmark & Evaluation Matrix
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Cpu size={16} style={{ color: 'var(--text-secondary)' }} />
+              <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                Model Benchmark & Evaluation Matrix
+              </h3>
+            </div>
             {comparison && (
-              <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px', display: 'block' }}>
-                Evaluated on NSL-KDD benchmark · Highest performing detector: <strong style={{ color: 'var(--success-color)' }}>{comparison.best_model}</strong> (F1: {comparison.best_f1}%)
+              <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
+                Evaluated on NSL-KDD benchmark · Highest performing detector: <strong style={{ color: 'var(--text-primary)' }}>{comparison.best_model}</strong> (F1: {comparison.best_f1}%)
               </span>
             )}
           </div>
           <button
             type="button"
-            className="figma-btn-primary"
+            className="figma-btn-secondary"
             onClick={fetchComparison}
             disabled={loading}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', padding: '6px 14px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 14px' }}
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Evaluating...' : 'Re-Evaluate Live Batch'}
+            {loading ? 'Evaluating...' : 'Re-Evaluate Batch'}
           </button>
         </div>
 
@@ -87,14 +79,15 @@ const MLComparisonTab = ({ showToast }) => {
                       {name}
                       {name === comparison.best_model && (
                         <span style={{
-                          fontSize: '10.5px',
-                          fontWeight: 700,
-                          backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                          color: 'var(--success-color)',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          backgroundColor: 'rgba(15, 23, 42, 0.08)',
+                          color: 'var(--text-primary)',
                           padding: '1px 6px',
-                          borderRadius: '10px'
+                          borderRadius: '4px',
+                          border: '1px solid var(--border-subtle)'
                         }}>
-                          Best Model
+                          Top F1
                         </span>
                       )}
                     </div>
@@ -106,18 +99,19 @@ const MLComparisonTab = ({ showToast }) => {
                     {m.specialises_in}
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: 600, fontSize: '13px' }}>{m.accuracy}%</td>
-                  <td style={{ textAlign: 'center', fontWeight: 600, fontSize: '13px', color: 'var(--accent-orange)' }}>{m.precision}%</td>
+                  <td style={{ textAlign: 'center', fontWeight: 600, fontSize: '13px' }}>{m.precision}%</td>
                   <td style={{ textAlign: 'center', fontWeight: 600, fontSize: '13px' }}>{m.recall}%</td>
-                  <td style={{ textAlign: 'center', fontWeight: 700, fontSize: '13.5px', color: 'var(--success-color)' }}>{m.f1_score}%</td>
+                  <td style={{ textAlign: 'center', fontWeight: 700, fontSize: '13.5px', color: 'var(--text-primary)' }}>{m.f1_score}%</td>
                   <td style={{ textAlign: 'center', fontWeight: 600, fontSize: '13px' }}>{m.roc_auc || 77.0}%</td>
                   <td style={{ textAlign: 'right' }}>
                     <span style={{
                       fontSize: '11px',
-                      fontWeight: 600,
+                      fontWeight: 500,
                       padding: '2px 8px',
                       borderRadius: '4px',
-                      backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                      color: 'var(--success-color)'
+                      backgroundColor: 'rgba(100, 116, 139, 0.08)',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid var(--border-subtle)'
                     }}>
                       Operational
                     </span>
@@ -139,7 +133,7 @@ const MLComparisonTab = ({ showToast }) => {
         </div>
       </div>
 
-      {/* 3. PERFORMANCE METRICS BAR CHART */}
+      {/* 2. PERFORMANCE METRICS BAR CHART */}
       {chartData.length > 0 && (
         <div className="figma-card" style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -166,57 +160,15 @@ const MLComparisonTab = ({ showToast }) => {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="accuracy" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Accuracy" />
-                <Bar dataKey="precision" fill="#eb6b27" radius={[4, 4, 0, 0]} name="Precision" />
-                <Bar dataKey="recall" fill="#06b6d4" radius={[4, 4, 0, 0]} name="Recall" />
-                <Bar dataKey="f1_score" fill="#10b981" radius={[4, 4, 0, 0]} name="F1 Score" />
+                <Bar dataKey="accuracy" fill="#475569" radius={[3, 3, 0, 0]} name="Accuracy" />
+                <Bar dataKey="precision" fill="#64748b" radius={[3, 3, 0, 0]} name="Precision" />
+                <Bar dataKey="recall" fill="#0284c7" radius={[3, 3, 0, 0]} name="Recall" />
+                <Bar dataKey="f1_score" fill="#059669" radius={[3, 3, 0, 0]} name="F1 Score" />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
       )}
-
-      {/* 4. ENSEMBLE ARCHITECTURE SUMMARY CARDS */}
-      <div className="figma-grid-3col">
-        <div className="figma-card" style={{ padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Zap size={16} style={{ color: 'var(--accent-orange)' }} />
-            <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>Isolation Forest</strong>
-          </div>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 10px 0', lineHeight: 1.5 }}>
-            Isolates point anomalies by randomly selecting a feature and split value. Exceptional at detecting sudden volumetric floods and outbound exfiltration spikes.
-          </p>
-          <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-            Latency: <strong>~3.2 ms</strong> · Training: <strong>50 estimators</strong>
-          </div>
-        </div>
-
-        <div className="figma-card" style={{ padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Activity size={16} style={{ color: '#06b6d4' }} />
-            <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>k-Nearest Neighbors (KNN)</strong>
-          </div>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 10px 0', lineHeight: 1.5 }}>
-            Computes distance to nearest neighbors in 9D space. Highly effective at uncovering stealthy reconnaissance port scans and slow credential stuffing attempts.
-          </p>
-          <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-            Latency: <strong>~4.8 ms</strong> · Metric: <strong>Euclidean Distance</strong>
-          </div>
-        </div>
-
-        <div className="figma-card" style={{ padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Cpu size={16} style={{ color: '#10b981' }} />
-            <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>Histogram-Based (HBOS)</strong>
-          </div>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 10px 0', lineHeight: 1.5 }}>
-            Constructs univariate histograms for each feature with dynamic binning. Offers ultra-fast, zero-interaction execution for real-time edge telemetry scoring.
-          </p>
-          <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-            Latency: <strong>~0.8 ms</strong> · Speed: <strong>Ultra-Low Overhead</strong>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
