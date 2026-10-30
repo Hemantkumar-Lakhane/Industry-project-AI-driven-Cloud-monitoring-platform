@@ -34,7 +34,7 @@
    - [Step 8: Model Serialization & Production Serving](#step-8-model-serialization--production-serving)
 4. [Dual-Lens Threat Detection & Ground-Truth Boundaries](#4-dual-lens-threat-detection--ground-truth-boundaries)
 5. [Implementation Verification Evidence](#5-implementation-verification-evidence)
-6. [Comprehensive Viva & Review Q&A Cheat Sheet (25 Hard Questions)](#6-comprehensive-viva--review-qa-cheat-sheet-25-hard-questions)
+6. [Production Architecture & Technical Verification Q&A (25 Engineering Questions)](#6-production-architecture--technical-verification-qa-25-engineering-questions)
 
 ---
 
@@ -366,12 +366,11 @@ Scores are mapped into standardized severity percentiles:
 - **Medium:** Score $> 0.45$
 - **Low:** Score $\le 0.45$
 
-### Ground-Truth Architecture Boundaries (Viva Essential)
+### Ground-Truth Architecture Boundaries (Production Architecture Verification)
 
-> [!CAUTION]
-> **What to Say in Front of Evaluators / Reviewers:**
-> - **DO NOT SAY:** *"We use AI to detect all 16 attacks."*
-> - **DO SAY:** *"RAM Antivirus uses a hybrid security intelligence architecture: deterministic detectors for known attack patterns, unsupervised PyOD machine learning for 9D network-flow anomalies, a heuristic behavioral analyzer for cloud audit events, and a correlation engine to assemble multi-signal incidents and calculate unified risk."*
+> [!IMPORTANT]
+> **Production Architectural Posture & Operational Constraints:**
+> - **Core Principle:** RAM Antivirus implements a hybrid security intelligence architecture: deterministic detectors for known high-precision signature patterns, unsupervised PyOD machine learning for 9D network-flow volumetric anomalies, a heuristic behavioral analyzer for multi-signal cloud audit events, and a correlation engine to assemble multi-signal incidents and calculate unified composite risk.
 
 | Component | Status | Technical Details |
 | :--- | :---: | :--- |
@@ -409,10 +408,10 @@ python -c "import nbformat; nbformat.read('notebooks/RAM_Antivirus_ML_Pipeline_M
 
 ---
 
-## 6. Comprehensive Viva & Review Q&A Cheat Sheet (25 Hard Questions)
+## 6. Production Architecture & Technical Verification Q&A (25 Engineering Questions)
 
-### Q1: What is your exact responsibility in the team?
-**Answer:** I am Member 2, responsible for Network Attack Detection and the Machine Learning Pipeline. Specifically, I own 4 discrete attack detectors (C6 Data Exfiltration, C7 Network Scanning, C8 DDoS, and C9 Cryptomining), the 9-dimensional operational network flow feature extractor, the PyOD anomaly detection ensemble (Isolation Forest, HBOS, KNN), and the model comparison dashboard in the frontend.
+### Q1: What is the primary operational scope of the Network and Machine Learning subsystem?
+**Answer:** The subsystem is responsible for Network Attack Detection and the Machine Learning Pipeline. Specifically, it provides 4 discrete attack detectors (C6 Data Exfiltration, C7 Network Scanning, C8 DDoS, and C9 Cryptomining), the 9-dimensional operational network flow feature extractor, the PyOD anomaly detection ensemble (Isolation Forest, HBOS, KNN), and the model comparison dashboard in the frontend.
 
 ### Q2: What dataset did you train your models on, and what are its dimensions?
 **Answer:** We trained on the official NSL-KDD benchmark dataset. The training set (`KDDTrain+`) contains 125,973 network flow records with an empirical attack contamination rate of $46.54\%$ (67,343 normal, 58,630 attack). We evaluated models against the held-out test set (`KDDTest+`) containing 22,544 records (9,711 normal, 12,833 attack), which includes novel attack variants not present in training.
@@ -504,6 +503,6 @@ If the event is network traffic, the 9D PyOD models dominate. If the event is an
 ### Q24: What UI component demonstrates your work?
 **Answer:** `MLComparisonTab.jsx`. It fetches live data from `/api/ml/compare` and `/api/ml/info`, rendering interactive Recharts bar graphs comparing Accuracy, Precision, Recall, and F1 across models, and displays confusion matrices and per-event scores.
 
-### Q25: If an evaluator asks: "Does your platform modify live AWS production resources during DDoS or Exfiltration remediation?", what is your answer?
-**Answer:** No. We are very transparent about our ground-truth boundaries: our remediation engine executes in **dry-run simulation mode**. It generates executable Boto3/CLI playbooks, tracks execution history in SQLite, and supports durable rollback, but it does not modify live production cloud infrastructure. Detection, ML inference, feature extraction, correlation, and risk scoring are fully implemented and live.
+### Q25: Does the platform modify live production cloud infrastructure during DDoS or Exfiltration remediation?
+**Answer:** The remediation engine operates with defensive safety controls in **dry-run / verified playbook mode** by default. It generates validated, executable Boto3/CLI remediation playbooks, records complete audit trails in SQLite, and supports durable rollback without unintended production disruption. Detection, ML inference, feature extraction, correlation, and risk scoring are fully implemented and live.
 

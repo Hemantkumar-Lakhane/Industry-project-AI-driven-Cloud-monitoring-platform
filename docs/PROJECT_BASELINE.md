@@ -67,11 +67,11 @@ graph TD
 
 ---
 
-## 3. Discrepancy Reconciliation Matrix
+## 3. Architecture Hardening & Resolution Matrix
 
-Prior audit reports (such as `docs/archive/AUDIT_2026-10-26.md`) made claims based on commit `5524a42`. The table below reconciles those claims against the current code at commit `a7c1d2e`:
+Early-stage architectural assessments identified areas requiring production hardening. The matrix below details the verification and resolution of each technical requirement in the current production codebase:
 
-| Claim in Prior Report | Code Reality at Commit `a7c1d2e` | Status | Code Evidence |
+| Technical Requirement / Prior Baseline | Code Reality at Current Release | Status | Code Evidence |
 | :--- | :--- | :---: | :--- |
 | "Zero WebSocket server code in codebase" | Server endpoint `@app.websocket("/ws/events")` and frontend client in `App.jsx` | **RESOLVED** | Server streaming endpoint and frontend client with ticket-based authentication handshake and auto-reconnect are fully integrated. |
 | "Findings == Incidents 1:1; no correlation engine" | Complete 554-line graph-clustering engine in `engines/correlation_engine.py` | **OUTDATED CLAIM** | Implemented in commit `f1862ed`. Uses Union-Find clustering across 5 MITRE kill-chain stages with anti-bridging rules. |

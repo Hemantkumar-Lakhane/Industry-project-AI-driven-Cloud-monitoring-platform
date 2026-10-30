@@ -1,6 +1,6 @@
 {
   "pipeline_version": "2.0.0",
-  "timestamp": "2026-10-29T06:50:26Z",
+  "timestamp": "2026-10-30T05:11:35Z",
   "feature_schema": "flow_9d",
   "features": [
     "duration",
@@ -40,8 +40,8 @@
         }
       },
       "timing": {
-        "fit_time_sec": 1.312,
-        "pred_time_ms_per_1k": 3.454
+        "fit_time_sec": 2.2,
+        "pred_time_ms_per_1k": 5.882
       }
     },
     "hbos": {
@@ -67,8 +67,8 @@
         }
       },
       "timing": {
-        "fit_time_sec": 2.576,
-        "pred_time_ms_per_1k": 0.157
+        "fit_time_sec": 6.665,
+        "pred_time_ms_per_1k": 0.54
       }
     },
     "knn": {
@@ -94,8 +94,8 @@
         }
       },
       "timing": {
-        "fit_time_sec": 0.147,
-        "pred_time_ms_per_1k": 13.152
+        "fit_time_sec": 0.736,
+        "pred_time_ms_per_1k": 67.739
       }
     }
   }
