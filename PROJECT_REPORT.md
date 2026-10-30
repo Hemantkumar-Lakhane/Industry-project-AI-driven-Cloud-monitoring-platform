@@ -72,52 +72,62 @@ The major objectives of the project are:
 ```text
 Industry(Ram)/
 ├── backend/
-│   ├── main.py
-│   ├── train_model.py
-│   ├── requirements.txt
-│   ├── security.db
+│   ├── main.py                    ← FastAPI gateway (RBAC-protected endpoints)
+│   ├── train_model.py             ← PyOD ML model training script
+│   ├── requirements.txt           ← Python dependencies
+│   ├── security.db                ← SQLite database (findings, incidents, users, audit logs)
 │   ├── data/
-│   │   ├── alerts.json
-│   │   ├── KDDTrain+.txt
-│   │   └── KDDTest+.txt
+│   │   ├── alerts.json            ← Wazuh SIEM telemetry log stream
+│   │   ├── KDDTrain+.txt          ← NSL-KDD benchmark training set
+│   │   └── KDDTest+.txt           ← NSL-KDD held-out test split
 │   ├── engines/
-│   │   ├── alert_engine.py
-│   │   ├── auth_engine.py
-│   │   ├── ciem_engine.py
-│   │   ├── compliance_engine.py
-│   │   ├── cspm_engine.py
-│   │   ├── db.py
-│   │   ├── localstack_engine.py
-│   │   ├── ml_engine.py
-│   │   ├── remediation_engine.py
-│   │   └── risk_engine.py
+│   │   ├── detectors.py           ← 16 modular MITRE ATT&CK detection engines
+│   │   ├── base_detector.py       ← Base detector interface & registry
+│   │   ├── correlation_engine.py  ← Graph-clustering incident correlation engine
+│   │   ├── ml_engine.py           ← 9D flow feature extraction & PyOD ensemble scoring
+│   │   ├── risk_engine.py         ← Unified 4-pillar risk formula & trend tracker
+│   │   ├── remediation_engine.py  ← Automated playbooks, safe dry-runs & rollbacks
+│   │   ├── asset_engine.py        ← Workload & cloud asset inventory discovery
+│   │   ├── vulnerability_engine.py← Dependency CVE security advisories matcher
+│   │   ├── cspm_engine.py         ← Cloud Security Posture Management engine
+│   │   ├── ciem_engine.py         ← Cloud Infrastructure Entitlement Management engine
+│   │   ├── compliance_engine.py   ← ISO 27001 / SOC 2 / GDPR compliance evaluations
+│   │   ├── alert_engine.py        ← SMTP email alerts
+│   │   ├── auth_engine.py         ← Bcrypt password hashing + JWT & RBAC user store
+│   │   ├── localstack_engine.py   ← Boto3 connector for LocalStack AWS emulation
+│   │   └── db.py                  ← SQLite persistence layer & schema migrations
 │   ├── models/
-│   │   ├── iforest.pkl
-│   │   ├── knn.pkl
-│   │   ├── hbos.pkl
-│   │   ├── scaler_iforest.pkl
-│   │   ├── scaler_knn.pkl
-│   │   ├── scaler_hbos.pkl
-│   │   └── training_meta.json
+│   │   ├── iforest.pkl            ← Isolation Forest model
+│   │   ├── knn.pkl                ← KNN model
+│   │   ├── hbos.pkl               ← HBOS model
+│   │   ├── scaler_*.pkl           ← StandardScaler scalers
+│   │   └── training_meta.json     ← Ground-truth evaluation benchmarks
 │   └── simulator/
-│       ├── attack_simulator.py
-│       ├── log_generator.py
-│       ├── wazuh_reader.py
-│       └── wazuh_simulator.py
+│       ├── session_manager.py     ← Active telemetry session & state coordinator
+│       ├── attack_simulator.py    ← 16 MITRE ATT&CK adversary scenario generator
+│       ├── wazuh_reader.py        ← Reads live Linux syslog/alerts.json
+│       └── log_generator.py       ← Real-time telemetry stream generator
 └── frontend/
     ├── package.json
     ├── vite.config.js
     └── src/
-        ├── App.jsx
-        ├── index.css
-        ├── main.jsx
+        ├── App.jsx                ← Main application shell + WebSocket live stream
+        ├── index.css              ← Enterprise design system (Aikido / Datadog style)
+        ├── config.js              ← Dynamic API & WS endpoint configuration
         └── components/
-            ├── AttackSimulationTab.jsx
-            ├── LoginPage.jsx
-            ├── MLComparisonTab.jsx
-            ├── RiskScoreTab.jsx
-            ├── SharedComponents.jsx
-            └── UserManagementTab.jsx
+            ├── OverviewTab.jsx          ← Threat overview, 16 engine matrix & metrics
+            ├── AlertsIncidentsTab.jsx   ← Correlated incidents, atomic findings & PDF export
+            ├── RemediationTab.jsx       ← Explainable AI console, dry-runs & audit logs
+            ├── RiskScoreTab.jsx         ← 4-pillar risk engine, trends & factor inputs
+            ├── MLComparisonTab.jsx      ← PyOD benchmark table & comparative metrics chart
+            ├── AttackSimulationTab.jsx  ← 1-click adversary emulator
+            ├── LiveLogsTab.jsx          ← Telemetry stream & CloudWatch console
+            ├── ComplianceTab.jsx        ← ISO 27001 / SOC 2 / GDPR audit dashboard
+            ├── UserManagementTab.jsx    ← RBAC user directory & invite modal
+            ├── DataSourcesTab.jsx       ← Ingestion connectors & asset discovery
+            ├── WorkspaceSettingsTab.jsx ← Threshold & notification parameters
+            ├── LoginPage.jsx            ← Secure authenticated login portal
+            └── remediation/             ← Explainable AI cards, forensics banner & rollbacks
 ```
 
 ## 7. System Architecture

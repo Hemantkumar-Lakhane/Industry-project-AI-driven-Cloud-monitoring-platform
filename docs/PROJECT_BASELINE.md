@@ -61,7 +61,7 @@ graph TD
     subgraph Presentation["5. Presentation & Control"]
         DB --> API["FastAPI REST Endpoints (backend/main.py)"]
         API --> UI["React 19 Dashboard (Port 5173 via Axios Polling)"]
-        API -.->|Dormant /ws/events| WS["WebSocket Route (No Active Frontend Client)"]
+        API -->|Active /ws/events| WS["WebSocket Live Stream (Authenticated Client in App.jsx)"]
     end
 ```
 
@@ -73,7 +73,7 @@ Prior audit reports (such as `docs/archive/AUDIT_2026-10-26.md`) made claims bas
 
 | Claim in Prior Report | Code Reality at Commit `a7c1d2e` | Status | Code Evidence |
 | :--- | :--- | :---: | :--- |
-| "Zero WebSocket server code in codebase" | Endpoint exists: `@app.websocket("/ws/events")` in `backend/main.py:2792` | **OUTDATED CLAIM** | Server endpoint implemented in commit `7f5bb3e`; however, frontend client integration remains missing. |
+| "Zero WebSocket server code in codebase" | Server endpoint `@app.websocket("/ws/events")` and frontend client in `App.jsx` | **RESOLVED** | Server streaming endpoint and frontend client with ticket-based authentication handshake and auto-reconnect are fully integrated. |
 | "Findings == Incidents 1:1; no correlation engine" | Complete 554-line graph-clustering engine in `engines/correlation_engine.py` | **OUTDATED CLAIM** | Implemented in commit `f1862ed`. Uses Union-Find clustering across 5 MITRE kill-chain stages with anti-bridging rules. |
 | "Missing Vulnerability Scanning under FR-05" | Workload vulnerability engine in `engines/vulnerability_engine.py` | **OUTDATED CLAIM** | Implemented in commit `7f5bb3e`. Parses `requirements.txt` & binaries and matches against 8 CVE advisories via `packaging.version`. |
 | "Target leakage in ML: 'level' mapped from attack labels" | Leakage eliminated; retrained on 9 flow features | **RESOLVED** | Verified in `train_model.py` and `models/training_meta.json`. |

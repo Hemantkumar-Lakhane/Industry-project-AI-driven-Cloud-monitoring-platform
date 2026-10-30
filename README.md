@@ -19,14 +19,16 @@
 
 ## What This Project Does
 
-A full-stack cloud security platform that:
+A production-grade cloud security intelligence and automated response platform featuring:
 
-- Reads real or simulated Wazuh security logs every minute
-- Runs 3 specialist ML models (trained on NSL-KDD, CICIDS-2017, UNSW-NB15) to detect anomalies
-- Derives CSPM and CIEM findings directly from log events — no random selection
-- Shows unified risk score, compliance status (ISO27001 / SOC2 / GDPR), and remediation playbooks
-- Sends real email alerts when attacks are detected
-- Persists all data in SQLite across restarts
+- **16 Modular Attack Detection Engines:** Aligned with MITRE ATT&CK (`DET-BF-01` through `DET-DOS-16`), inspecting Wazuh Linux host agents, CloudTrail API telemetry, and VPC network flows.
+- **PyOD ML Anomaly Ensemble:** Isolation Forest, KNN, and HBOS trained on the 9-dimensional IEEE Operational Flow Schema (NSL-KDD benchmark) with zero target leakage.
+- **Graph-Based Incident Correlation:** Disjoint Set (Union-Find) clustering over 15-minute sliding windows across principals, IPs, and cloud assets, grouping atomic findings into multi-stage attack campaigns.
+- **Explainable AI Remediation Console:** Plain-English root-cause analysis, forensic attribution, safe dry-run simulation, execution rollbacks, and persistent audit logging.
+- **Unified 4-Pillar Composite Risk Engine:** Dynamic enterprise risk posture ($0.35 \times \text{Incidents} + 0.25 \times \text{ML} + 0.20 \times \text{CSPM} + 0.20 \times \text{CIEM}$).
+- **Compliance Control Mapping:** Automated rules mapping across ISO 27001, SOC 2, and GDPR with exportable reports.
+- **Live Observability Stream:** Real-time authenticated WebSocket streaming (`/ws/events`), structured telemetry table, and CloudWatch terminal console.
+- **Enterprise UI/UX System:** Datadog / Aikido-inspired low-saturation dark palette with soft pastel status badges.
 
 ---
 
@@ -35,57 +37,69 @@ A full-stack cloud security platform that:
 ```
 Industry(Ram)/
 ├── backend/
-│   ├── main.py                    ← FastAPI server (all API endpoints)
-│   ├── train_model.py             ← Train ML models on datasets (run once)
+│   ├── main.py                    ← FastAPI application gateway (RBAC-protected routes)
+│   ├── train_model.py             ← PyOD ML ensemble training on 9D flow benchmark
 │   ├── requirements.txt
-│   ├── security.db                ← SQLite database (auto-created)
+│   ├── security.db                ← SQLite database (findings, incidents, users, audit trail)
 │   ├── engines/
-│   │   ├── ml_engine.py           ← PyOD anomaly detection (loads trained models)
-│   │   ├── cspm_engine.py         ← Cloud misconfigs derived from logs
-│   │   ├── ciem_engine.py         ← IAM risks derived from logs
-│   │   ├── risk_engine.py         ← Unified risk score formula
-│   │   ├── compliance_engine.py   ← ISO27001 / SOC2 / GDPR mapping
-│   │   ├── remediation_engine.py  ← 8 automated playbooks
-│   │   ├── alert_engine.py        ← Real SMTP email alerts
-│   │   ├── auth_engine.py         ← JWT auth + RBAC (SQLite-backed)
-│   │   ├── localstack_engine.py   ← boto3 against LocalStack (optional)
-│   │   └── db.py                  ← SQLite persistence layer
+│   │   ├── detectors.py           ← 16 discrete MITRE ATT&CK detection engines
+│   │   ├── base_detector.py       ← Abstract detector interface & registry
+│   │   ├── correlation_engine.py  ← Graph clustering & multi-stage campaign synthesis
+│   │   ├── ml_engine.py           ← 9D flow feature extraction & PyOD ensemble scoring
+│   │   ├── risk_engine.py         ← Unified 4-pillar risk formula & trend calculations
+│   │   ├── remediation_engine.py  ← Automated playbooks, safe dry-runs & rollbacks
+│   │   ├── asset_engine.py        ← Workload & cloud asset discovery & inventory
+│   │   ├── vulnerability_engine.py← Dependency & CVE advisory matching
+│   │   ├── cspm_engine.py         ← Cloud Security Posture Management engine
+│   │   ├── ciem_engine.py         ← Cloud Infrastructure Entitlement Management engine
+│   │   ├── compliance_engine.py   ← ISO 27001 / SOC 2 / GDPR control evaluations
+│   │   ├── alert_engine.py        ← SMTP email alerts
+│   │   ├── auth_engine.py         ← Bcrypt password hashing + JWT & RBAC user store
+│   │   ├── localstack_engine.py   ← boto3 connector for LocalStack AWS emulation
+│   │   └── db.py                  ← SQLite persistence layer & schema migrations
 │   ├── simulator/
-│   │   ├── log_generator.py       ← Live log generator (writes every 60s)
-│   │   ├── wazuh_reader.py        ← Reads alerts.json in Wazuh format
-│   │   ├── wazuh_simulator.py     ← Fallback event generator
-│   │   └── attack_simulator.py    ← Attack scenario generator
-│   ├── models/                    ← Trained ML model files (auto-created)
-│   │   ├── iforest.pkl            ← Isolation Forest (NSL-KDD)
-│   │   ├── knn.pkl                ← KNN (CICIDS-2017)
-│   │   ├── hbos.pkl               ← HBOS (UNSW-NB15)
-│   │   ├── scaler_*.pkl           ← Feature scalers
-│   │   └── training_meta.json     ← Training metadata
+│   │   ├── session_manager.py     ← Active telemetry session & state coordinator
+│   │   ├── attack_simulator.py    ← 16 MITRE ATT&CK adversary scenario generator
+│   │   ├── wazuh_reader.py        ← Reads live Linux syslog/alerts.json
+│   │   └── log_generator.py       ← Telemetry stream generator
+│   ├── models/                    ← Trained PyOD models & metadata
+│   │   ├── iforest.pkl            ← Isolation Forest model
+│   │   ├── knn.pkl                ← KNN model
+│   │   ├── hbos.pkl               ← HBOS model
+│   │   ├── scaler_*.pkl           ← StandardScaler feature scalers
+│   │   └── training_meta.json     ← Ground-truth evaluation benchmarks
 │   └── data/
-│       ├── alerts.json            ← Live log file (written by log_generator.py)
-│       ├── KDDTrain+.txt          ← NSL-KDD training data (auto-downloaded)
-│       └── KDDTest+.txt           ← NSL-KDD test data (auto-downloaded)
+│       ├── alerts.json            ← Authentic Wazuh SIEM telemetry log stream
+│       ├── KDDTrain+.txt          ← NSL-KDD training dataset
+│       └── KDDTest+.txt           ← NSL-KDD held-out test split
 └── frontend/
     └── src/
-        ├── App.jsx                ← Main dashboard + WebSocket
+        ├── App.jsx                ← Main application shell + WebSocket live stream
+        ├── index.css              ← Enterprise design tokens (Figma / Aikido standards)
+        ├── config.js              ← Dynamic API & WS endpoint configuration
         └── components/
-            ├── LoginPage.jsx
-            ├── AttackSimulationTab.jsx
-            ├── RiskScoreTab.jsx
-            ├── MLComparisonTab.jsx
-            ├── UserManagementTab.jsx
-            └── SharedComponents.jsx
+            ├── OverviewTab.jsx          ← Threat overview, 16 engine matrix & metrics
+            ├── AlertsIncidentsTab.jsx   ← Correlated incidents, atomic findings & PDF export
+            ├── RemediationTab.jsx       ← Explainable AI console, dry-runs & audit logs
+            ├── RiskScoreTab.jsx         ← 4-pillar risk engine, trends & factor inputs
+            ├── MLComparisonTab.jsx      ← PyOD benchmark table & comparative metrics chart
+            ├── AttackSimulationTab.jsx  ← 1-click adversary emulator
+            ├── LiveLogsTab.jsx          ← Telemetry stream & CloudWatch console
+            ├── ComplianceTab.jsx        ← ISO 27001 / SOC 2 / GDPR audit dashboard
+            ├── UserManagementTab.jsx    ← RBAC user directory & invite modal
+            ├── DataSourcesTab.jsx       ← Ingestion connectors & asset discovery
+            ├── WorkspaceSettingsTab.jsx ← Threshold & notification parameters
+            ├── LoginPage.jsx            ← Secure authenticated login portal
+            └── remediation/             ← Explainable AI cards, forensics banner & rollbacks
 ```
-
----
 
 ---
 
 ## 🐳 Docker & LocalStack AWS Setup (Optional for Emulated Cloud)
 
-AegisCloud includes built-in support for **LocalStack** to emulate AWS S3 and IAM resources locally.
+RAM Antivirus Cloud Security Platform includes built-in support for **LocalStack** to emulate AWS S3 and IAM resources locally.
 
-> **Note:** If Docker is not running, AegisCloud automatically uses its built-in Cloud Policy Audit Engine. Docker is **optional** and not required for normal dashboard operation or cloud deployment (Render).
+> **Note:** If Docker is not running, RAM Antivirus Cloud Security Platform automatically uses its built-in Cloud Policy Audit Engine. Docker is **optional** and not required for normal dashboard operation or cloud deployment (Render).
 
 ### Quick 3-Step Launch:
 1. **Open Docker Desktop** on Windows.
