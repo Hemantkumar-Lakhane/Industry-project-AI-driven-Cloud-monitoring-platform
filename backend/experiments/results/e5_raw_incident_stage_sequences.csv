@@ -1,0 +1,423 @@
+incident_id,raw_stages_json,stage_sequence,stage_indices,stage_count,transition_count,transitions
+INC-D424495A,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-9B9F8839,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-2327491E,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-C5D1E4CC,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-9508D724,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-21755163,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-8AB1866C,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-8CD8A299,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-E652CB08,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-BA14FD52,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-C4CA42A8,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-5805A5E8,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-477F2971,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-32395CF9,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-026922CD,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-575A1FBB,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-6F732235,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-F7B43E64,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-49B700FC,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-352B376B,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-537E3C11,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-CD9BF54D,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-3104D1D7,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-871B1BB0,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-D1C9199B,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-5A68DA7F,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-D1F4622A,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-7E9F8E7A,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-52E6E252,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-0D67E176,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-AB46E20F,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-924A2B50,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-499C19B2,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-E743417F,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-BE9F378E,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-FE9CDA5B,"[""Privilege Escalation & IAM Manipulation""]",Privilege Escalation,[2],1,0,
+INC-60A8BEFC,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-885C3EC5,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-765E64D8,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-0D142AFA,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-C1356F83,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-0C07E795,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-5A2BA401,"[""Privilege Escalation & IAM Manipulation""]",Privilege Escalation,[2],1,0,
+INC-FB86541A,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-9125B06A,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption"", ""Execution & Serverless Abuse""]",Privilege Escalation -> Exfiltration -> Impact -> Privilege Escalation,"[2, 4, 5, 2]",4,3,Privilege Escalation -> Exfiltration; Exfiltration -> Impact; Impact -> Privilege Escalation
+INC-B057BBB1,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-8CB8AFA0,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-4CE52D7F,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-8A1AB644,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-C1C7F04D,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-670F4A7A,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-CCFE6606,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-868ACB5C,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-1FB679B5,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-429D8F2A,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-04007386,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-66BAD31A,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-9DC0083B,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-CAA41F1C,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-86B04FC5,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-9965E60E,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-E3136DD8,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-AC37CFE8,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-7F38D530,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-130B2C7F,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-D31DEEFD,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-25BA32CA,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-B69F1635,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-CC95D3F6,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-C7CB559C,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-08BB3B65,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-D50B416E,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-F536B672,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-4F319106,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-A1967B86,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-5D0EA1B0,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-31B06E0A,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-1D85A0CF,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-3509F9B4,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-7C10FE57,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-82FF3053,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-098AD6D3,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-B32AE8EE,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-008824D1,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-B0687709,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-80973968,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-F20ACC7F,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-3B95A60D,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-0B4D8680,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-55171AE0,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-E4663D01,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-810DFC3E,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-306B3286,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-A72A55A7,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-2320E1B0,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-73619A1E,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-DCD557F4,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-7AB465ED,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-9C3FAFCE,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-ABD8A762,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-35363807,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-487F4941,"[""Privilege Escalation & IAM Manipulation"", ""Impact & Data Encryption""]",Privilege Escalation -> Impact,"[2, 5]",2,1,Privilege Escalation -> Impact
+INC-8614E501,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-9804992A,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-851D2CCA,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-A312E652,"[""Privilege Escalation & IAM Manipulation"", ""Impact & Data Encryption""]",Privilege Escalation -> Impact,"[2, 5]",2,1,Privilege Escalation -> Impact
+INC-38F15BDF,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-3D85ED75,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-EF6B5220,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-59D0A9B3,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-EBC66D40,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-F151CB18,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-5EDF6B84,"[""Privilege Escalation & IAM Manipulation"", ""Resource Hijacking & Impact"", ""Impact & Data Encryption""]",Privilege Escalation -> Impact -> Impact,"[2, 5, 5]",3,2,Privilege Escalation -> Impact; Impact -> Impact
+INC-69A35631,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-0DF895BD,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-AF2B37CC,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-D1A9CEC2,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-7672655A,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-955F5A0F,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-12C01DD6,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-AA95C50D,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-36134EFD,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-8242B7FA,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-0F1141C7,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-233F85A9,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-4BDB4407,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-BF9B54B7,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-CBB52AFA,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-B41A69FF,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-596D424E,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-611A3EBE,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-3D707204,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-176F07E7,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-D244CF89,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-A8BB1799,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-7981C755,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-B061F51B,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-C62E65CE,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-42201BB5,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact -> Impact,"[2, 4, 5, 5]",4,3,Privilege Escalation -> Exfiltration; Exfiltration -> Impact; Impact -> Impact
+INC-922C67D6,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-9A4667FF,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-F1794060,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-B3DF7944,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-5B4BCF84,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-E2A4B2C2,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-4E784807,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-D081629C,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-8B52AB6A,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-A737561D,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-42AE4267,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-837E512D,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-B2C9EC18,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-39043977,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-F402822D,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-4F2F98D3,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-164A6090,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-54453027,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-014F815D,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-5A69CDF6,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-52E2C912,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-7DEFDF06,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-5DF4ACC4,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-AE33B076,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-6D7F7B00,"[""Privilege Escalation & IAM Manipulation"", ""Defense Evasion & Logging Impairment""]",Privilege Escalation -> Defense Evasion,"[2, 3]",2,1,Privilege Escalation -> Defense Evasion
+INC-D9F54B7F,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-3BE9E5B7,"[""Privilege Escalation & IAM Manipulation""]",Privilege Escalation,[2],1,0,
+INC-BA9B5850,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-4BBC3FEB,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-C97C3561,"[""Privilege Escalation & IAM Manipulation""]",Privilege Escalation,[2],1,0,
+INC-50477C21,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-DDC8788A,"[""Privilege Escalation & IAM Manipulation""]",Privilege Escalation,[2],1,0,
+INC-C7928E93,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-4C85E416,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-56813A82,"[""Privilege Escalation & IAM Manipulation"", ""Defense Evasion & Logging Impairment""]",Privilege Escalation -> Defense Evasion,"[2, 3]",2,1,Privilege Escalation -> Defense Evasion
+INC-0C005D10,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-7726FB63,"[""Privilege Escalation & IAM Manipulation""]",Privilege Escalation,[2],1,0,
+INC-F4964D45,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-884680DE,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-CF237D2A,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-1221EE2E,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-D31E9503,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-77901E27,"[""Initial Access & Credential Abuse"", ""Credential Access & Persistence""]",Initial Access -> Initial Access,"[1, 1]",2,1,Initial Access -> Initial Access
+INC-8387C53F,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-D6DB3137,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-709A119D,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-00E29B7A,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-15E1F861,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-6B81F79E,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-BAA684FE,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-817F6F28,"[""Privilege Escalation & IAM Manipulation"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Impact,"[2, 5]",2,1,Privilege Escalation -> Impact
+INC-D34E542F,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-BB875916,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-423A5FE3,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-4ADD37F4,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-7369220F,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-D59189AB,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-4984D440,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-6100F1EE,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-407F8B6D,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-64355E3A,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-7F847B55,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-2F0ECB53,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-18EE817A,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-CEABF13A,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-10782504,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-EC9BB2D2,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-018815F6,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-1A315CB6,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-710E5B71,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-BBD8F089,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-8531AA66,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-6CEB8BAA,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-31F548A3,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-1EE50BA2,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-152C5BCF,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-22E848C2,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-67DA3191,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-FFA0CFC2,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-5E702AD6,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-1043F07E,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-F6D47CBB,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-F672FDB6,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-2C6409D7,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-BDE2F1AA,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-A1509084,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-62FFCCF1,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-DACBD8BC,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-497517B0,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-450051AA,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-B0D4BEF0,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-56E541FB,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-CFEE7AF2,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-0A950E12,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-067BC097,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-11BF81F8,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-D3787A7F,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-A13381FE,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-577BAC20,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-4BD6DF48,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-58304890,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-A3F90C61,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-402AB49E,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-86C21656,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-1531D8FE,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-A09BB3E3,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-603C4AA9,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-D26B8F48,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-89CC24B0,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-A542ED60,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-7714319A,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-CD50CA20,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-165608B4,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-05BFA9B3,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-C407967A,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-BECA8E51,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-BB96E9B1,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-BFD63975,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-4239CEF4,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-C14FE894,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-D9E9834F,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-6191752B,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-E6A86D2F,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-EA7E4D96,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-7BCA1825,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-C8321BEA,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-EEE30907,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-117A148E,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-8D273C9B,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-F5338E75,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-493ADF3E,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-C38BA5D8,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-DD490C1D,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-819407E2,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-BC6652A8,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-91348184,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-54C2E255,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-B0B9583C,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-684D8016,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-2ADCA8D5,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-7A9B03A9,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-D7CD3072,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-60A76F79,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-5F2A8786,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-0273A2AC,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-C2615C0A,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-5C24B0D7,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-0866FF27,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-99290683,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-F5E08683,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-038FF36A,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-D1E1C283,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-64B67C5A,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-F235DF77,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact -> Impact,"[2, 4, 5, 5]",4,3,Privilege Escalation -> Exfiltration; Exfiltration -> Impact; Impact -> Impact
+INC-5086B5AB,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-D20CA478,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-37335A7B,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-168E72D4,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-560E16C0,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-3A608CEA,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-441B2B83,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-09798B5F,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-604009DA,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-F31373A5,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-18D21CC1,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-03F4C336,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-7E6CF3BD,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-6AD811BC,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-974441ED,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-BD221C0E,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-2FCD63B3,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-6F24DC97,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-C4019FEF,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-B2EB70FF,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-070387F7,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-D7055EF5,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-2499F214,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-F9A92288,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-4D44CC47,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-C83C0CC8,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-76A2DDDD,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-62376622,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-2397917C,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-8906C070,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-219961FE,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-3DAA58B3,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-72FF183F,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-254C8DF7,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-9F661B26,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-E32D0445,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-30D57219,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-7F1E925D,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-8C08631E,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-D116EA25,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-83091763,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-4CDA0773,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-73710CAA,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-A0F9DACC,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-4E6BD603,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-5CD25D0E,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-453E1257,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-B7EB89B1,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-95843A6A,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-3E392395,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-37CC26C3,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-68B5A256,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-8009E38F,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-AF60104E,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-B10A9DA9,"[""Privilege Escalation & IAM Manipulation"", ""Impact & Data Encryption""]",Privilege Escalation -> Impact,"[2, 5]",2,1,Privilege Escalation -> Impact
+INC-F520A206,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-DCB2C0BE,"[""Privilege Escalation & IAM Manipulation"", ""Impact & Data Encryption""]",Privilege Escalation -> Impact,"[2, 5]",2,1,Privilege Escalation -> Impact
+INC-157B0D35,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-CEEEA5DA,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-EA2ACC77,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-1187295B,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-E67B4A91,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-C065D6A3,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-78A6B99E,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Privilege Escalation -> Exfiltration -> Impact,"[2, 4, 5]",3,2,Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-3A7D8F47,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-F79E3802,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-70423F11,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-40A62EE5,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-21CFAC79,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-C86D6E68,"[""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage""]",Privilege Escalation -> Exfiltration,"[2, 4]",2,1,Privilege Escalation -> Exfiltration
+INC-9ED98E07,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-3B0CE4C6,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-DCB492D7,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-6FF11906,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-2E51D1C3,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-556EF93D,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-8833B959,"[""Initial Access & Credential Abuse"", ""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact"", ""Impact & Data Encryption""]",Initial Access -> Privilege Escalation -> Exfiltration -> Impact -> Impact,"[1, 2, 4, 5, 5]",5,4,Initial Access -> Privilege Escalation; Privilege Escalation -> Exfiltration; Exfiltration -> Impact; Impact -> Impact
+INC-3CF7E688,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-AC3122DE,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-69B2B088,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-B333FB4C,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-40A7B939,"[""Initial Access & Credential Abuse"", ""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Initial Access -> Privilege Escalation -> Exfiltration -> Impact,"[1, 2, 4, 5]",4,3,Initial Access -> Privilege Escalation; Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-56087FA1,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-2EE3BCC5,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-242219C3,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-8D0B92D8,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-61DA2321,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-B011FDF0,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-4E112D74,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-043F59D7,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-26BA6368,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-B46231F1,"[""Initial Access & Credential Abuse"", ""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact"", ""Impact & Data Encryption""]",Initial Access -> Privilege Escalation -> Exfiltration -> Impact -> Impact,"[1, 2, 4, 5, 5]",5,4,Initial Access -> Privilege Escalation; Privilege Escalation -> Exfiltration; Exfiltration -> Impact; Impact -> Impact
+INC-573B0BFA,"[""Initial Access & Credential Abuse"", ""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Initial Access -> Privilege Escalation -> Exfiltration -> Impact,"[1, 2, 4, 5]",4,3,Initial Access -> Privilege Escalation; Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-2602E2CC,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-073C2C12,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-6AF59FAF,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-EC52F207,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-F4CE2464,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-5F321FD6,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-7DA2E506,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-26B383B2,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-53B68060,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-9BD5E380,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-87AB28F9,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-E1C6A074,"[""Initial Access & Credential Abuse"", ""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Resource Hijacking & Impact"", ""Impact & Data Encryption""]",Initial Access -> Privilege Escalation -> Exfiltration -> Impact -> Impact,"[1, 2, 4, 5, 5]",5,4,Initial Access -> Privilege Escalation; Privilege Escalation -> Exfiltration; Exfiltration -> Impact; Impact -> Impact
+INC-691123DB,"[""Initial Access & Credential Abuse"", ""Privilege Escalation & IAM Manipulation"", ""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Initial Access -> Privilege Escalation -> Exfiltration -> Impact,"[1, 2, 4, 5]",4,3,Initial Access -> Privilege Escalation; Privilege Escalation -> Exfiltration; Exfiltration -> Impact
+INC-FA03C95D,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-E2E0168A,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-59BC8390,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-0A387C2C,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-10491B5C,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-E1EF01DA,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-DDA4CD20,"[""Exfiltration Over Web/Cloud Storage"", ""Impact & Data Encryption""]",Exfiltration -> Impact,"[4, 5]",2,1,Exfiltration -> Impact
+INC-BF9ACB80,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-B1EA8E39,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-3E18F434,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-6872A8E2,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-2875E25E,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-7D87331A,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-BDC4D8F9,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-B48FE125,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-67A2ED2F,"[""Impact & Data Encryption""]",Impact,[5],1,0,
+INC-4CBF71E2,"[""Resource Hijacking & Impact""]",Impact,[5],1,0,
+INC-E06863B2,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-5FB71B84,"[""Exfiltration Over Web/Cloud Storage""]",Exfiltration,[4],1,0,
+INC-7D1E06EA,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-95F1A947,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-1EB16670,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
+INC-D6E282D5,"[""Initial Access & Credential Abuse""]",Initial Access,[1],1,0,
