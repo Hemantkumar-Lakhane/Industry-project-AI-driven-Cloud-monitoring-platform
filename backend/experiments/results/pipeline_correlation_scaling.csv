@@ -1,0 +1,5 @@
+n_alerts,incidents_formed,normalization_time_sec,normalization_std,correlation_time_sec,correlation_std,correlation_throughput_alerts_sec,risk_scoring_time_sec,risk_scoring_std,total_pipeline_time_sec,total_pipeline_std,total_throughput_alerts_sec
+500,1,0.0010,0.0001,0.5578,0.0134,896.4,0.0022,0.0001,0.5609,0.0135,891.4
+1000,1,0.0034,0.0010,4.9510,0.0498,202.0,0.0097,0.0022,4.9640,0.0486,201.4
+2000,3,0.0070,0.0004,33.3287,1.7223,60.0,0.0180,0.0005,33.3536,1.7219,60.0
+5000,3,0.0201,0.0136,120.5890,0.7576,41.5,0.0240,0.0009,120.6330,0.7704,41.4

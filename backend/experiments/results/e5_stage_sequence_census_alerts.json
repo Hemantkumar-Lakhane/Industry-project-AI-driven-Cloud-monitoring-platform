@@ -1,0 +1,13 @@
+{
+  "total_incidents": 3,
+  "single_finding_incidents": 0,
+  "multi_finding_incidents": 3,
+  "multi_stage_sequences_count": 0,
+  "unique_stage_trajectories": 0,
+  "total_transitions_count": 0,
+  "stage_distribution": {
+    "1": 3
+  },
+  "top_trajectories": [],
+  "transition_counts": {}
+}

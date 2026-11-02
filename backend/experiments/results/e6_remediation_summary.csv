@@ -1,0 +1,9 @@
+playbook_id,playbook_name,total_runs,standard_runs,standard_success,standard_success_rate,standard_wilson_ci,rollback_available,rollback_attempts,rollback_success,rollback_success_rate,rollback_wilson_ci,error_runs,fail_closed_success,fail_closed_rate,fail_closed_wilson_ci,lifecycle_transitions_verified,audit_trail_consistency
+PB-BF-001,Brute Force Response,30,15,15,1.0,"[0.7961, 1.0]",True,15,15,1.0,"[0.7961, 1.0]",15,15,1.0,"[0.7961, 1.0]",15,0.0
+PB-PE-002,Privilege Escalation Response,30,15,15,1.0,"[0.7961, 1.0]",True,15,15,1.0,"[0.7961, 1.0]",15,15,1.0,"[0.7961, 1.0]",15,0.0
+PB-DE-003,Data Exfiltration Response,30,15,15,1.0,"[0.7961, 1.0]",False,0,0,,,15,15,1.0,"[0.7961, 1.0]",15,0.0
+PB-LM-004,Lateral Movement Response,30,15,15,1.0,"[0.7961, 1.0]",True,15,15,1.0,"[0.7961, 1.0]",15,15,1.0,"[0.7961, 1.0]",15,0.0
+PB-MC-005,Misconfiguration Auto-Fix,30,15,15,1.0,"[0.7961, 1.0]",True,15,15,1.0,"[0.7961, 1.0]",15,15,1.0,"[0.7961, 1.0]",15,0.0
+PB-CM-006,Crypto Mining Response,30,15,15,1.0,"[0.7961, 1.0]",False,0,0,,,15,15,1.0,"[0.7961, 1.0]",15,0.0
+PB-CS-007,Credential Stuffing Response,30,15,15,1.0,"[0.7961, 1.0]",True,15,15,1.0,"[0.7961, 1.0]",15,15,1.0,"[0.7961, 1.0]",15,0.0
+PB-RP-008,Ransomware Precursor Response,30,15,15,1.0,"[0.7961, 1.0]",False,0,0,,,15,15,1.0,"[0.7961, 1.0]",15,0.0

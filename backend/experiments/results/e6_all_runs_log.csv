@@ -1,0 +1,241 @@
+playbook_key,playbook_id,run_id,injected_error,pre_state,post_state,reverted_state,success,audit_verified,error_type,fail_closed_verified
+brute_force,PB-BF-001,STD-00,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-01,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-02,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-03,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-04,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-05,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-06,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-07,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-08,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-09,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-10,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-11,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-12,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-13,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,STD-14,False,open,contained,open,True,False,,
+brute_force,PB-BF-001,ERR-00,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-01,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-02,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-03,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-04,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-05,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-06,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-07,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-08,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-09,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-10,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-11,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-12,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-13,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+brute_force,PB-BF-001,ERR-14,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,STD-00,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-01,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-02,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-03,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-04,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-05,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-06,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-07,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-08,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-09,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-10,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-11,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-12,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-13,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,STD-14,False,open,contained,open,True,False,,
+privilege_escalation,PB-PE-002,ERR-00,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-01,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-02,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-03,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-04,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-05,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-06,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-07,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-08,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-09,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-10,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-11,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-12,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-13,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+privilege_escalation,PB-PE-002,ERR-14,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,STD-00,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-01,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-02,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-03,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-04,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-05,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-06,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-07,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-08,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-09,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-10,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-11,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-12,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-13,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,STD-14,False,open,contained,rollback_unavailable_by_design,True,False,,
+data_exfiltration,PB-DE-003,ERR-00,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-01,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-02,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-03,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-04,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-05,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-06,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-07,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-08,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-09,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-10,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-11,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-12,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-13,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+data_exfiltration,PB-DE-003,ERR-14,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,STD-00,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-01,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-02,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-03,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-04,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-05,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-06,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-07,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-08,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-09,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-10,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-11,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-12,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-13,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,STD-14,False,open,contained,open,True,False,,
+lateral_movement,PB-LM-004,ERR-00,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-01,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-02,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-03,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-04,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-05,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-06,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-07,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-08,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-09,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-10,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-11,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-12,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-13,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+lateral_movement,PB-LM-004,ERR-14,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,STD-00,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-01,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-02,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-03,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-04,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-05,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-06,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-07,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-08,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-09,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-10,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-11,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-12,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-13,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,STD-14,False,open,contained,open,True,False,,
+misconfiguration,PB-MC-005,ERR-00,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-01,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-02,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-03,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-04,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-05,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-06,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-07,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-08,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-09,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-10,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-11,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-12,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-13,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+misconfiguration,PB-MC-005,ERR-14,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,STD-00,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-01,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-02,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-03,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-04,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-05,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-06,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-07,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-08,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-09,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-10,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-11,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-12,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-13,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,STD-14,False,open,contained,rollback_unavailable_by_design,True,False,,
+crypto_mining,PB-CM-006,ERR-00,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-01,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-02,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-03,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-04,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-05,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-06,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-07,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-08,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-09,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-10,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-11,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-12,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-13,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+crypto_mining,PB-CM-006,ERR-14,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,STD-00,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-01,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-02,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-03,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-04,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-05,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-06,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-07,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-08,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-09,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-10,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-11,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-12,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-13,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,STD-14,False,open,contained,open,True,False,,
+credential_stuffing,PB-CS-007,ERR-00,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-01,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-02,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-03,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-04,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-05,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-06,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-07,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-08,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-09,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-10,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-11,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-12,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-13,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+credential_stuffing,PB-CS-007,ERR-14,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,STD-00,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-01,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-02,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-03,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-04,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-05,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-06,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-07,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-08,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-09,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-10,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-11,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-12,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-13,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,STD-14,False,open,contained,rollback_unavailable_by_design,True,False,,
+ransomware_precursor,PB-RP-008,ERR-00,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-01,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-02,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-03,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-04,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-05,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-06,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-07,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-08,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-09,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-10,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-11,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-12,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-13,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True
+ransomware_precursor,PB-RP-008,ERR-14,True,open,open (unmodified - fail-closed),n/a,,True,Client.UnauthorizedOperation,True

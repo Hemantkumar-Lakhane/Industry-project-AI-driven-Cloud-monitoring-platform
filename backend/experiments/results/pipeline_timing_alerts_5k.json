@@ -1,0 +1,11 @@
+{
+  "dataset": "alerts.json",
+  "total_records": 5000,
+  "load_time_sec": 0.0567,
+  "normalization_time_sec": 0.0416,
+  "correlation_time_sec": 126.8769,
+  "risk_scoring_time_sec": 0.0357,
+  "total_pipeline_time_sec": 126.9542,
+  "throughput_alerts_per_second": 39.38,
+  "incidents_formed": 3
+}

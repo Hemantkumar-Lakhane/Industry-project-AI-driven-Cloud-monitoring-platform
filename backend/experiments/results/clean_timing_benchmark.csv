@@ -1,0 +1,9 @@
+model,fit_time_sec,latency_ms_per_1k_mean,latency_ms_per_1k_std,passes,test_samples
+IForest,1.5527,10.1466,1.7067,3,22544
+HBOS,7.9082,0.4916,0.02,3,22544
+KNN (10k),1.229,104.3259,8.9908,3,22544
+KNN (Full 53k),19.4068,251.1225,1.116,3,22544
+OCSVM (10k),11.5419,792.9217,287.2593,3,22544
+LOF (10k),3.2844,194.1603,57.5236,3,22544
+AutoEncoder (MLP),16.4175,0.6485,0.2152,3,22544
+Proposed Model (Max-Score Fusion),10.6899,95.9347,1.8576,3,22544

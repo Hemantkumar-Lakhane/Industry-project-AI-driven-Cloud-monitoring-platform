@@ -1,0 +1,16 @@
+{
+  "n_alerts": 5000,
+  "runs": 3,
+  "incidents_formed": 3,
+  "ingest_time_mean": 0.002328133331805778,
+  "ingest_time_std": 0.0005002120245106292,
+  "norm_time_mean": 0.02005229999970955,
+  "norm_time_std": 0.013614190315719138,
+  "corr_time_mean": 120.588979666667,
+  "corr_time_std": 0.7575653062714277,
+  "risk_time_mean": 0.02396303333322673,
+  "risk_time_std": 0.0008563348545834569,
+  "total_time_mean": 120.63299499999994,
+  "total_time_std": 0.770410066186572,
+  "total_throughput_alerts_sec": 41.448030035232094
+}

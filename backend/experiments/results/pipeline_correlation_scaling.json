@@ -1,0 +1,62 @@
+[
+  {
+    "n_alerts": 500,
+    "runs": 3,
+    "incidents_formed": 1,
+    "normalization_time_sec": 0.001,
+    "normalization_std": 0.0001,
+    "correlation_time_sec": 0.5578,
+    "correlation_std": 0.0134,
+    "correlation_throughput_alerts_sec": 896.4,
+    "risk_scoring_time_sec": 0.0022,
+    "risk_scoring_std": 0.0001,
+    "total_pipeline_time_sec": 0.5609,
+    "total_pipeline_std": 0.0135,
+    "total_throughput_alerts_sec": 891.4
+  },
+  {
+    "n_alerts": 1000,
+    "runs": 3,
+    "incidents_formed": 1,
+    "normalization_time_sec": 0.0034,
+    "normalization_std": 0.001,
+    "correlation_time_sec": 4.951,
+    "correlation_std": 0.0498,
+    "correlation_throughput_alerts_sec": 202.0,
+    "risk_scoring_time_sec": 0.0097,
+    "risk_scoring_std": 0.0022,
+    "total_pipeline_time_sec": 4.964,
+    "total_pipeline_std": 0.0486,
+    "total_throughput_alerts_sec": 201.4
+  },
+  {
+    "n_alerts": 2000,
+    "runs": 3,
+    "incidents_formed": 3,
+    "normalization_time_sec": 0.007,
+    "normalization_std": 0.0004,
+    "correlation_time_sec": 33.3287,
+    "correlation_std": 1.7223,
+    "correlation_throughput_alerts_sec": 60.0,
+    "risk_scoring_time_sec": 0.018,
+    "risk_scoring_std": 0.0005,
+    "total_pipeline_time_sec": 33.3536,
+    "total_pipeline_std": 1.7219,
+    "total_throughput_alerts_sec": 60.0
+  },
+  {
+    "n_alerts": 5000,
+    "runs": 3,
+    "incidents_formed": 3,
+    "normalization_time_sec": 0.0201,
+    "normalization_std": 0.0136,
+    "correlation_time_sec": 120.589,
+    "correlation_std": 0.7576,
+    "correlation_throughput_alerts_sec": 41.5,
+    "risk_scoring_time_sec": 0.024,
+    "risk_scoring_std": 0.0009,
+    "total_pipeline_time_sec": 120.633,
+    "total_pipeline_std": 0.7704,
+    "total_throughput_alerts_sec": 41.4
+  }
+]

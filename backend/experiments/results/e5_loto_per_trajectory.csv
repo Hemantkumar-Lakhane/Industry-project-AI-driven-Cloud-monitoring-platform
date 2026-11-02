@@ -1,0 +1,12 @@
+trajectory_id,trajectory_name,incidents_count,transitions_count,novel_transitions,mfs_accuracy,m1_accuracy,m1_top2,m2_accuracy,m2_top2
+TRAJ-01,PrivEsc -> Exfil -> Impact,44,88,0,0.5,1.0,1.0,1.0,1.0
+TRAJ-02,Exfil -> Impact,51,51,0,0.0,1.0,1.0,1.0,1.0
+TRAJ-03,PrivEsc -> Exfil,44,44,0,0.0,1.0,1.0,1.0,1.0
+TRAJ-04,PrivEsc -> Exfil -> Impact -> PrivEsc,1,3,1,0.3333333333333333,0.6666666666666666,0.6666666666666666,0.6666666666666666,0.6666666666666666
+TRAJ-05,PrivEsc -> Impact,5,5,0,1.0,0.0,0.0,0.0,0.0
+TRAJ-06,PrivEsc -> Impact -> Impact,1,2,0,1.0,0.5,1.0,0.5,1.0
+TRAJ-07,PrivEsc -> Exfil -> Impact -> Impact,2,6,0,0.6666666666666666,1.0,1.0,1.0,1.0
+TRAJ-08,PrivEsc -> Evasion,2,2,1,0.0,0.0,0.0,0.0,0.0
+TRAJ-09,Access -> Access,1,1,1,0.0,0.0,0.0,0.0,0.0
+TRAJ-10,Access -> PrivEsc -> Exfil -> Impact -> Impact,3,12,0,0.5,1.0,1.0,1.0,1.0
+TRAJ-11,Access -> PrivEsc -> Exfil -> Impact,3,9,0,0.3333333333333333,1.0,1.0,1.0,1.0

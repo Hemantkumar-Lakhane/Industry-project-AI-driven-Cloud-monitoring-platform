@@ -1,0 +1,10 @@
+evaluation_protocol,model,accuracy,top2_accuracy,macro_f1,notes
+In-Sample (Full Dataset N=223),Most-Frequent-Stage (MFS),0.5202,0.9552,0.1369,Unconditional prior baseline
+In-Sample (Full Dataset N=223),1st-Order Markov Chain,0.9552,0.991,0.5573,State-to-state conditional probability
+In-Sample (Full Dataset N=223),2nd-Order Markov Chain,0.9552,0.991,0.5573,Pair-to-state with 1st-order backoff
+Grouped 5-Fold CV (Zero Trajectory Leakage),Most-Frequent-Stage (MFS),0.5529,0.855,0.2997,Unseen trajectories
+Grouped 5-Fold CV (Zero Trajectory Leakage),1st-Order Markov Chain,0.6861,0.6883,0.6141,Unseen trajectories
+Grouped 5-Fold CV (Zero Trajectory Leakage),2nd-Order Markov Chain,0.6861,0.6883,0.6141,Unseen trajectories
+Leave-One-Trajectory-Out (LOTO Macro Mean),Most-Frequent-Stage (MFS),0.3939,0.3939,0.0,Across all 11 trajectories
+Leave-One-Trajectory-Out (LOTO Macro Mean),1st-Order Markov Chain,0.6515,0.697,0.0,Across all 11 trajectories
+Leave-One-Trajectory-Out (LOTO Macro Mean),2nd-Order Markov Chain,0.6515,0.697,0.0,Across all 11 trajectories

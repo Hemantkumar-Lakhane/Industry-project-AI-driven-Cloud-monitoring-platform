@@ -1,0 +1,12 @@
+trajectory_id,trajectory_name,trajectory_tuple,incidents_count,transitions_count,mfs_accuracy,mfs_top2,m1_accuracy,m1_top2,m2_accuracy,m2_top2,correct_m1,correct_top2_m1
+TRAJ-01,Exfil -> Impact,"(4, 5)",51,51,0.0,1.0,1.0,1.0,1.0,1.0,51,51
+TRAJ-02,PrivEsc -> Exfil -> Impact,"(2, 4, 5)",44,88,0.5,1.0,1.0,1.0,1.0,1.0,88,88
+TRAJ-03,PrivEsc -> Exfil,"(2, 4)",44,44,0.0,1.0,1.0,1.0,1.0,1.0,44,44
+TRAJ-04,PrivEsc -> Impact,"(2, 5)",5,5,1.0,1.0,0.0,0.0,0.0,0.0,0,0
+TRAJ-05,Access -> PrivEsc -> Exfil -> Impact -> Impact,"(1, 2, 4, 5, 5)",3,12,0.5,0.75,1.0,1.0,1.0,1.0,12,12
+TRAJ-06,Access -> PrivEsc -> Exfil -> Impact,"(1, 2, 4, 5)",3,9,0.3333333333333333,0.6666666666666666,1.0,1.0,1.0,1.0,9,9
+TRAJ-07,PrivEsc -> Exfil -> Impact -> Impact,"(2, 4, 5, 5)",2,6,0.6666666666666666,1.0,1.0,1.0,1.0,1.0,6,6
+TRAJ-08,PrivEsc -> Evasion,"(2, 3)",2,2,0.0,0.0,0.0,0.0,0.0,0.0,0,0
+TRAJ-09,PrivEsc -> Exfil -> Impact -> PrivEsc,"(2, 4, 5, 2)",1,3,0.3333333333333333,0.6666666666666666,0.6666666666666666,0.6666666666666666,0.6666666666666666,0.6666666666666666,2,2
+TRAJ-10,PrivEsc -> Impact -> Impact,"(2, 5, 5)",1,2,1.0,1.0,0.5,1.0,0.5,1.0,1,2
+TRAJ-11,Access -> Access,"(1, 1)",1,1,0.0,0.0,0.0,0.0,0.0,0.0,0,0

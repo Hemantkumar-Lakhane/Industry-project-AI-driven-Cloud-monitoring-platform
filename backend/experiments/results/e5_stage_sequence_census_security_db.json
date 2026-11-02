@@ -1,0 +1,125 @@
+{
+  "source": "security.db",
+  "total_incidents": 422,
+  "multi_stage_sequences_count": 157,
+  "unique_stage_trajectories": 11,
+  "total_transitions_count": 223,
+  "stage_distribution": {
+    "3": 45,
+    "2": 103,
+    "1": 265,
+    "4": 6,
+    "5": 3
+  },
+  "top_trajectories": [
+    {
+      "trajectory": [
+        4,
+        5
+      ],
+      "name": "Exfil -> Impact",
+      "count": 51
+    },
+    {
+      "trajectory": [
+        2,
+        4,
+        5
+      ],
+      "name": "PrivEsc -> Exfil -> Impact",
+      "count": 44
+    },
+    {
+      "trajectory": [
+        2,
+        4
+      ],
+      "name": "PrivEsc -> Exfil",
+      "count": 44
+    },
+    {
+      "trajectory": [
+        2,
+        5
+      ],
+      "name": "PrivEsc -> Impact",
+      "count": 5
+    },
+    {
+      "trajectory": [
+        1,
+        2,
+        4,
+        5,
+        5
+      ],
+      "name": "Access -> PrivEsc -> Exfil -> Impact -> Impact",
+      "count": 3
+    },
+    {
+      "trajectory": [
+        1,
+        2,
+        4,
+        5
+      ],
+      "name": "Access -> PrivEsc -> Exfil -> Impact",
+      "count": 3
+    },
+    {
+      "trajectory": [
+        2,
+        4,
+        5,
+        5
+      ],
+      "name": "PrivEsc -> Exfil -> Impact -> Impact",
+      "count": 2
+    },
+    {
+      "trajectory": [
+        2,
+        3
+      ],
+      "name": "PrivEsc -> Evasion",
+      "count": 2
+    },
+    {
+      "trajectory": [
+        2,
+        4,
+        5,
+        2
+      ],
+      "name": "PrivEsc -> Exfil -> Impact -> PrivEsc",
+      "count": 1
+    },
+    {
+      "trajectory": [
+        2,
+        5,
+        5
+      ],
+      "name": "PrivEsc -> Impact -> Impact",
+      "count": 1
+    },
+    {
+      "trajectory": [
+        1,
+        1
+      ],
+      "name": "Access -> Access",
+      "count": 1
+    }
+  ],
+  "transition_counts": {
+    "2->4": 97,
+    "4->5": 104,
+    "5->2": 1,
+    "2->5": 6,
+    "5->5": 6,
+    "2->3": 2,
+    "1->1": 1,
+    "1->2": 6
+  }
+}

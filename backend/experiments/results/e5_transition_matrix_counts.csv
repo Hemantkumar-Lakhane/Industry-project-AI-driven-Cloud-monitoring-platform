@@ -1,0 +1,7 @@
+,Reconnaissance,Initial Access,Privilege Escalation,Defense Evasion,Exfiltration,Impact
+Reconnaissance,0.0,0.0,0.0,0.0,0.0,0.0
+Initial Access,0.0,1.0,6.0,0.0,0.0,0.0
+Privilege Escalation,0.0,0.0,0.0,2.0,97.0,6.0
+Defense Evasion,0.0,0.0,0.0,0.0,0.0,0.0
+Exfiltration,0.0,0.0,0.0,0.0,0.0,104.0
+Impact,0.0,0.0,1.0,0.0,0.0,6.0
