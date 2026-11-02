@@ -1,0 +1,47 @@
+[
+  {
+    "configuration": "Rule-Only",
+    "tp": 99,
+    "fp": 10,
+    "fn": 1,
+    "tn": 90,
+    "precision": 0.9083,
+    "recall": 0.99,
+    "f1_score": 0.9474,
+    "accuracy": 0.945,
+    "execution_time_sec": 0.1763,
+    "measured_latency_to_first_alert_ms": 0.76,
+    "simulation_delay_to_first_alert_sec": 0.0,
+    "first_alert_event_index": 1
+  },
+  {
+    "configuration": "Model-Only",
+    "tp": 49,
+    "fp": 0,
+    "fn": 51,
+    "tn": 100,
+    "precision": 1.0,
+    "recall": 0.49,
+    "f1_score": 0.6577,
+    "accuracy": 0.745,
+    "execution_time_sec": 6.5376,
+    "measured_latency_to_first_alert_ms": 18.6,
+    "simulation_delay_to_first_alert_sec": 6.0,
+    "first_alert_event_index": 4
+  },
+  {
+    "configuration": "Fusion (Rules + ML)",
+    "tp": 99,
+    "fp": 10,
+    "fn": 1,
+    "tn": 90,
+    "precision": 0.9083,
+    "recall": 0.99,
+    "f1_score": 0.9474,
+    "accuracy": 0.945,
+    "execution_time_sec": 6.7139,
+    "measured_latency_to_first_alert_ms": 20.32,
+    "simulation_delay_to_first_alert_sec": 0.0,
+    "first_alert_event_index": 1
+  }
+]

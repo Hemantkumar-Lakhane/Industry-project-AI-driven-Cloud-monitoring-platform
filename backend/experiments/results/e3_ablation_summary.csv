@@ -1,0 +1,4 @@
+configuration,tp,fp,fn,tn,precision,recall,f1_score,accuracy,execution_time_sec,measured_latency_to_first_alert_ms,simulation_delay_to_first_alert_sec,first_alert_event_index
+Rule-Only,99,10,1,90,0.9083,0.99,0.9474,0.945,0.1763,0.76,0.0,1
+Model-Only,49,0,51,100,1.0,0.49,0.6577,0.745,6.5376,18.6,6.0,4
+Fusion (Rules + ML),99,10,1,90,0.9083,0.99,0.9474,0.945,6.7139,20.32,0.0,1

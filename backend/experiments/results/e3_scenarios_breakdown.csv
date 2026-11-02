@@ -1,0 +1,13 @@
+scenario,type,total_events,rule_detections,model_detections,fusion_detections
+account_takeover,Attack,5,5,5,5
+benign_health_check,Benign,20,10,0,10
+benign_iam_read,Benign,25,0,0,0
+benign_s3,Benign,30,0,0,0
+benign_web_traffic,Benign,25,0,0,0
+brute_force,Attack,20,19,16,19
+cryptomining,Attack,10,10,0,10
+data_exfiltration,Attack,15,15,15,15
+ddos,Attack,10,10,0,10
+defense_tampering,Attack,10,10,4,10
+network_scanning,Attack,15,15,0,15
+privilege_escalation,Attack,15,15,9,15
