@@ -101,6 +101,7 @@ const App = () => {
   const [incidentsStats, setIncidentsStats] = useState(null);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
   const [targetRemediationIncidentId, setTargetRemediationIncidentId] = useState(null);
+  const [targetRemediationFinding, setTargetRemediationFinding] = useState(null);
 
   const handleNavigateTab = (tabId, category = null) => {
     setActiveTab(tabId);
@@ -112,6 +113,7 @@ const App = () => {
   const handleInvestigateFinding = (finding, incident = null) => {
     if (incident) {
       setTargetRemediationIncidentId(incident.incident_id || incident.id);
+      setTargetRemediationFinding(null);
     } else if (finding) {
       const fid = finding.finding_id || finding.id;
       const princ = finding.affected_principal || finding.user;
@@ -120,7 +122,8 @@ const App = () => {
         (inc.findings && inc.findings.some(f => f.finding_id === fid)) ||
         (princ && inc.principals && inc.principals.includes(princ))
       );
-      setTargetRemediationIncidentId(matchingInc ? matchingInc.incident_id : fid);
+      setTargetRemediationFinding(finding);
+      setTargetRemediationIncidentId(matchingInc ? (matchingInc.incident_id || matchingInc.id) : fid);
     }
     setActiveTab('remediation');
   };
@@ -802,6 +805,7 @@ const App = () => {
               findings={findings}
               incidents={incidents}
               targetIncidentId={targetRemediationIncidentId}
+              targetFinding={targetRemediationFinding}
               onRefreshData={() => {
                 fetchIncidents();
                 fetchFindings(findingsAttackMode);

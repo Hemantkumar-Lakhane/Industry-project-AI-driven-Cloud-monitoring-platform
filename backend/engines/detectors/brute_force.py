@@ -267,7 +267,7 @@ class BruteForceDetector(BaseDetector):
                     burst_rate = len(window_events) / elapsed  # attempts per second
                     burst_score = min(1.0, round(burst_rate / 2.0, 4))  # normalized heuristic: 2/s = 1.0
 
-                    severity = "critical" if breach_occurred else ("high" if len(window_events) >= 20 else "medium")
+                    severity = "critical" if breach_occurred else ("high" if len(window_events) >= self.failure_threshold else "medium")
                     confidence = 0.95 if breach_occurred else 0.88
 
                     title = (
