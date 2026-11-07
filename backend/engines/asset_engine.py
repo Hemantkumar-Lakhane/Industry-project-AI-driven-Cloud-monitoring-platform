@@ -20,6 +20,7 @@ from typing import List, Dict, Any, Optional
 
 from engines.db import save_cloud_assets_db, get_cloud_assets_db, get_findings_db
 from engines.localstack_engine import is_localstack_running, get_localstack_status
+from engines.cloud_connector import probe_cloud_connectivity, get_cloud_client
 
 
 # Baseline realistic cloud assets catalog for sandbox / development environment
@@ -150,12 +151,16 @@ def check_connectors() -> Dict[str, Any]:
     }
 
     # 2. Live AWS Provider
-    has_aws_keys = bool(os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
+    probe = probe_cloud_connectivity()
+    has_aws_keys = probe.get("provider") == "aws" and probe.get("status") == "CONNECTED"
     connectors["aws"] = {
         "name": "Amazon Web Services (Live Provider)",
         "status": "CONNECTED" if has_aws_keys else "NOT_CONFIGURED",
         "mode": "AUTHENTICATED_CLOUD" if has_aws_keys else "CREDENTIALS_ABSENT",
-        "auth_type": "IAM Key/Secret or Instance Profile"
+        "auth_type": probe.get("auth_mode", "STS AssumeRole or Direct IAM"),
+        "account_id": probe.get("account_id"),
+        "principal_arn": probe.get("principal_arn"),
+        "latency_ms": probe.get("latency_ms")
     }
 
     # 3. Wazuh Workload Agent / Manager
@@ -273,7 +278,44 @@ def discover_assets(force_rescan: bool = False) -> List[Dict[str, Any]]:
     host_workloads = discover_local_workload_assets()
     discovered.extend(host_workloads)
 
-    # 2. If LocalStack is running, attempt discovery from LocalStack
+    # 2. If Live AWS is connected, discover live S3 buckets and security groups
+    if connectors["aws"]["status"] == "CONNECTED":
+        try:
+            s3 = get_cloud_client("s3")
+            for b in s3.list_buckets().get("Buckets", []):
+                bname = b["Name"]
+                discovered.append({
+                    "asset_id": f"arn:aws:s3:::{bname}",
+                    "name": bname,
+                    "asset_type": "s3_bucket",
+                    "provider": "aws",
+                    "region": "us-east-1",
+                    "account_id": connectors["aws"].get("account_id", "live-aws"),
+                    "status": "active",
+                    "connector_status": "LIVE_AWS_CONNECTED",
+                    "tags": {"Source": "Live-AWS-Discovery"}
+                })
+        except Exception:
+            pass
+        try:
+            ec2 = get_cloud_client("ec2")
+            for sg in ec2.describe_security_groups().get("SecurityGroups", []):
+                sg_id = sg.get("GroupId")
+                discovered.append({
+                    "asset_id": sg_id,
+                    "name": sg.get("GroupName", sg_id),
+                    "asset_type": "security_group",
+                    "provider": "aws",
+                    "region": "us-east-1",
+                    "account_id": connectors["aws"].get("account_id", "live-aws"),
+                    "status": "active",
+                    "connector_status": "LIVE_AWS_CONNECTED",
+                    "tags": {"Description": sg.get("Description", "")}
+                })
+        except Exception:
+            pass
+
+    # 3. If LocalStack is running, attempt discovery from LocalStack
     if connectors["localstack"]["status"] == "CONNECTED":
         try:
             # S3 buckets from LocalStack

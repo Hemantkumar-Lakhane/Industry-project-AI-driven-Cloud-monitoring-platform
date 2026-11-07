@@ -10,7 +10,7 @@ for _d in (_PYLIBS_DIR, _CURRENT_DIR, _ROOT_DIR):
     if os.path.exists(_d) and _d not in sys.path:
         sys.path.insert(0, _d)
 
-from fastapi import FastAPI, Header, HTTPException, Request, Depends, Path, Query
+from fastapi import FastAPI, Header, HTTPException, Request, Depends, Path, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse, JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -48,6 +48,13 @@ from engines.risk_engine import calculate_unified_risk, get_risk_trend
 from engines.localstack_engine import (
     run_cspm_scan_localstack, run_ciem_scan_localstack,
     get_localstack_status, is_localstack_running
+)
+from engines.cloud_connector import (
+    probe_cloud_connectivity, configure_cloud_credentials,
+    run_production_cspm_scan, run_production_ciem_scan
+)
+from engines.cloudtrail_ingestor import (
+    ingest_cloudtrail_events, normalize_cloudtrail_record
 )
 from engines.db import (
     save_risk_score, get_cspm_history, get_ciem_history,
@@ -3189,6 +3196,93 @@ async def websocket_events(websocket: WebSocket):
         pass
     except Exception:
         pass
+
+
+# ── Real Cloud Platform Connections & Telemetry Ingestion (Production Ready) ───
+
+@app.get(
+    "/api/cloud/status",
+    tags=["Cloud Platform Connectors"],
+    summary="Probe Real Cloud & LocalStack Connectivity",
+    description="Real-time STS GetCallerIdentity connectivity probe measuring round-trip latency, active AWS Account ID, and authentication mode."
+)
+def api_get_cloud_status():
+    return {
+        "status": "success",
+        "probe": probe_cloud_connectivity(force_refresh=True)
+    }
+
+
+@app.post(
+    "/api/cloud/connect",
+    tags=["Cloud Platform Connectors"],
+    summary="Configure Real Cloud Connection Credentials",
+    description="Dynamically configure AWS STS AssumeRole credentials, IAM keys, or LocalStack endpoint for live cloud scanning."
+)
+def api_post_cloud_connect(config: Dict[str, Any] = Body(...)):
+    probe_result = configure_cloud_credentials(config)
+    return {
+        "status": "success" if probe_result.get("status") == "CONNECTED" else "warning",
+        "probe": probe_result
+    }
+
+
+@app.post(
+    "/api/cloud/scan/cspm",
+    tags=["Cloud Platform Connectors"],
+    summary="Run Live Cloud CSPM Posture Scan",
+    description="Executes production CSPM audit across AWS S3 public access blocks, EC2 security group rules, and RDS encryption."
+)
+def api_run_live_cspm():
+    findings = run_production_cspm_scan()
+    return {
+        "status": "success",
+        "count": len(findings),
+        "data": findings,
+        "probe": probe_cloud_connectivity()
+    }
+
+
+@app.post(
+    "/api/cloud/scan/ciem",
+    tags=["Cloud Platform Connectors"],
+    summary="Run Live Cloud CIEM Identity Scan",
+    description="Executes production CIEM audit across IAM users with AdministratorAccess, missing MFA, 90-day stale keys, and wildcard role policies."
+)
+def api_run_live_ciem():
+    findings = run_production_ciem_scan()
+    return {
+        "status": "success",
+        "count": len(findings),
+        "data": findings,
+        "probe": probe_cloud_connectivity()
+    }
+
+
+@app.post(
+    "/api/cloud/ingest/cloudtrail",
+    tags=["Cloud Platform Connectors"],
+    summary="Ingest Real AWS CloudTrail Event Stream",
+    description="Parses AWS CloudTrail JSON logs, maps to NormalizedEvent schema, and routes through the 16 modular attack detectors."
+)
+def api_ingest_cloudtrail(payload: Dict[str, Any] = Body(...)):
+    result = ingest_cloudtrail_events(payload, save_to_database=True)
+    return result
+
+
+@app.get(
+    "/api/cloud/onboarding/template",
+    tags=["Cloud Platform Connectors"],
+    summary="Get 1-Click AWS CloudFormation Onboarding Template",
+    description="Returns the production CloudFormation template for deploying the RAMAntivirusAuditRole with External ID into customer AWS accounts."
+)
+def api_get_onboarding_template():
+    tpl_path = os.path.join(os.path.dirname(__file__), "cloud", "ram-antivirus-onboarding.yaml")
+    if os.path.exists(tpl_path):
+        with open(tpl_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"status": "success", "format": "yaml", "template": content}
+    return {"status": "error", "message": "Onboarding template file not found on server"}
 
 
 if __name__ == "__main__":

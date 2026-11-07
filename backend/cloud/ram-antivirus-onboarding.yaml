@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  RAM Antivirus Enterprise Cloud Security Connector — Cross-Account Onboarding
+  Creates a least-privilege, read-only audit role allowing the RAM Antivirus platform
+  to perform CSPM misconfiguration audits and CIEM identity entitlement reviews.
+  Protected by sts:ExternalId to prevent Confused Deputy attacks.
+
+Parameters:
+  RAMAntivirusPlatformAccountId:
+    Type: String
+    Description: The 12-digit AWS Account ID hosting the RAM Antivirus platform.
+    Default: '123456789012'
+    AllowedPattern: '^[0-9]{12}$'
+    ConstraintDescription: Must be a valid 12-digit AWS Account ID.
+
+  ExternalId:
+    Type: String
+    Description: Unique customer tenant identifier to prevent Confused Deputy vulnerabilities.
+    Default: 'RAM-ANTIVIRUS-ENTERPRISE-TENANT-001'
+    MinLength: 8
+    MaxLength: 128
+
+  RoleName:
+    Type: String
+    Description: Name of the IAM Role created in this target AWS account.
+    Default: 'RAMAntivirusAuditRole'
+
+Resources:
+  RAMAntivirusAuditRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: Read-only security audit role assumed by RAM Antivirus platform via STS.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${RAMAntivirusPlatformAccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref ExternalId
+      ManagedPolicyArns:
+        # Standard AWS-managed read-only audit policies
+        - 'arn:aws:iam::aws:policy/SecurityAudit'
+        - 'arn:aws:iam::aws:policy/job-function/ViewOnlyAccess'
+      Policies:
+        - PolicyName: RAMAntivirusExtraPosturePermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowS3BucketPolicyAndPublicAccessBlockAuditing
+                Effect: Allow
+                Action:
+                  - 's3:GetBucketPublicAccessBlock'
+                  - 's3:GetBucketPolicyStatus'
+                  - 's3:GetBucketEncryption'
+                  - 's3:GetAccountPublicAccessBlock'
+                  - 's3:ListAllMyBuckets'
+                Resource: '*'
+              - Sid: AllowIAMAccessKeyAndMFAAuditing
+                Effect: Allow
+                Action:
+                  - 'iam:GetAccountSummary'
+                  - 'iam:ListMFADevices'
+                  - 'iam:ListAccessKeys'
+                  - 'iam:ListUsers'
+                  - 'iam:ListRoles'
+                  - 'iam:GetRolePolicy'
+                  - 'iam:ListRolePolicies'
+                  - 'iam:ListAttachedUserPolicies'
+                  - 'iam:ListAttachedRolePolicies'
+                Resource: '*'
+
+Outputs:
+  RoleArn:
+    Description: The ARN of the created audit role. Copy this into the RAM Antivirus dashboard.
+    Value: !GetAtt RAMAntivirusAuditRole.Arn
+  ExternalId:
+    Description: The External ID configured for Confused Deputy protection.
+    Value: !Ref ExternalId
+
