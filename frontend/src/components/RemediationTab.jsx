@@ -68,9 +68,11 @@ const RemediationTabInner = ({
   incidents = [],
   targetIncidentId = null,
   targetFinding = null,
+  investigationToken = null,
   onRefreshData
 }) => {
   const [selectedIncidentId, setSelectedIncidentId] = useState(null);
+  const lastTargetKeyRef = React.useRef(null);
   const [executing, setExecuting] = useState(false);
   const [actionError, setActionError] = useState(null);
   const [healedIncidents, setHealedIncidents] = useState(new Set());
@@ -207,8 +209,6 @@ const RemediationTabInner = ({
       };
     }
 
-    if (sourceList.length === 0 && !syntheticFindingInc) return demoIncidents;
-
     // Prioritize multi-stage correlated campaigns & critical severity
     const sorted = [...sourceList].sort((a, b) => {
       const cntA = a.rawIncident?.finding_count || 1;
@@ -219,49 +219,76 @@ const RemediationTabInner = ({
       return 0;
     });
 
-    const seen = new Set();
+    const seenIds = new Set();
+    const seenKeys = new Set();
     const unique = [];
 
-    // Always place the specifically investigated finding at the very top
+    // 1. Specifically investigated finding at top
     if (syntheticFindingInc) {
-      seen.add((syntheticFindingInc.attackType || 'threat') + ':' + (syntheticFindingInc.principal || ''));
+      seenIds.add(syntheticFindingInc.id);
+      seenKeys.add((syntheticFindingInc.attackType || 'threat') + ':' + (syntheticFindingInc.principal || ''));
       unique.push(syntheticFindingInc);
     }
 
+    // 2. Correlated live incidents from telemetry
     for (const inc of sorted) {
       const key = (inc.attackType || 'threat') + ':' + (inc.principal || '');
-      if (!seen.has(key)) {
-        seen.add(key);
+      if (!seenIds.has(inc.id) && !seenKeys.has(key)) {
+        seenIds.add(inc.id);
+        seenKeys.add(key);
         unique.push(inc);
+      }
+    }
+
+    // 3. Complement with demo attack vectors so all attack archetypes remain selectable
+    for (const demo of demoIncidents) {
+      const key = (demo.attackType || 'threat') + ':' + (demo.principal || '');
+      if (!seenIds.has(demo.id) && !seenKeys.has(key)) {
+        seenIds.add(demo.id);
+        seenKeys.add(key);
+        unique.push(demo);
       }
     }
 
     return unique.slice(0, 8);
   }, [liveIncidents, demoIncidents, targetFinding]);
 
-  // Sync selected incident when prop changes or on initial mount
+  // Synchronize selection when a target finding/incident is specifically passed for investigation
   useEffect(() => {
-    if (targetFinding) {
-      const tfId = targetFinding.finding_id || targetFinding.id;
-      setSelectedIncidentId(tfId);
-      return;
-    }
+    // Generate a unique token for this investigation request
+    const targetKey = targetFinding
+      ? `${targetFinding.finding_id || targetFinding.id}_${investigationToken || ''}`
+      : (targetIncidentId ? `${targetIncidentId}_${investigationToken || ''}` : null);
 
-    if (targetIncidentId && displayIncidents.length > 0) {
-      const match = displayIncidents.find((inc) =>
-        inc.id === targetIncidentId ||
-        inc.rawIncident?.finding_ids?.includes(targetIncidentId) ||
-        inc.name.toLowerCase().includes(targetIncidentId.toLowerCase())
-      );
-      if (match) {
-        setSelectedIncidentId(match.id);
+    // If a new navigation target was requested (via Investigate & Remediate)
+    if (targetKey && targetKey !== lastTargetKeyRef.current) {
+      lastTargetKeyRef.current = targetKey;
+      if (targetFinding) {
+        const tfId = targetFinding.finding_id || targetFinding.id;
+        setSelectedIncidentId(tfId);
         return;
       }
+      if (targetIncidentId && displayIncidents.length > 0) {
+        const match = displayIncidents.find((inc) =>
+          inc.id === targetIncidentId ||
+          inc.rawIncident?.finding_ids?.includes(targetIncidentId) ||
+          (inc.name && inc.name.toLowerCase().includes(targetIncidentId.toLowerCase()))
+        );
+        if (match) {
+          setSelectedIncidentId(match.id);
+          return;
+        }
+      }
     }
-    if (!selectedIncidentId && displayIncidents.length > 0) {
-      setSelectedIncidentId(displayIncidents[0].id);
-    }
-  }, [targetFinding, targetIncidentId, displayIncidents, selectedIncidentId]);
+
+    // Default selection fallback: if nothing is selected or if the selected card disappeared
+    setSelectedIncidentId((current) => {
+      if (current && displayIncidents.some((inc) => inc.id === current)) {
+        return current; // Retain user's clicked selection!
+      }
+      return displayIncidents[0]?.id || null;
+    });
+  }, [targetFinding, targetIncidentId, investigationToken, displayIncidents]);
 
   const currentIncident = displayIncidents.find((inc) => inc.id === selectedIncidentId) || displayIncidents[0];
   const isHealed = currentIncident ? healedIncidents.has(currentIncident.id) : false;

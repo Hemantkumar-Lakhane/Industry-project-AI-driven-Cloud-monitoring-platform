@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Check, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Check, ShieldAlert, Radio } from 'lucide-react';
 
 export const IncidentSelector = ({
   incidents = [],
@@ -14,7 +14,7 @@ export const IncidentSelector = ({
           Active Threat Incidents ({incidents.length})
         </span>
         <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-          Click any incident to inspect root cause & remediate
+          Click any card to inspect forensics, root cause & execute playbook
         </span>
       </div>
 
@@ -39,7 +39,15 @@ export const IncidentSelector = ({
           return (
             <div
               key={inc.id}
-              onClick={() => onSelectIncident(inc.id)}
+              role="button"
+              tabIndex={0}
+              onClick={() => onSelectIncident && onSelectIncident(inc.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelectIncident && onSelectIncident(inc.id);
+                }
+              }}
               style={{
                 flex: '0 0 280px',
                 padding: '12px 14px',
@@ -55,20 +63,29 @@ export const IncidentSelector = ({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '6px',
-                boxShadow: isSelected ? '0 2px 8px rgba(240, 106, 26, 0.18)' : 'none',
-                boxSizing: 'border-box'
+                boxShadow: isSelected ? '0 2px 8px rgba(240, 106, 26, 0.22)' : 'none',
+                boxSizing: 'border-box',
+                transform: isSelected ? 'scale(1.01)' : 'scale(1)',
+                userSelect: 'none'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className={`figma-dot-badge ${sev}`}>
-                  {sev.toUpperCase()}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className={`figma-dot-badge ${sev}`}>
+                    {sev.toUpperCase()}
+                  </span>
+                  {isSelected && (
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--accent-orange)', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+                      Selected
+                    </span>
+                  )}
+                </div>
                 {incHealed ? (
                   <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--success-color)', display: 'flex', alignItems: 'center', gap: '3px' }}>
                     <Check size={11} /> Secured
                   </span>
                 ) : (
-                  <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--sev-critical)' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: 600, color: isSelected ? 'var(--accent-orange)' : 'var(--sev-critical)' }}>
                     Action needed
                   </span>
                 )}
@@ -93,4 +110,3 @@ export const IncidentSelector = ({
 };
 
 export default IncidentSelector;
-
