@@ -102,6 +102,7 @@ const App = () => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
   const [targetRemediationIncidentId, setTargetRemediationIncidentId] = useState(null);
   const [targetRemediationFinding, setTargetRemediationFinding] = useState(null);
+  const [investigationToken, setInvestigationToken] = useState(0);
 
   const handleNavigateTab = (tabId, category = null) => {
     setActiveTab(tabId);
@@ -111,6 +112,7 @@ const App = () => {
   };
 
   const handleInvestigateFinding = (finding, incident = null) => {
+    setInvestigationToken(Date.now());
     if (incident) {
       setTargetRemediationIncidentId(incident.incident_id || incident.id);
       setTargetRemediationFinding(null);
@@ -806,6 +808,7 @@ const App = () => {
               incidents={incidents}
               targetIncidentId={targetRemediationIncidentId}
               targetFinding={targetRemediationFinding}
+              investigationToken={investigationToken}
               onRefreshData={() => {
                 fetchIncidents();
                 fetchFindings(findingsAttackMode);
