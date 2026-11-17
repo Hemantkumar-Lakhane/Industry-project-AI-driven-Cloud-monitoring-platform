@@ -168,7 +168,7 @@ def ingest_cloudtrail_events(
     # Run through the 16 modular attack detectors
     findings: List[SecurityFinding] = detector_registry.run_all(normalized_events)
 
-    # Persist findings to database
+    # Persist findings to database and correlate into incidents
     persisted_count = 0
     if save_to_database and findings:
         findings_payload = [f.model_dump() if hasattr(f, "model_dump") else dict(f) for f in findings]
@@ -177,6 +177,17 @@ def ingest_cloudtrail_events(
             persisted_count = len(findings_payload)
         except Exception as e:
             print(f"[CloudTrail Ingestor] Could not save findings: {e}")
+
+        try:
+            from engines.correlation_engine import correlate_findings
+            from engines.db import save_incidents_db, get_findings_db
+            all_findings = get_findings_db()
+            incidents = correlate_findings(all_findings)
+            if incidents:
+                inc_dicts = [inc.model_dump() if hasattr(inc, "model_dump") else dict(inc) for inc in incidents]
+                save_incidents_db(inc_dicts)
+        except Exception as e:
+            print(f"[CloudTrail Ingestor] Incident correlation error: {e}")
 
     return {
         "status": "success",

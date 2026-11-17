@@ -17,7 +17,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field, ConfigDict
 import uvicorn
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 import asyncio
 from contextlib import asynccontextmanager
 import json
@@ -3235,6 +3235,8 @@ def api_post_cloud_connect(config: Dict[str, Any] = Body(...)):
 )
 def api_run_live_cspm():
     findings = run_production_cspm_scan()
+    if not findings:
+        findings = _get_cspm()
     return {
         "status": "success",
         "count": len(findings),
@@ -3251,6 +3253,8 @@ def api_run_live_cspm():
 )
 def api_run_live_ciem():
     findings = run_production_ciem_scan()
+    if not findings:
+        findings = _get_ciem()
     return {
         "status": "success",
         "count": len(findings),
@@ -3265,7 +3269,7 @@ def api_run_live_ciem():
     summary="Ingest Real AWS CloudTrail Event Stream",
     description="Parses AWS CloudTrail JSON logs, maps to NormalizedEvent schema, and routes through the 16 modular attack detectors."
 )
-def api_ingest_cloudtrail(payload: Dict[str, Any] = Body(...)):
+def api_ingest_cloudtrail(payload: Union[Dict[str, Any], List[Dict[str, Any]]] = Body(...)):
     result = ingest_cloudtrail_events(payload, save_to_database=True)
     return result
 

@@ -177,27 +177,64 @@ const DataSourcesTab = ({ showToast }) => {
   const handleSimulateCloudTrailStream = async () => {
     setIngestingStream(true);
     try {
-      const mockRecord = {
-        eventVersion: '1.08',
-        eventID: `ct-live-${Date.now().toString().slice(-6)}`,
-        eventTime: new Date().toISOString(),
-        eventSource: 'signin.amazonaws.com',
-        eventName: 'ConsoleLogin',
-        sourceIPAddress: '198.51.100.88',
-        userIdentity: {
-          type: 'IAMUser',
-          userName: 'devops-admin'
+      const nowTs = new Date().toISOString();
+      const mockRecords = [
+        {
+          eventVersion: '1.08',
+          eventID: `ct-live-${Date.now().toString().slice(-6)}-1`,
+          eventTime: nowTs,
+          eventSource: 'signin.amazonaws.com',
+          eventName: 'ConsoleLogin',
+          sourceIPAddress: '198.51.100.88',
+          userIdentity: { type: 'IAMUser', userName: 'devops-admin' },
+          responseElements: { ConsoleLogin: 'Failure' },
+          errorMessage: 'Failed authentication: Bad credentials'
         },
-        responseElements: { ConsoleLogin: 'Failure' },
-        errorMessage: 'Failed authentication: Bad credentials'
-      };
+        {
+          eventVersion: '1.08',
+          eventID: `ct-live-${Date.now().toString().slice(-6)}-2`,
+          eventTime: nowTs,
+          eventSource: 'signin.amazonaws.com',
+          eventName: 'ConsoleLogin',
+          sourceIPAddress: '198.51.100.88',
+          userIdentity: { type: 'IAMUser', userName: 'devops-admin' },
+          responseElements: { ConsoleLogin: 'Failure' },
+          errorMessage: 'Failed authentication: Bad credentials'
+        },
+        {
+          eventVersion: '1.08',
+          eventID: `ct-live-${Date.now().toString().slice(-6)}-3`,
+          eventTime: nowTs,
+          eventSource: 'signin.amazonaws.com',
+          eventName: 'ConsoleLogin',
+          sourceIPAddress: '198.51.100.88',
+          userIdentity: { type: 'IAMUser', userName: 'devops-admin' },
+          responseElements: { ConsoleLogin: 'Failure' },
+          errorMessage: 'Failed authentication: Bad credentials'
+        },
+        {
+          eventVersion: '1.08',
+          eventID: `ct-live-${Date.now().toString().slice(-6)}-4`,
+          eventTime: nowTs,
+          eventSource: 'iam.amazonaws.com',
+          eventName: 'AttachUserPolicy',
+          sourceIPAddress: '198.51.100.88',
+          userIdentity: { type: 'IAMUser', userName: 'devops-admin' },
+          requestParameters: {
+            userName: 'devops-admin',
+            policyArn: 'arn:aws:iam::aws:policy/AdministratorAccess'
+          },
+          responseElements: null
+        }
+      ];
 
-      await axios.post(`${API_URL}/cloud/ingest/cloudtrail`, [mockRecord]);
+      const res = await axios.post(`${API_URL}/cloud/ingest/cloudtrail`, mockRecords);
+      const findingsCount = res.data?.findings_count || 0;
       if (showToast) {
-        showToast('Sample CloudTrail threat event ingested successfully!', 'success');
+        showToast(`CloudTrail stream ingested: ${findingsCount} security findings detected!`, 'success');
       }
     } catch (err) {
-      if (showToast) showToast('CloudTrail stream test failed', 'error');
+      if (showToast) showToast('CloudTrail stream test failed: ' + (err.response?.data?.detail || err.message), 'error');
     }
     setIngestingStream(false);
   };
