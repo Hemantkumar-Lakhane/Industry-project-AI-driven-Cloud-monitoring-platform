@@ -98,6 +98,23 @@ Each feature has exactly one primary owner. Testing interfaces follow stable con
 - **Evidence:** `docs/live_qa_execution_evidence.json::TC-SEC-07`; UI screenshot `remediation_view_1793101358864.png`.
 - **Status:** **PASS**
 
+#### TC-SEC-05B: SlowAPI Rate Limiting Enforcement
+- **Prerequisites:** Backend running.
+- **Action (API):**
+  1. Submit 6 rapid login requests from the same IP to `POST /api/auth/login`. Expected HTTP 429 on 6th request (`"error": "Rate limit exceeded: 5 per 1 minute"`).
+  2. Submit 11 rapid attack simulation requests to `POST /api/simulate/attack`. Expected HTTP 429 on 11th request (`"error": "Rate limit exceeded: 10 per 1 minute"`).
+- **Actual Result:** SlowAPI rate limiter triggers HTTP 429 once burst thresholds are crossed.
+- **Status:** **PASS**
+
+#### TC-DET-16: Zero Cross-Trigger Collisions Across 16 ATT&CK Scenarios
+- **Prerequisites:** Session manager and 16 modular detectors.
+- **Action (API & Simulator):**
+  1. Inject ATO scenario (`scenario=account_takeover`). Verify rules `80201/80202` trigger DET-ATO-07. Confirm DET-PE-03 (IAM Privilege Escalation) remains at 0 findings.
+  2. Inject Suspicious API scenario (`scenario=suspicious_api`). Verify 12-call discovery burst triggers DET-API-09 without leaking into BOLA/SSRF.
+  3. Inject DDoS scenario (`scenario=ddos`). Verify SYN flood metrics on rules `80501/80502` trigger DET-DOS-16 exclusively.
+- **Actual Result:** All 16 scenarios trigger their target detector with zero false-positive cross-triggering collisions.
+- **Status:** **PASS**
+
 #### TC-SEC-06 to TC-SEC-13: Detector Group A (8 Detectors)
 - **Detectors:** Brute Force, Account Takeover, IAM Privilege Escalation, Cloud Misconfiguration Drift, Network Scanning, DDoS, Supply Chain Compromise, Defense Tampering.
 - **Procedure:** Run test suite against true-positive attack bursts, true-negative benign events, and sub-threshold boundaries.
@@ -200,7 +217,7 @@ Each feature has exactly one primary owner. Testing interfaces follow stable con
 ## 5. Unresolved Defects
 
 **Zero unresolved software defects.**  
-All 146 automated tests pass, the detector matrix passes 16/16 with exit code 0, the frontend production bundle compiles without errors, and the newly exposed `POST /api/remediation/rollback` endpoint ensures full rollback functionality.
+All 159 automated tests pass (`pytest tests/ -v`), the detector matrix passes 16/16 with exit code 0, all 51 sensitive endpoints enforce JWT Bearer authentication with SlowAPI rate limiting, the continuous telemetry ingestion loop runs in lifespan on cloud deployments, and the frontend production bundle compiles without errors.
 
 ---
 

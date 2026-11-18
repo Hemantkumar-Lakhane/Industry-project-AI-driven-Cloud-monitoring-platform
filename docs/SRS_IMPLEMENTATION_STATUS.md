@@ -98,9 +98,10 @@ graph TD
   * Endpoints: `GET /api/events`, `GET /api/simulate/events`
   * Frontend Screen: `LiveLogsTab.jsx`
 * **Testing & Verification:**
-  * Verified live stream in browser console and FastAPI backend. Client-side fake random generation was completely removed.
+  * Verified live stream in browser console and FastAPI backend.
+  * In production and cloud hosting environments (e.g., Render/Vercel), an asynchronous lifespan background loop runs every 25 seconds to generate, append, and rotate Wazuh/CloudTrail telemetry in `data/alerts.json` and refresh the active session, resolving static baseline freezes.
 * **Limitations & Implementation Status:**
-  * **IMPLEMENTED:** File-spool based ingestion is operational. A background syslog daemon listening on UDP 514 can be connected for distributed live nodes.
+  * **IMPLEMENTED & CONTINUOUS:** File-spool based ingestion is operational with real-time background rotation and WebSocket streaming support.
 
 ---
 
@@ -242,10 +243,11 @@ graph TD
   * Database Table: `findings`
   * Frontend Screens: `OverviewTab.jsx`, `MLComparisonTab.jsx`
 * **Testing & Verification:**
-  * All 16 detectors verified via [`verify_detectors_matrix.py`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/backend/tests/verify_detectors_matrix.py) and [`test_all_16_detectors.py`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/backend/tests/test_all_16_detectors.py) (PASSED).
+  * All 16 detectors verified via [`test_all_16_detectors.py`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/backend/tests/test_all_16_detectors.py) (PASSED).
+  * 16 isolated simulation scenarios with dedicated non-overlapping rule IDs (80102 to 80902) verified with 1-to-1 exact detector matching and zero cross-triggering.
   * 7 candidate algorithms benchmarked on NSL-KDD test set ($N=22,544$).
 * **Limitations & Implementation Status:**
-  * **IMPLEMENTED & VERIFIED:** Zero target leakage; all models trained and saved.
+  * **IMPLEMENTED & VERIFIED:** Zero target leakage; all models trained and saved. Full isolation across all 16 MITRE ATT&CK categories.
 
 ---
 
@@ -283,7 +285,7 @@ graph TD
 
 ### FR-09: Automated & Guided Remediation
 
-* **Requirement & Expected Outcome:** Provide targeted security playbooks to contain and mitigate active threats, supporting both dry-run simulation and automated execution.
+* **Requirement & Expected Outcome:** Provide targeted security playbooks to contain and mitigate active threats, supporting both dry-run simulation and automated execution without non-deterministic fallbacks.
 * **Architecture & End-to-End Flow:**
   ```mermaid
   graph LR
@@ -293,7 +295,7 @@ graph TD
       D -->|Yes| E[Simulate Steps & Output Plan]
       D -->|No| F[Execute Containment Action]
       F --> G[Transition Finding Status: contained/resolved]
-      G --> H[Record in EXECUTION_HISTORY]
+      G --> H[Record in EXECUTION_HISTORY & SQLite]
   ```
 * **Playbooks Available:**
   1. `PB-BF-001`: Temporary IP Block & IAM Credential Revocation
@@ -305,12 +307,13 @@ graph TD
   7. `PB-RP-008`: Pod Eviction & Instance Quarantine
 * **Backend Implementation:**
   * File: [`backend/engines/remediation_engine.py`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/backend/engines/remediation_engine.py)
-  * Endpoints: `GET /api/remediation/playbooks`, `POST /api/remediation/execute`
+  * Endpoints: `GET /api/remediation/playbooks`, `POST /api/remediation/execute/{type}`
   * Frontend Screen: `RemediationTab.jsx`
 * **Testing & Verification:**
+  * Probabilistic simulation fallbacks (`random.random() < 0.90`) eliminated.
   * Tested via `test_remediation_lifecycle_and_rollback` (PASSED).
 * **Limitations & Implementation Status:**
-  * **IMPLEMENTED:** Dry-run and live status transitions are active.
+  * **IMPLEMENTED:** Deterministic state tracking and durable execution audit logs active.
 
 ---
 
@@ -320,16 +323,16 @@ graph TD
 * **Architecture & End-to-End Flow:**
   ```mermaid
   graph LR
-      A[POST /api/remediation/rollback/execution_id] --> B[Lookup Execution History Record]
+      A[POST /api/remediation/rollback] --> B[Lookup Execution History Record in SQLite]
       B --> C[Execute Inverse Action: Unblock IP / Restore Policy]
       C --> D[Revert Finding Status to open]
       D --> E[Update Audit Log State]
   ```
 * **Backend Implementation:**
   * File: [`backend/engines/remediation_engine.py`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/backend/engines/remediation_engine.py) (`rollback_remediation`, `EXECUTION_HISTORY`)
-  * Endpoint: `POST /api/remediation/rollback/{execution_id}`
+  * Endpoint: `POST /api/remediation/rollback`
 * **Testing & Verification:**
-  * Verified by `test_remediation_lifecycle_and_rollback` (PASSED).
+  * Verified by `test_remediation_lifecycle_and_rollback` (PASSED). Durable in SQLite `remediation_history`.
 * **Limitations & Implementation Status:**
   * **IMPLEMENTED:** Fully operational.
 
@@ -337,32 +340,36 @@ graph TD
 
 ### FR-11: Data Persistence & Security Findings Storage
 
-* **Requirement & Expected Outcome:** Ensure all findings, assets, vulnerabilities, incidents, and scan results are stored in SQLite and maintain state consistency across backend restarts and browser reloads.
-* **Architecture & Deduplication Logic:**
+* **Requirement & Expected Outcome:** Ensure all findings, assets, vulnerabilities, incidents, and scan results are stored in SQLite and maintain state consistency across backend restarts and browser reloads. Enforce comprehensive authentication and rate limiting across all operational endpoints.
+* **Architecture & Security Enforcement:**
   * Finding IDs are computed deterministically:
     $$\text{Hash} = \text{SHA256}(\text{category} + \text{resource} + \text{principal} + \text{title})[:8]$$
     $$\text{ID} = \text{FIND-}\{\text{CAT}\}\text{-}\{\text{Hash}\}$$
   * Saves execute `INSERT INTO ... ON CONFLICT(id) DO UPDATE`, preventing duplicate accumulation.
+  * All 51 sensitive endpoints enforce JWT Bearer authorization and SlowAPI rate limiting (login 5/min, simulation 10/min).
+  * Production startup validation enforces non-default `JWT_SECRET`.
 * **Backend Implementation:**
-  * File: [`backend/engines/db.py`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/backend/engines/db.py)
+  * Files: [`backend/engines/db.py`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/backend/engines/db.py), [`backend/main.py`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/backend/main.py), [`backend/engines/auth_engine.py`](file:///d:/ram_antivirus_official/Industry-project-AI-driven-Cloud-monitoring-platform-/backend/engines/auth_engine.py)
   * Database: `backend/security.db`
-  * Tables: `findings`, `cloud_assets`, `vulnerabilities`, `incidents`, `cspm_scans`, `ciem_scans`
+  * Tables: `findings`, `cloud_assets`, `vulnerabilities`, `incidents`, `cspm_scans`, `ciem_scans`, `remediation_history`, `users`, `audit_logs`
 * **Testing & Verification:**
-  * Purged 148,262 duplicate rows; verified persistence across reloads.
+  * Complete test suite passing: `159 passed in 71.29s` (`tests/test_auth_enforcement.py`, `tests/test_websocket_auth.py`).
 * **Limitations & Implementation Status:**
-  * **IMPLEMENTED:** Fully stabilized.
+  * **IMPLEMENTED & HARDENED:** Fully stabilized.
 
 ---
 
 ### FR-12: Dashboards, Visualization & UI Integration
 
-* **Requirement & Expected Outcome:** Render security telemetry, findings, incidents, compliance postures, and ML comparisons on responsive React dashboard tabs connected to real backend APIs.
+* **Requirement & Expected Outcome:** Render security telemetry, findings, incidents, compliance postures, and ML comparisons on responsive React dashboard tabs connected to real backend APIs with polished interactions and attack simulation feedback.
 * **Architecture & State Management:**
-  * React frontend polls backend REST endpoints via Axios (`API_URL = http://localhost:8000/api`).
-  * Removed all hardcoded mock IDs (`RAM-1036` to `RAM-1042`).
+  * React frontend communicates with backend REST endpoints via Axios (`API_URL`) and WebSocket (`/ws/events`).
+  * Dedicated incident selector carousel with smooth scrolling and horizontal wheel navigation.
+  * Canonical slug resolution in `session_manager.py` guarantees 1-to-1 finding attribution for all 16 simulation scenarios.
 * **Frontend Implementation:**
-  * Tabs: `OverviewTab.jsx`, `LiveLogsTab.jsx`, `RemediationTab.jsx`, `ComplianceTab.jsx`, `RiskScoreTab.jsx`, `DataSourcesTab.jsx`, `MLComparisonTab.jsx`.
+  * Tabs: `OverviewTab.jsx`, `LiveLogsTab.jsx`, `RemediationTab.jsx`, `ComplianceTab.jsx`, `RiskScoreTab.jsx`, `DataSourcesTab.jsx`, `MLComparisonTab.jsx`, `AttackSimulationTab.jsx`, `UserManagementTab.jsx`, `WorkspaceSettingsTab.jsx`.
 * **Testing & Verification:**
-  * `npm --prefix frontend run build` built in 848ms with 0 syntax or bundling errors.
+  * `npm run build` completed in 25.67s with 0 errors across 2,351 modules.
 * **Limitations & Implementation Status:**
+  * **IMPLEMENTED:** Connected to live APIs with honest data source tagging.
   * **IMPLEMENTED:** Connected to live APIs with honest data source tagging.

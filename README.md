@@ -37,17 +37,22 @@ A production-grade cloud security intelligence and automated response platform f
 ```
 Industry(Ram)/
 ├── backend/
-│   ├── main.py                    ← FastAPI application gateway (RBAC-protected routes)
+│   ├── main.py                    ← FastAPI application gateway (RBAC & SlowAPI rate limiting)
 │   ├── train_model.py             ← PyOD ML ensemble training on 9D flow benchmark
 │   ├── requirements.txt
 │   ├── security.db                ← SQLite database (findings, incidents, users, audit trail)
 │   ├── engines/
-│   │   ├── detectors.py           ← 16 discrete MITRE ATT&CK detection engines
+│   │   ├── detectors/             ← 16 discrete MITRE ATT&CK detection engines
+│   │   │   ├── __init__.py        ← Detector registry & factory
+│   │   │   ├── brute_force.py     ← DET-BF-01
+│   │   │   ├── account_takeover.py← DET-ATO-07
+│   │   │   ├── iam_privilege_escalation.py ← DET-PE-03
+│   │   │   └── ... (16 isolated detection engines)
 │   │   ├── base_detector.py       ← Abstract detector interface & registry
 │   │   ├── correlation_engine.py  ← Graph clustering & multi-stage campaign synthesis
 │   │   ├── ml_engine.py           ← 9D flow feature extraction & PyOD ensemble scoring
 │   │   ├── risk_engine.py         ← Unified 4-pillar risk formula & trend calculations
-│   │   ├── remediation_engine.py  ← Automated playbooks, safe dry-runs & rollbacks
+│   │   ├── remediation_engine.py  ← Deterministic playbooks, safe dry-runs & rollbacks
 │   │   ├── asset_engine.py        ← Workload & cloud asset discovery & inventory
 │   │   ├── vulnerability_engine.py← Dependency & CVE advisory matching
 │   │   ├── cspm_engine.py         ← Cloud Security Posture Management engine
@@ -59,9 +64,9 @@ Industry(Ram)/
 │   │   └── db.py                  ← SQLite persistence layer & schema migrations
 │   ├── simulator/
 │   │   ├── session_manager.py     ← Active telemetry session & state coordinator
-│   │   ├── attack_simulator.py    ← 16 MITRE ATT&CK adversary scenario generator
+│   │   ├── attack_simulator.py    ← 16 isolated MITRE ATT&CK adversary scenario generator
 │   │   ├── wazuh_reader.py        ← Reads live Linux syslog/alerts.json
-│   │   └── log_generator.py       ← Telemetry stream generator
+│   │   └── log_generator.py       ← Telemetry stream generator (all 16 scenarios cycled)
 │   ├── models/                    ← Trained PyOD models & metadata
 │   │   ├── iforest.pkl            ← Isolation Forest model
 │   │   ├── knn.pkl                ← KNN model
@@ -486,12 +491,26 @@ taskkill /PID <pid> /F
 ## Default Accounts (Change in Production)
 
 ```
-admin    / admin123    → full access
-analyst1 / analyst123  → view + ML + compliance
-viewer1  / viewer123   → read-only
+admin    / admin123    → full access (Administrator)
+analyst1 / analyst123  → view + ML + compliance + remediation (Security Analyst)
+viewer1  / viewer123   → read-only dashboards (Auditor / Viewer)
 ```
 
-Register new users at: `POST /api/auth/register`
-Or use the Register button on the login page.
+> **Security Note:** Public self-registration is locked down (`POST /api/auth/register` requires the `users:manage` admin privilege). In production environments (`ENVIRONMENT=production`), the application enforces a strict non-default `JWT_SECRET` and fails startup if missing. Sensitive operational endpoints are protected via JWT Bearer authentication, and brute force/DoS attacks are mitigated via SlowAPI rate limiting (5 attempts/min on login, 10 executions/min on attack simulations).
 
-# Industry-project-AI-driven-Cloud-monitoring-platform-
+---
+
+## Automated Test Suite
+
+Run the full verification suite covering all 16 detectors, RBAC endpoints, correlation, and remediation rollbacks:
+
+```bash
+cd backend
+python -m pytest tests/ -v
+```
+
+Expected result:
+```
+======================== 159 passed in ~70s ========================
+```
+
