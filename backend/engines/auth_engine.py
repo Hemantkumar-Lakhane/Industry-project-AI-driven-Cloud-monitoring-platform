@@ -16,10 +16,16 @@ except ImportError:
     _BCRYPT_AVAILABLE = False
 from engines.db import get_conn, init_db
 
+ENV = os.environ.get("ENV", os.environ.get("APP_ENV", "")).lower()
 JWT_SECRET = os.environ.get("JWT_SECRET")
 if not JWT_SECRET:
+    if ENV in ("production", "prod"):
+        raise RuntimeError(
+            "JWT_SECRET environment variable is missing in production environment. "
+            "Configure a secure JWT_SECRET before starting the server."
+        )
     JWT_SECRET = "ram-antivirus-cloud-security-super-secret-key-2026"
-    print("[AUTH] Operational Notice: Using development JWT_SECRET. In production, configure JWT_SECRET environment variable.")
+    print("[AUTH] Using development JWT_SECRET. Set JWT_SECRET in production.")
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
@@ -117,31 +123,41 @@ _seed_defaults()
 # ── Role Permissions ─────────────────────────────────────────────────────────
 ROLE_PERMISSIONS = {
     "admin": {
-        "description": "Full access — all endpoints, remediation, user management",
+        "description": "Full access to all endpoints, remediation, and management",
         "permissions": [
             "dashboard:read", "events:read", "cspm:read", "ciem:read",
             "ml:read", "ml:execute", "remediation:read", "remediation:execute",
             "compliance:read", "compliance:generate", "compliance:export",
             "simulation:read", "simulation:execute",
             "users:read", "users:manage",
-            "risk:read", "risk:configure"
+            "risk:read", "risk:configure",
+            "assets:read", "assets:write",
+            "vulnerabilities:read", "vulnerabilities:write",
+            "cloud:read", "cloud:configure", "cloud:scan", "telemetry:ingest",
+            "findings:read", "incidents:read"
         ]
     },
     "analyst": {
-        "description": "View + alerts + compliance + ML analysis",
+        "description": "Read access with analytics, scans, and simulation execution",
         "permissions": [
             "dashboard:read", "events:read", "cspm:read", "ciem:read",
             "ml:read", "ml:execute", "remediation:read",
             "compliance:read", "compliance:generate",
             "simulation:read", "simulation:execute",
-            "risk:read"
+            "risk:read",
+            "assets:read", "assets:write",
+            "vulnerabilities:read",
+            "cloud:read", "cloud:scan", "telemetry:ingest",
+            "findings:read", "incidents:read"
         ]
     },
     "viewer": {
-        "description": "Read-only dashboard access",
+        "description": "Read-only access to dashboards and reports",
         "permissions": [
             "dashboard:read", "events:read", "cspm:read", "ciem:read",
-            "ml:read", "compliance:read", "risk:read"
+            "ml:read", "compliance:read", "risk:read",
+            "assets:read", "vulnerabilities:read",
+            "cloud:read", "findings:read", "incidents:read"
         ]
     }
 }

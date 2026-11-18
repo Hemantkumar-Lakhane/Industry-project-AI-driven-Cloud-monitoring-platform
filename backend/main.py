@@ -25,6 +25,10 @@ import csv
 import io
 import traceback
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 from simulator.wazuh_simulator import simulate_session
 from simulator.wazuh_reader import read_wazuh_logs, get_wazuh_status, is_wazuh_available
 from simulator.attack_simulator import run_attack_simulation, run_full_simulation, SCENARIOS, get_scenario_catalog, simulate_brute_force
@@ -278,6 +282,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["120/minute"],
+    enabled=os.environ.get("DISABLE_RATE_LIMIT") != "1"
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
@@ -386,6 +398,8 @@ def _get_current_user(
         pass
     return None
 
+AUTH_ENFORCED = os.environ.get("AUTH_ENFORCED", "true").lower() in ("true", "1")
+
 def _require_permission(
     authorization: Optional[str] = None,
     permission: str = "",
@@ -393,6 +407,8 @@ def _require_permission(
 ):
     token = _extract_token(authorization, credentials)
     if not token:
+        if not AUTH_ENFORCED:
+            return None
         raise HTTPException(status_code=401, detail="Authorization header required")
     result = check_permission(token, permission)
     if not result.get("authorized"):
@@ -570,7 +586,8 @@ Authenticate user credentials and receive a signed JSON Web Token (JWT) Bearer a
         }
     }
 )
-def api_login(req: LoginRequest):
+@limiter.limit("5/minute")
+def api_login(request: Request, req: LoginRequest):
     result = login_user(req.username, req.password)
     if not result["success"]:
         raise HTTPException(status_code=401, detail=result["error"])
@@ -907,8 +924,11 @@ def get_simulated_events(
     attacks: int = Query(25, ge=0, le=500, description="Number of simulated threat/attack events to inject", openapi_examples={"default": {"value": 25}}),
     search: Optional[str] = Query(None, description="Search filter for user, IP, action, or description"),
     severity: Optional[str] = Query(None, description="Filter by event severity (all, critical, high, medium, low)"),
-    limit: int = Query(200, ge=1, le=1000, description="Maximum number of events to return")
+    limit: int = Query(200, ge=1, le=1000, description="Maximum number of events to return"),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "events:read", credentials)
     session = session_manager.get_session()
     if session and session.analyzed_events:
         all_events = session.analyzed_events
@@ -991,7 +1011,11 @@ All scan findings are automatically logged into the SQLite posture scan history 
         }
     }
 )
-def get_cspm_results():
+def get_cspm_results(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "cspm:read", credentials)
     events = _get_events(80, 20)
     results = _get_cspm(events)
     return {
@@ -1043,7 +1067,11 @@ Findings are persisted to the SQLite entitlement scan history table.
         }
     }
 )
-def get_ciem_results():
+def get_ciem_results(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "ciem:read", credentials)
     events = _get_events(80, 20)
     results = _get_ciem(events)
     return {
@@ -1095,7 +1123,11 @@ def get_ciem_results():
         }
     }
 )
-def get_dashboard_summary():
+def get_dashboard_summary(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "dashboard:read", credentials)
     session = session_manager.get_session()
     summary = session.to_summary()
 
@@ -1280,10 +1312,15 @@ Inject a targeted cyberattack scenario into benign background noise to evaluate 
         }
     }
 )
+@limiter.limit("10/minute")
 def trigger_targeted_attack(
+    request: Request,
     type: Optional[str] = Query(None, description="Targeted attack type"),
-    scenario: Optional[str] = Query(None, description="Simulation scenario identifier")
+    scenario: Optional[str] = Query(None, description="Simulation scenario identifier"),
+    authorization: Optional[str] = Header(None, description="Admin/Analyst Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "simulation:execute", credentials)
     scen = scenario or type or "brute_force"
     res = session_manager.inject_scenario(scen, intensity="high")
     analyzed = session_manager.get_session().analyzed_events
@@ -1538,8 +1575,11 @@ def list_attack_detectors():
 )
 def get_detected_findings(
     normal: Optional[int] = Query(None, ge=1, le=500, description="Baseline normal events count"),
-    attacks: Optional[int] = Query(None, ge=0, le=200, description="Injected attack events count")
+    attacks: Optional[int] = Query(None, ge=0, le=200, description="Injected attack events count"),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "findings:read", credentials)
     session = session_manager.get_session()
     # If the caller explicitly requested a specific attack count > 0, inject brute force scenario
     if attacks is not None and attacks > 0:
@@ -1677,8 +1717,11 @@ Groups related findings sharing identical principal identity, source IP, or clou
 def get_correlated_incidents(
     status: Optional[str] = Query(None, description="Filter by incident status: 'open', 'resolved', 'investigating'"),
     severity: Optional[str] = Query(None, description="Filter by severity: 'critical', 'high', 'medium', 'low'"),
-    limit: int = Query(100, ge=1, le=500, description="Max incidents to return")
+    limit: int = Query(100, ge=1, le=500, description="Max incidents to return"),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "incidents:read", credentials)
     session = session_manager.get_session()
     incidents = []
     if session and session.incidents is not None:
@@ -1796,7 +1839,11 @@ def update_incident_status(
     description="Retrieve aggregate metrics across correlated incidents, including total incidents, open count, severity breakdown, and average findings per incident.",
     response_description="Incident correlation statistics object.",
 )
-def get_incident_stats():
+def get_incident_stats(
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "incidents:read", credentials)
     session = session_manager.get_session()
     incidents = session.incidents if (session and session.incidents is not None) else get_incidents_db(limit=200)
 
@@ -1838,8 +1885,11 @@ def get_incident_stats():
     }
 )
 def get_incident_detail(
-    incident_id: str = Path(..., description="Unique deterministic incident identifier (e.g. 'INC-A1B2C3D4')")
+    incident_id: str = Path(..., description="Unique deterministic incident identifier (e.g. 'INC-A1B2C3D4')"),
+    authorization: Optional[str] = Header(None, description="Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
+    _require_permission(authorization, "incidents:read", credentials)
     session = session_manager.get_session()
     incident = None
     if session and session.incidents:
@@ -1885,7 +1935,11 @@ def get_assets_inventory_detail():
     summary="Run Cloud Asset Discovery Scan",
     description="Trigger an active cloud resource discovery scan across connected providers."
 )
-def run_asset_discovery_scan():
+def run_asset_discovery_scan(
+    authorization: Optional[str] = Header(None, description="Admin/Analyst Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "assets:write", credentials)
     discovered = discover_assets(force_rescan=True)
     return {
         "status": "success",
@@ -3219,7 +3273,12 @@ def api_get_cloud_status():
     summary="Configure Real Cloud Connection Credentials",
     description="Dynamically configure AWS STS AssumeRole credentials, IAM keys, or LocalStack endpoint for live cloud scanning."
 )
-def api_post_cloud_connect(config: Dict[str, Any] = Body(...)):
+def api_post_cloud_connect(
+    config: Dict[str, Any] = Body(...),
+    authorization: Optional[str] = Header(None, description="Admin Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "cloud:configure", credentials)
     probe_result = configure_cloud_credentials(config)
     return {
         "status": "success" if probe_result.get("status") == "CONNECTED" else "warning",
@@ -3233,7 +3292,11 @@ def api_post_cloud_connect(config: Dict[str, Any] = Body(...)):
     summary="Run Live Cloud CSPM Posture Scan",
     description="Executes production CSPM audit across AWS S3 public access blocks, EC2 security group rules, and RDS encryption."
 )
-def api_run_live_cspm():
+def api_run_live_cspm(
+    authorization: Optional[str] = Header(None, description="Admin/Analyst Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "cloud:scan", credentials)
     findings = run_production_cspm_scan()
     return {
         "status": "success",
@@ -3249,7 +3312,11 @@ def api_run_live_cspm():
     summary="Run Live Cloud CIEM Identity Scan",
     description="Executes production CIEM audit across IAM users with AdministratorAccess, missing MFA, 90-day stale keys, and wildcard role policies."
 )
-def api_run_live_ciem():
+def api_run_live_ciem(
+    authorization: Optional[str] = Header(None, description="Admin/Analyst Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "cloud:scan", credentials)
     findings = run_production_ciem_scan()
     return {
         "status": "success",
@@ -3265,7 +3332,12 @@ def api_run_live_ciem():
     summary="Ingest Real AWS CloudTrail Event Stream",
     description="Parses AWS CloudTrail JSON logs, maps to NormalizedEvent schema, and routes through the 16 modular attack detectors."
 )
-def api_ingest_cloudtrail(payload: Dict[str, Any] = Body(...)):
+def api_ingest_cloudtrail(
+    payload: Dict[str, Any] = Body(...),
+    authorization: Optional[str] = Header(None, description="Admin/Analyst Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+):
+    _require_permission(authorization, "telemetry:ingest", credentials)
     result = ingest_cloudtrail_events(payload, save_to_database=True)
     return result
 

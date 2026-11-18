@@ -294,7 +294,7 @@ def test_detector_registered_in_global_registry():
 
 def test_api_list_detectors():
     """Verify GET /api/detection/detectors returns registered detectors."""
-    response = client.get("/api/detection/detectors")
+    response = client.get("/api/detection/detectors", headers=get_admin_headers())
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
@@ -303,7 +303,7 @@ def test_api_list_detectors():
 
 def test_api_detection_findings_endpoint():
     """Verify GET /api/detection/findings executes detection pipeline."""
-    response = client.get("/api/detection/findings?normal=20&attacks=5")
+    response = client.get("/api/detection/findings?normal=20&attacks=5", headers=get_admin_headers())
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
@@ -390,7 +390,7 @@ def test_dry_run_remediation_endpoint():
 
 def test_get_findings_with_attacks_generates_finding():
     """Verify GET /api/detection/findings?normal=30&attacks=10 produces at least 1 finding."""
-    response = client.get("/api/detection/findings?normal=30&attacks=10")
+    response = client.get("/api/detection/findings?normal=30&attacks=10", headers=get_admin_headers())
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
@@ -407,12 +407,12 @@ def test_consistent_attack_counts_and_no_rogue_attacks_on_rescan():
     assert res_reset.status_code == 200
 
     # Read dashboard summary
-    res_summary1 = client.get("/api/dashboard/summary")
+    res_summary1 = client.get("/api/dashboard/summary", headers=get_admin_headers())
     assert res_summary1.status_code == 200
     threats1 = res_summary1.json()["data"]["threats"]
 
     # Read findings
-    res_findings1 = client.get("/api/detection/findings")
+    res_findings1 = client.get("/api/detection/findings", headers=get_admin_headers())
     assert res_findings1.status_code == 200
     findings1 = res_findings1.json()["data"]
 
@@ -420,7 +420,7 @@ def test_consistent_attack_counts_and_no_rogue_attacks_on_rescan():
     assert len(findings1) == threats1["detector_findings_count"]
 
     # Rescan again - counts MUST stay identical (no new attacks generated)
-    res_summary2 = client.get("/api/dashboard/summary")
+    res_summary2 = client.get("/api/dashboard/summary", headers=get_admin_headers())
     assert res_summary2.status_code == 200
     threats2 = res_summary2.json()["data"]["threats"]
     assert threats2["detector_findings_count"] == threats1["detector_findings_count"]
@@ -433,8 +433,8 @@ def test_consistent_attack_counts_and_no_rogue_attacks_on_rescan():
     assert expected_finding_id is not None
 
     # Overview and Findings MUST reflect the injected scenario with the exact same finding ID
-    res_summary3 = client.get("/api/dashboard/summary")
-    res_findings3 = client.get("/api/detection/findings")
+    res_summary3 = client.get("/api/dashboard/summary", headers=get_admin_headers())
+    res_findings3 = client.get("/api/detection/findings", headers=get_admin_headers())
     findings3 = res_findings3.json()["data"]
 
     assert any(f["finding_id"] == expected_finding_id for f in findings3)
@@ -464,7 +464,7 @@ def test_honest_finding_sources():
     """Verify findings and dashboard metrics contain honest provenance tags (LIVE, SIMULATED, NOT CONFIGURED)."""
     # Trigger brute force scenario
     client.post("/api/simulation/run/brute_force?intensity=high", headers=get_admin_headers())
-    res_findings = client.get("/api/detection/findings")
+    res_findings = client.get("/api/detection/findings", headers=get_admin_headers())
     data = res_findings.json()
     assert data["source"] in ("LIVE", "SIMULATED", "real", "simulated")
 

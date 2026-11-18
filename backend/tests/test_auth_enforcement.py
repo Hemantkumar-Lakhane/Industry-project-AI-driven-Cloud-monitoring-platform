@@ -101,3 +101,73 @@ def test_remediation_execution_requires_remediation_execute_permission():
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert res_admin.status_code == 200
+
+def test_sensitive_endpoints_require_authentication():
+    """Verify sensitive read and write endpoints reject unauthenticated access with 401."""
+    unauthenticated_endpoints = [
+        ("GET", "/api/incidents"),
+        ("GET", "/api/cspm/scan"),
+        ("GET", "/api/ciem/scan"),
+        ("GET", "/api/detection/findings"),
+        ("POST", "/api/assets/scan"),
+        ("POST", "/api/simulate/attack"),
+        ("POST", "/api/cloud/connect"),
+    ]
+    for method, path in unauthenticated_endpoints:
+        if method == "GET":
+            res = client.get(path)
+        else:
+            res = client.post(path, json={})
+        assert res.status_code == 401, f"{method} {path} returned {res.status_code}, expected 401"
+
+def test_role_based_access_on_mutating_actions():
+    """Verify viewer role cannot trigger asset discovery or attack simulations."""
+    viewer_res = login_user("viewer1", "viewer123")
+    viewer_token = viewer_res["token"]
+    viewer_headers = {"Authorization": f"Bearer {viewer_token}"}
+
+    admin_res = login_user("admin", "admin123")
+    admin_token = admin_res["token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # Viewer should be rejected with 403
+    res_asset_viewer = client.post("/api/assets/scan", headers=viewer_headers)
+    assert res_asset_viewer.status_code == 403
+
+    res_sim_viewer = client.post("/api/simulate/attack?scenario=brute_force", headers=viewer_headers)
+    assert res_sim_viewer.status_code == 403
+
+    # Admin should succeed with 200
+    res_asset_admin = client.post("/api/assets/scan", headers=admin_headers)
+    assert res_asset_admin.status_code == 200
+
+    res_sim_admin = client.post("/api/simulate/attack?scenario=brute_force", headers=admin_headers)
+    assert res_sim_admin.status_code == 200
+
+def test_jwt_secret_required_in_production():
+    """Verify RuntimeError is raised when JWT_SECRET is unset in production environment."""
+    import subprocess
+    cmd = [
+        sys.executable, "-c",
+        "import os; os.environ['ENV'] = 'production'; os.environ.pop('JWT_SECRET', None); from engines.auth_engine import JWT_SECRET"
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    assert proc.returncode != 0
+    assert "RuntimeError" in proc.stderr
+    assert "JWT_SECRET environment variable is missing" in proc.stderr
+
+
+def test_login_endpoint_rate_limiting():
+    """Verify rapid failed login requests exceed threshold and return HTTP 429."""
+    try:
+        responses = [
+            client.post("/api/auth/login", json={"username": "probe_user", "password": "wrong_password"})
+            for _ in range(8)
+        ]
+        status_codes = [r.status_code for r in responses]
+        assert 429 in status_codes
+        assert status_codes[-1] == 429
+    finally:
+        if hasattr(app.state, "limiter"):
+            app.state.limiter.reset()
+

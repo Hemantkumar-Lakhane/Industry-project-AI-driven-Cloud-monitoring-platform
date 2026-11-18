@@ -59,12 +59,12 @@ def test_simulation_reset_clean_state_cycle(client, admin_headers):
     r_reset1 = client.post("/api/simulation/reset", headers=admin_headers)
     assert r_reset1.status_code == 200
 
-    r_inc1 = client.get("/api/incidents")
+    r_inc1 = client.get("/api/incidents", headers=admin_headers)
     assert r_inc1.status_code == 200
     assert r_inc1.json().get("count") == 0
     assert len(r_inc1.json().get("data", [])) == 0
 
-    r_stats1 = client.get("/api/incidents/stats")
+    r_stats1 = client.get("/api/incidents/stats", headers=admin_headers)
     assert r_stats1.status_code == 200
     assert r_stats1.json()["data"]["total_incidents"] == 0
 
@@ -72,19 +72,19 @@ def test_simulation_reset_clean_state_cycle(client, admin_headers):
     r_sim1 = client.post("/api/simulation/run/brute_force?intensity=high", headers=admin_headers)
     assert r_sim1.status_code == 200
 
-    r_inc2 = client.get("/api/incidents")
+    r_inc2 = client.get("/api/incidents", headers=admin_headers)
     assert r_inc2.status_code == 200
     assert r_inc2.json().get("count") >= 1
     assert len(r_inc2.json().get("data", [])) >= 1
 
-    r_stats2 = client.get("/api/incidents/stats")
+    r_stats2 = client.get("/api/incidents/stats", headers=admin_headers)
     assert r_stats2.json()["data"]["total_incidents"] >= 1
 
     # 3. Reset again -> 0 incidents
     r_reset2 = client.post("/api/simulation/reset", headers=admin_headers)
     assert r_reset2.status_code == 200
 
-    r_inc3 = client.get("/api/incidents")
+    r_inc3 = client.get("/api/incidents", headers=admin_headers)
     assert r_inc3.status_code == 200
     assert r_inc3.json().get("count") == 0
     assert len(r_inc3.json().get("data", [])) == 0
@@ -93,7 +93,7 @@ def test_simulation_reset_clean_state_cycle(client, admin_headers):
     r_sim2 = client.post("/api/simulation/run/data_exfiltration?intensity=high", headers=admin_headers)
     assert r_sim2.status_code == 200
 
-    r_inc4 = client.get("/api/incidents")
+    r_inc4 = client.get("/api/incidents", headers=admin_headers)
     assert r_inc4.status_code == 200
     assert r_inc4.json().get("count") >= 1
     all_categories = [cat for inc in r_inc4.json().get("data", []) for cat in inc.get("attack_categories", [])]

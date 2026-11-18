@@ -207,6 +207,7 @@
 
 * **Status:** **VERIFIED COMPLETED**
 * **Delivered:** Implemented 4-pillar risk calculation in `backend/engines/risk_engine.py`:
+
   $$
   \text{Composite Risk} = 0.35 \times \text{Incident Risk} + 0.25 \times \text{ML Anomaly} + 0.20 \times \text{CSPM Risk} + 0.20 \times \text{CIEM Risk}
   $$
