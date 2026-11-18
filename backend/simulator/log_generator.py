@@ -257,6 +257,152 @@ RULES = {
             "size": "0",
         }
     },
+
+    # ── Container & Kubernetes ────────────────────────────────────────────────
+    "container_k8s": {
+        "rule": {"id": "87005", "level": 14,
+                 "description": "Container escape attempt: host /var/run/docker.sock mounted into pod with privileged: true"},
+        "category": "attack",
+        "data_fn": lambda: {
+            "srcip": random.choice(INTERNAL_IPS),
+            "dstip": random.choice(INTERNAL_IPS),
+            "srcuser": "kube-operator",
+            "program_name": "kubernetes",
+            "failed_attempts": "0",
+            "size": "0",
+        }
+    },
+
+    # ── Serverless Function Abuse ─────────────────────────────────────────────
+    "serverless_abuse": {
+        "rule": {"id": "80401", "level": 13,
+                 "description": "Unauthorized UpdateFunctionCode injected into serverless Lambda function"},
+        "category": "attack",
+        "data_fn": lambda: {
+            "srcip": random.choice(INTERNAL_IPS),
+            "dstip": "10.0.0.1",
+            "srcuser": "ci-cd-bot",
+            "program_name": "lambda",
+            "failed_attempts": "0",
+            "size": "14500",
+        }
+    },
+
+    # ── CloudTrail Anomalous API ──────────────────────────────────────────────
+    "suspicious_api_activity": {
+        "rule": {"id": "80102", "level": 11,
+                 "description": "CloudTrail anomalous API burst: rapid DescribeInstances and resource enumeration"},
+        "category": "attack",
+        "data_fn": lambda: {
+            "srcip": random.choice(EXTERNAL_IPS),
+            "dstip": "10.0.0.1",
+            "srcuser": "svc-cloud-sync",
+            "program_name": "cloudtrail",
+            "failed_attempts": "0",
+            "size": "1200",
+        }
+    },
+
+    # ── BOLA & SSRF Exploitation ──────────────────────────────────────────────
+    "bola_ssrf": {
+        "rule": {"id": "80301", "level": 13,
+                 "description": "SSRF exploitation attempt targeting AWS metadata service 169.254.169.254"},
+        "category": "attack",
+        "data_fn": lambda: {
+            "srcip": random.choice(EXTERNAL_IPS),
+            "dstip": "169.254.169.254",
+            "srcuser": "nginx",
+            "program_name": "waf",
+            "failed_attempts": "0",
+            "size": "320",
+        }
+    },
+
+    # ── Account Takeover ──────────────────────────────────────────────────────
+    "account_takeover": {
+        "rule": {"id": "80201", "level": 12,
+                 "description": "Account Takeover: Multi-IP switching and rapid credential modification on console"},
+        "category": "attack",
+        "data_fn": lambda: {
+            "srcip": random.choice(EXTERNAL_IPS),
+            "dstuser": random.choice(["alice", "bob", "admin"]),
+            "program_name": "cognito",
+            "failed_attempts": "0",
+            "size": "0",
+        }
+    },
+
+    # ── Defense & Log Tampering ───────────────────────────────────────────────
+    "defense_tampering": {
+        "rule": {"id": "80601", "level": 15,
+                 "description": "Defense Evasion: CloudTrail StopLogging executed and audit tampering detected"},
+        "category": "attack",
+        "data_fn": lambda: {
+            "srcip": random.choice(INTERNAL_IPS),
+            "srcuser": "admin",
+            "program_name": "cloudtrail",
+            "failed_attempts": "0",
+            "size": "0",
+        }
+    },
+
+    # ── Database Threat Activity ──────────────────────────────────────────────
+    "database_attacks": {
+        "rule": {"id": "80701", "level": 12,
+                 "description": "Database threat: SQL injection payload ' OR 1=1 detected on RDS proxy"},
+        "category": "attack",
+        "data_fn": lambda: {
+            "srcip": random.choice(EXTERNAL_IPS),
+            "dstip": "10.0.0.20",
+            "srcuser": "postgres",
+            "program_name": "rds",
+            "failed_attempts": "0",
+            "size": "450",
+        }
+    },
+
+    # ── Cloud Misconfiguration Drift ──────────────────────────────────────────
+    "cloud_misconfiguration": {
+        "rule": {"id": "80801", "level": 10,
+                 "description": "Cloud misconfiguration: S3 bucket ACL public read/write and open 0.0.0.0/0 SG ingress"},
+        "category": "attack",
+        "data_fn": lambda: {
+            "srcip": random.choice(INTERNAL_IPS),
+            "srcuser": "infra-deployer",
+            "program_name": "s3",
+            "failed_attempts": "0",
+            "size": "0",
+        }
+    },
+
+    # ── Supply Chain & CI/CD ──────────────────────────────────────────────────
+    "supply_chain": {
+        "rule": {"id": "80901", "level": 13,
+                 "description": "Supply chain compromise: Poisoned dependency script executed in CI/CD runner"},
+        "category": "attack",
+        "data_fn": lambda: {
+            "srcip": random.choice(INTERNAL_IPS),
+            "srcuser": "runner-ci",
+            "program_name": "codebuild",
+            "failed_attempts": "0",
+            "size": "0",
+        }
+    },
+
+    # ── Distributed Denial of Service ─────────────────────────────────────────
+    "ddos": {
+        "rule": {"id": "80501", "level": 12,
+                 "description": "Distributed Denial of Service: Volumetric SYN flood and HTTP request surge"},
+        "category": "attack",
+        "data_fn": lambda: {
+            "srcip": random.choice(EXTERNAL_IPS),
+            "dstip": "10.0.0.10",
+            "srcuser": "unknown",
+            "program_name": "cloudfront",
+            "failed_attempts": str(random.randint(100, 500)),
+            "size": str(random.randint(50_000, 200_000)),
+        }
+    },
 }
 
 # ── Time-based attack probability ────────────────────────────────────────────
@@ -275,24 +421,30 @@ def _batch_size() -> tuple:
 
 
 # ── Attack campaign state ─────────────────────────────────────────────────────
-# Every ~15 minutes a sustained attack campaign starts
+# Periodically rotates sustained multi-cloud attack campaigns across all 16 categories
 _campaign_active    = False
 _campaign_type      = None
 _campaign_remaining = 0
+_recent_campaigns   = []
 
 ATTACK_RULES = [k for k, v in RULES.items() if v["category"] == "attack"]
 NORMAL_RULES = [k for k, v in RULES.items() if v["category"] == "normal"]
 
 
 def _maybe_start_campaign():
-    global _campaign_active, _campaign_type, _campaign_remaining
-    # 7% chance per minute of starting a campaign (~1 per 15 min)
-    if not _campaign_active and random.random() < 0.07:
-        _campaign_active    = True
-        _campaign_type      = random.choice(ATTACK_RULES)
-        _campaign_remaining = random.randint(3, 8)  # lasts 3–8 minutes
+    global _campaign_active, _campaign_type, _campaign_remaining, _recent_campaigns
+    # Approximately 12% probability per interval of starting a campaign
+    if not _campaign_active and random.random() < 0.12:
+        _campaign_active = True
+        # Prioritize attack categories that haven't run recently for balanced coverage
+        candidates = [k for k in ATTACK_RULES if k not in _recent_campaigns[-5:]] or ATTACK_RULES
+        _campaign_type = random.choice(candidates)
+        _recent_campaigns.append(_campaign_type)
+        if len(_recent_campaigns) > 16:
+            _recent_campaigns.pop(0)
+        _campaign_remaining = random.randint(2, 5)
         print(f"[LogGen] Attack campaign started: {_campaign_type} "
-              f"({_campaign_remaining} min)")
+              f"({_campaign_remaining} batches remaining)")
 
 
 def _build_alert(rule_key: str) -> dict:

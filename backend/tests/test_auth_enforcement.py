@@ -149,9 +149,9 @@ def test_jwt_secret_required_in_production():
     import subprocess
     cmd = [
         sys.executable, "-c",
-        "import os; os.environ['ENV'] = 'production'; os.environ.pop('JWT_SECRET', None); from engines.auth_engine import JWT_SECRET"
+        f"import os, sys; sys.path.insert(0, r'{backend_dir}'); os.environ['ENV'] = 'production'; os.environ.pop('JWT_SECRET', None); from engines.auth_engine import JWT_SECRET"
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=backend_dir)
     assert proc.returncode != 0
     assert "RuntimeError" in proc.stderr
     assert "JWT_SECRET environment variable is missing" in proc.stderr

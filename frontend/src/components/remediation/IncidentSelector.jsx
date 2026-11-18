@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertTriangle, Check, ShieldAlert, Radio } from 'lucide-react';
+import React, { useRef } from 'react';
+import { AlertTriangle, Check, ShieldAlert, Radio, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const IncidentSelector = ({
   incidents = [],
@@ -7,28 +7,101 @@ export const IncidentSelector = ({
   onSelectIncident,
   healedIncidents = new Set()
 }) => {
+  const scrollContainerRef = useRef(null);
+
+  const scroll = (direction) => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 310;
+      scrollContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
-    <div style={{ marginBottom: '20px', width: '100%', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          Active Threat Incidents ({incidents.length})
-        </span>
-        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-          Click any card to inspect forensics, root cause & execute playbook
-        </span>
+    <div
+      className="figma-card"
+      style={{
+        marginBottom: '20px',
+        padding: '16px 20px',
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
+        boxSizing: 'border-box'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            Active Threat Incidents ({incidents.length})
+          </span>
+          <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+            Select an incident to inspect root cause & trigger containment
+          </span>
+        </div>
+
+        {incidents.length > 2 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              type="button"
+              onClick={() => scroll('left')}
+              className="figma-btn-secondary"
+              style={{
+                padding: '4px 7px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: 'none'
+              }}
+              title="Scroll left"
+              aria-label="Previous incidents"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => scroll('right')}
+              className="figma-btn-secondary"
+              style={{
+                padding: '4px 7px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: 'none'
+              }}
+              title="Scroll right"
+              aria-label="Next incidents"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       <div
+        ref={scrollContainerRef}
+        onWheel={(e) => {
+          if (e.deltaY !== 0 && scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft += e.deltaY;
+          }
+        }}
         style={{
           display: 'flex',
           gap: '12px',
           overflowX: 'auto',
-          paddingBottom: '10px',
+          padding: '4px 2px 10px 2px',
           width: '100%',
           minWidth: 0,
           maxWidth: '100%',
           WebkitOverflowScrolling: 'touch',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'var(--border-subtle) transparent'
         }}
       >
         {incidents.map((inc) => {
@@ -49,23 +122,24 @@ export const IncidentSelector = ({
                 }
               }}
               style={{
-                flex: '0 0 280px',
-                padding: '12px 14px',
+                flex: '0 0 295px',
+                padding: '13px 15px',
                 borderRadius: '8px',
                 backgroundColor: isSelected ? 'var(--surface-card)' : 'var(--surface-muted)',
                 border: isSelected
-                  ? '2px solid var(--accent-orange)'
+                  ? '1px solid var(--accent-orange)'
                   : incHealed
                   ? '1px solid var(--success-color)'
                   : '1px solid var(--border-subtle)',
+                boxShadow: isSelected
+                  ? '0 0 0 1px var(--accent-orange), 0 2px 8px rgba(240, 106, 26, 0.16)'
+                  : 'var(--shadow-xs)',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
+                transition: 'background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '6px',
-                boxShadow: isSelected ? '0 2px 8px rgba(240, 106, 26, 0.22)' : 'none',
+                gap: '8px',
                 boxSizing: 'border-box',
-                transform: isSelected ? 'scale(1.01)' : 'scale(1)',
                 userSelect: 'none'
               }}
             >

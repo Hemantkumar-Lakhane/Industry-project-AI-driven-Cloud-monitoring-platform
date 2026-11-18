@@ -228,7 +228,7 @@ html, body {
   align-items: center;
   gap: 12px;
   padding: 9px 12px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 13.5px;
   font-weight: 500;
   color: var(--text-secondary);
@@ -237,37 +237,36 @@ html, body {
   cursor: pointer;
   text-align: left;
   width: 100%;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   position: relative;
+  user-select: none;
 }
 
 .figma-nav-item:hover {
   background-color: var(--surface-hover);
   color: var(--text-primary);
-  transform: translateX(2px);
 }
 
-.figma-nav-item:hover svg {
-  transform: scale(1.12);
-  transition: transform 0.2s ease-in-out;
+.figma-nav-item:active {
+  background-color: var(--surface-muted);
+  opacity: 0.92;
 }
 
 .figma-nav-item svg {
-  transition: transform 0.2s ease-in-out, color 0.2s ease;
+  transition: color 0.15s ease;
   flex-shrink: 0;
 }
 
-/* Active tab style: subtle elevation, crisp accent border & scaled icon */
+/* Active tab style: subtle elevation, crisp accent border */
 .figma-nav-item.active {
   background-color: var(--accent-orange-subtle);
   color: var(--accent-orange);
   border: 1px solid var(--accent-orange-border);
-  box-shadow: 0 2px 8px rgba(235, 107, 39, 0.1);
+  box-shadow: 0 1px 3px rgba(235, 107, 39, 0.08);
   font-weight: 600;
 }
 
 .figma-nav-item.active svg {
-  transform: scale(1.15);
   color: var(--accent-orange);
 }
 
@@ -451,11 +450,10 @@ html, body {
 }
 
 .theme-switcher_switch:hover .theme-switcher-icon {
-  transform: scale(1.15) rotate(8deg);
+  stroke: var(--text-primary);
 }
 
 .theme-switcher_switch.active .theme-switcher-icon {
-  transform: scale(1.08);
   stroke: var(--accent-orange);
 }
 
@@ -528,12 +526,18 @@ html, body {
   align-items: center;
   gap: 6px;
   box-shadow: var(--shadow-xs);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+  user-select: none;
 }
 
 .figma-btn-primary:hover {
   background-color: var(--accent-orange-hover);
-  transform: translateY(-1px);
+}
+
+.figma-btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: brightness(0.95);
+  box-shadow: none;
 }
 
 .figma-btn-secondary {
@@ -549,13 +553,63 @@ html, body {
   align-items: center;
   gap: 6px;
   box-shadow: var(--shadow-xs);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.05s ease;
+  user-select: none;
 }
 
 .figma-btn-secondary:hover {
   background-color: var(--surface-hover);
   color: var(--text-primary);
-  transform: translateY(-1px);
+  border-color: var(--border-strong);
+}
+
+.figma-btn-secondary:active:not(:disabled) {
+  transform: translateY(1px);
+  background-color: var(--surface-muted);
+  box-shadow: none;
+}
+
+/* GLOBAL PROFESSIONAL INTERACTION & CLICK BEHAVIOR */
+button,
+a,
+[role="button"],
+.figma-btn-primary,
+.figma-btn-secondary,
+.figma-nav-item,
+.theme-switcher_switch,
+.figma-user-profile,
+.remediation-row,
+.figma-table tbody tr {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--accent-orange);
+  outline-offset: 2px;
+}
+
+/* Polished scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 /* FIGMA STATS TICKER BAR */

@@ -55,22 +55,40 @@ WAZUH_LOG_PATH = get_wazuh_log_path()
 
 # Wazuh rule ID → attack type mapping
 RULE_ATTACK_MAP = {
-    # Brute force
+    # 1. Brute force
     5710: "brute_force", 5712: "brute_force", 40111: "brute_force", 40112: "brute_force",
-    # Privilege escalation
-    5402: "privilege_escalation", 5403: "privilege_escalation", 8502: "privilege_escalation", 8504: "privilege_escalation",
-    # Data exfiltration
+    # 2. Account takeover
+    80201: "account_takeover", 80202: "account_takeover", 5716: "account_takeover", 5717: "account_takeover",
+    # 3. Privilege escalation
+    5402: "iam_privilege_escalation", 5403: "iam_privilege_escalation", 8502: "iam_privilege_escalation", 8504: "iam_privilege_escalation",
+    # 4. Suspicious API activity
+    80102: "suspicious_api_activity", 80105: "suspicious_api_activity",
+    # 5. Cloud misconfiguration
+    80801: "cloud_misconfiguration", 80802: "cloud_misconfiguration",
+    # 6. Data exfiltration
     31100: "data_exfiltration", 31101: "data_exfiltration", 31102: "data_exfiltration",
-    # Lateral movement
-    5510: "lateral_movement", 5511: "lateral_movement", 18100: "lateral_movement",
-    # Port scan
-    40101: "port_scan", 40102: "port_scan", 40103: "port_scan",
-    # Crypto mining
-    87100: "crypto_mining", 87101: "crypto_mining",
-    # Ransomware
-    60100: "ransomware_precursor", 60101: "ransomware_precursor",
-    # Credential stuffing
-    5716: "credential_stuffing", 5717: "credential_stuffing",
+    # 7. Network scanning
+    40101: "network_scanning", 40102: "network_scanning", 40103: "network_scanning",
+    # 8. DDoS
+    80501: "ddos", 80502: "ddos",
+    # 9. Crypto mining
+    87100: "cryptomining", 87101: "cryptomining",
+    # 10. Container & K8s attacks
+    87001: "container_k8s_attacks", 87005: "container_k8s_attacks",
+    # 11. BOLA & SSRF
+    80301: "bola_ssrf", 80302: "bola_ssrf",
+    # 12. Malware & Ransomware
+    60100: "malware_ransomware", 60101: "malware_ransomware",
+    # 13. Database attacks
+    80701: "database_attacks", 80702: "database_attacks",
+    # 14. Serverless abuse
+    80401: "serverless_abuse", 80405: "serverless_abuse",
+    # 15. Supply chain
+    80901: "supply_chain_compromise", 80902: "supply_chain_compromise",
+    # 16. Defense tampering
+    80601: "defense_tampering", 80602: "defense_tampering",
+    # Lateral movement / auxiliary
+    5510: "iam_privilege_escalation", 5511: "iam_privilege_escalation", 18100: "iam_privilege_escalation",
 }
 
 RULE_DESCRIPTIONS = {
@@ -84,6 +102,16 @@ RULE_DESCRIPTIONS = {
     87100: "Crypto mining process detected",
     60100: "Ransomware precursor activity",
     5716: "Credential stuffing pattern detected",
+    80102: "CloudTrail anomalous API burst: rapid DescribeInstances and enumeration",
+    87005: "Container escape attempt: host /var/run/docker.sock mounted into pod",
+    80401: "Unauthorized UpdateFunctionCode injected into serverless Lambda function",
+    80301: "SSRF exploitation attempt targeting AWS metadata service 169.254.169.254",
+    80201: "Account Takeover: Multi-IP switching and sensitive credential modification",
+    80601: "Defense Evasion: CloudTrail StopLogging executed and audit tampering detected",
+    80701: "Database threat: SQL injection payload ' OR 1=1 detected on RDS proxy",
+    80801: "Cloud misconfiguration: S3 bucket ACL public read/write and open security group",
+    80901: "Supply chain compromise: Poisoned dependency script in CI/CD runner",
+    80501: "Distributed Denial of Service: Volumetric SYN flood and request surge",
 }
 
 
