@@ -155,6 +155,26 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"[!] Background warmup notice: {e}", flush=True)
     asyncio.create_task(asyncio.to_thread(_warmup))
+
+    async def _background_telemetry_loop():
+        # Do not run during test execution to keep test environments deterministic
+        if "pytest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST"):
+            return
+        await asyncio.sleep(5)
+        while True:
+            try:
+                from simulator.log_generator import generate_batch, append_to_log, rotate_log
+                from simulator.session_manager import session_manager
+                batch = generate_batch()
+                if batch:
+                    append_to_log(batch)
+                    rotate_log(max_lines=3000)
+                    session_manager.refresh_from_logs(max_events=500)
+            except Exception as e:
+                print(f"[!] Background telemetry loop notice: {e}", flush=True)
+            await asyncio.sleep(25)
+
+    asyncio.create_task(_background_telemetry_loop())
     yield
 
 

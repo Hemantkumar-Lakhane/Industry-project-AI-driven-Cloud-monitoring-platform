@@ -47,13 +47,15 @@ class ServerlessAbuseDetector(BaseDetector):
         for e in norm_events:
             desc = (e.description or "").lower()
             action_lower = (e.action or "").lower()
+            service_lower = (e.service or "").lower()
             raw_meta = e.raw_data or {}
             raw_str = (str(raw_meta) + " " + desc).lower()
-            has_env_injection = any(k in raw_str for k in ("ld_preload", "exec_wrapper", "pythonpath", "env_injection", "backdoor"))
+            is_serverless_service = service_lower in ("lambda", "serverless", "cloudfunctions")
+            has_env_injection = is_serverless_service and any(k in raw_str for k in ("ld_preload", "exec_wrapper", "pythonpath", "env_injection", "backdoor"))
             is_code_tamper = action_lower == "updatefunctioncode"
             is_concurrency_abuse = action_lower == "putfunctionconcurrency"
             attack_type = (e.attack_type or "").lower()
-            is_explicit = attack_type in ("serverless_abuse", "lambda_tampering") or "abuse" in desc or "tampering" in desc
+            is_explicit = attack_type in ("serverless_abuse", "lambda_tampering") or (is_serverless_service and ("abuse" in desc or "tampering" in desc))
 
             if not (has_env_injection or is_code_tamper or is_concurrency_abuse or is_explicit):
                 continue

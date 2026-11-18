@@ -77,7 +77,12 @@ class IAMPrivilegeEscalationDetector(BaseDetector):
 
             is_escalation_action = action_lower in ESCALATION_ACTIONS
             is_wazuh_rule = rule_id in WAZUH_PRIV_ESC_RULE_IDS
-            is_iam_attack = e.attack_type == "privilege_escalation"
+            is_iam_attack = e.attack_type in ("privilege_escalation", "iam_privilege_escalation")
+
+            # Avoid false positives if event is explicitly part of another attack category
+            if e.attack_type and e.attack_type not in ("privilege_escalation", "iam_privilege_escalation"):
+                is_escalation_action = False
+                is_wazuh_rule = False
 
             if not (is_escalation_action or is_wazuh_rule or is_iam_attack):
                 continue

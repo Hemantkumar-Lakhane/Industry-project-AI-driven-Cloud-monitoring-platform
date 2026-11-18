@@ -53,6 +53,19 @@ from simulator.wazuh_reader import get_wazuh_log_path
 
 TAXONOMY_SLUGS = {v["slug"] for v in TAXONOMY_16.values()}
 
+SLUG_ALIASES = {
+    "container_k8s": "container_k8s_attacks",
+    "supply_chain": "supply_chain_compromise",
+    "port_scan": "network_scanning",
+    "ransomware": "malware_ransomware",
+    "suspicious_api": "suspicious_api_activity",
+    "privilege_escalation": "iam_privilege_escalation",
+    "lateral_movement": "iam_privilege_escalation",
+}
+
+def canonical_slug(slug: str) -> str:
+    return SLUG_ALIASES.get(slug, slug)
+
 
 
 class ActiveTelemetrySession:
@@ -380,8 +393,10 @@ class SessionManager:
         detected = [e for e in analyzed if e["id"] in sim_ids and e.get("is_anomaly")]
         detection_rate = len(detected) / len(attack_events) * 100 if attack_events else 0
 
-        # Finding ID attribution (if detector found it, use actual finding ID)
-        matching_finding = next((f for f in session.findings if f.get("attack_category") == scenario), None)
+        # Finding ID attribution (match exact scenario or canonical taxonomy slug)
+        target_cat = canonical_slug(scenario)
+        matching_finding = next((f for f in session.findings if f.get("attack_category") in (scenario, target_cat)), None)
+        is_verified = target_cat in TAXONOMY_SLUGS or scenario in TAXONOMY_SLUGS
 
         return {
             "simulation": {
@@ -392,7 +407,7 @@ class SessionManager:
                 "target_user": sim.get("target_user"),
                 "source_ip": sim.get("source_ip"),
                 "finding_id": matching_finding.get("finding_id") if matching_finding else None,
-                "detector_status": f"VERIFIED ({scenario.upper()})" if scenario in TAXONOMY_SLUGS else "NOT CONFIGURED"
+                "detector_status": f"VERIFIED ({target_cat.upper()})" if is_verified else "NOT CONFIGURED"
             },
             "detection": {
                 "total_sim_events": len(attack_events),

@@ -48,8 +48,12 @@ class NetworkScanningDetector(BaseDetector):
             action_lower = (e.action or "").lower()
             src_ip = e.source_ip or "unknown-ip"
 
-            is_scan_rule = rule_id in WAZUH_SCAN_RULES or attack_type in ("port_scan", "network_scan")
-            is_scan_action = "scan" in action_lower or "probe" in action_lower or "sweep" in action_lower
+            if attack_type and attack_type not in ("port_scan", "network_scan", "network_scanning"):
+                is_scan_rule = False
+                is_scan_action = False
+            else:
+                is_scan_rule = rule_id in WAZUH_SCAN_RULES or attack_type in ("port_scan", "network_scan")
+                is_scan_action = "scan" in action_lower or "probe" in action_lower or "sweep" in action_lower
 
             # Flow metric indicators
             is_flow_scan = (e.diff_srv_rate >= 0.65 and e.count >= 8) or (e.rerror_rate >= 0.70 and e.count >= 10)
