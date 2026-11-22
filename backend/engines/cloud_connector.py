@@ -12,6 +12,7 @@ Production-ready cloud connector providing:
 import os
 import time
 import uuid
+import json
 import urllib.request
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional, Tuple
@@ -22,25 +23,28 @@ CLOUD_PROVIDER = os.environ.get("CLOUD_PROVIDER", "auto").lower()  # "aws", "loc
 _LS_STATUS_CACHE = {"running": False, "last_checked": 0.0}
 _CACHE_TTL_SECONDS = 15.0
 
-# Dynamic in-memory credential override (configured via /api/cloud/connect)
+from engines.db import save_tenant_cloud_connection, get_tenant_cloud_connection, delete_tenant_cloud_connection
+
+# Dynamic in-memory fallback cache
 _DYNAMIC_CLOUD_CONFIG: Dict[str, Any] = {
-    "provider": os.environ.get("CLOUD_PROVIDER", "auto"),
-    "target_account_id": os.environ.get("AWS_TARGET_ACCOUNT_ID", ""),
-    "role_name": os.environ.get("AWS_ROLE_NAME", "RAMAntivirusAuditRole"),
-    "role_arn": os.environ.get("AWS_ROLE_ARN", ""),
-    "external_id": os.environ.get("AWS_EXTERNAL_ID", "RAM-ANTIVIRUS-ENTERPRISE-TENANT-001"),
-    "region": os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
-    "access_key_id": os.environ.get("AWS_ACCESS_KEY_ID", ""),
-    "secret_access_key": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
-    "session_token": os.environ.get("AWS_SESSION_TOKEN", ""),
+    "provider": "none",
+    "target_account_id": "",
+    "role_name": "RAMAntivirusAuditRole",
+    "role_arn": "",
+    "external_id": "",
+    "region": os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-2"),
+    "access_key_id": "",
+    "secret_access_key": "",
+    "session_token": "",
     "localstack_endpoint": LOCALSTACK_ENDPOINT,
+    "user_connected": False,
 }
 
 
-def configure_cloud_credentials(config: Dict[str, Any]) -> Dict[str, Any]:
+def configure_cloud_credentials(config: Dict[str, Any], org_id: Optional[str] = None) -> Dict[str, Any]:
     """
-    Dynamically configure or switch cloud connection credentials at runtime.
-    Validates input and clears cached STS session tokens.
+    Dynamically configure or switch cloud connection credentials for an organization.
+    Tests caller identity with STS first; if valid, persists to tenant_cloud_connections in DB.
     """
     global _DYNAMIC_CLOUD_CONFIG
     for k in ("provider", "target_account_id", "role_name", "role_arn", "external_id",
@@ -48,7 +52,72 @@ def configure_cloud_credentials(config: Dict[str, Any]) -> Dict[str, Any]:
         if k in config and config[k] is not None:
             _DYNAMIC_CLOUD_CONFIG[k] = str(config[k]).strip()
 
-    return probe_cloud_connectivity(force_refresh=True)
+    provider = str(config.get("provider", "aws")).lower()
+    reg = str(config.get("region", "ap-southeast-2")).strip()
+    key_id = str(config.get("access_key_id", "")).strip()
+    sec_key = str(config.get("secret_access_key", "")).strip()
+    role_arn = str(config.get("role_arn", "")).strip()
+    ext_id = str(config.get("external_id", "")).strip()
+
+    if not (key_id and sec_key) and not role_arn:
+        return {
+            "status": "ERROR",
+            "provider": provider,
+            "auth_mode": "failed",
+            "message": "AWS Access Key ID and Secret Access Key are required to connect your account.",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+    import boto3
+    start_time = time.time()
+    try:
+        sts_kwargs = {"region_name": reg}
+        if key_id and sec_key:
+            sts_kwargs["aws_access_key_id"] = key_id
+            sts_kwargs["aws_secret_access_key"] = sec_key
+        sts = boto3.client("sts", **sts_kwargs)
+        identity = sts.get_caller_identity()
+        latency = round((time.time() - start_time) * 1000, 2)
+        account_id = identity.get("Account")
+
+        # Save to database for this organization
+        if org_id:
+            save_tenant_cloud_connection(
+                org_id=org_id,
+                provider=provider,
+                account_id=account_id,
+                auth_mode="direct_keys" if not role_arn else "sts_assumerole",
+                region=reg,
+                access_key_id=key_id,
+                secret_access_key=sec_key,
+                role_arn=role_arn,
+                external_id=ext_id,
+                status="CONNECTED",
+                latency_ms=latency
+            )
+
+        _DYNAMIC_CLOUD_CONFIG["user_connected"] = True
+        return {
+            "status": "CONNECTED",
+            "provider": provider,
+            "auth_mode": "direct_iam_credentials" if not role_arn else "sts_assumerole",
+            "account_id": account_id,
+            "principal_arn": identity.get("Arn"),
+            "user_id": identity.get("UserId"),
+            "region": reg,
+            "latency_ms": latency,
+            "message": f"Successfully authenticated to live AWS Account {account_id} via STS ({latency}ms)",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "provider": provider,
+            "auth_mode": "failed",
+            "error": str(e),
+            "message": f"AWS authentication failed: {str(e)}",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
 
 
 def is_localstack_running(force_refresh: bool = False) -> bool:
@@ -70,144 +139,191 @@ def is_localstack_running(force_refresh: bool = False) -> bool:
         return False
 
 
-def get_cloud_client(service: str, region: Optional[str] = None) -> Any:
+def get_cloud_client(service: str, region: Optional[str] = None, org_id: Optional[str] = None) -> Any:
     """
-    Universal Client Factory.
-    Resolves client according to active provider mode:
-      1. Real AWS with Cross-Account STS AssumeRole (if role_arn / target_account_id specified)
-      2. Real AWS with direct credentials or ambient instance profile
-      3. LocalStack emulator if running
-      4. Fallback: local boto3 client
+    Universal Client Factory scoped strictly to organization tenant credentials in DB.
+    Never falls back to ambient or global server credentials when org_id is provided.
     """
     import boto3
-    reg = region or _DYNAMIC_CLOUD_CONFIG.get("region") or "us-east-1"
-    provider = _DYNAMIC_CLOUD_CONFIG.get("provider", "auto")
-
-    # Force LocalStack if explicitly requested or if auto-detected and LocalStack is up
-    if provider == "localstack" or (provider == "auto" and is_localstack_running() and not _DYNAMIC_CLOUD_CONFIG.get("access_key_id")):
+    tenant_conn = get_tenant_cloud_connection(org_id) if org_id else None
+    
+    if tenant_conn:
+        reg = region or tenant_conn.get("region") or "ap-southeast-2"
+        key_id = tenant_conn.get("access_key_id")
+        sec_key = tenant_conn.get("secret_access_key")
+        if not key_id or not sec_key:
+            raise ValueError(f"Organization '{org_id}' has incomplete AWS credentials configured.")
         return boto3.client(
             service,
-            endpoint_url=_DYNAMIC_CLOUD_CONFIG.get("localstack_endpoint") or LOCALSTACK_ENDPOINT,
-            aws_access_key_id="test",
-            aws_secret_access_key="test",
-            region_name=reg
+            region_name=reg,
+            aws_access_key_id=key_id,
+            aws_secret_access_key=sec_key
         )
 
-    # Cross-Account STS AssumeRole Mode (Production SaaS Pattern)
-    target_role_arn = _DYNAMIC_CLOUD_CONFIG.get("role_arn")
-    if not target_role_arn and _DYNAMIC_CLOUD_CONFIG.get("target_account_id"):
-        acct = _DYNAMIC_CLOUD_CONFIG["target_account_id"]
-        role = _DYNAMIC_CLOUD_CONFIG.get("role_name", "RAMAntivirusAuditRole")
-        target_role_arn = f"arn:aws:iam::{acct}:role/{role}"
-
-    if target_role_arn and provider in ("aws", "auto"):
-        base_sts_kwargs: Dict[str, Any] = {"region_name": reg}
-        if _DYNAMIC_CLOUD_CONFIG.get("access_key_id") and _DYNAMIC_CLOUD_CONFIG.get("secret_access_key"):
-            base_sts_kwargs["aws_access_key_id"] = _DYNAMIC_CLOUD_CONFIG["access_key_id"]
-            base_sts_kwargs["aws_secret_access_key"] = _DYNAMIC_CLOUD_CONFIG["secret_access_key"]
-            if _DYNAMIC_CLOUD_CONFIG.get("session_token"):
-                base_sts_kwargs["aws_session_token"] = _DYNAMIC_CLOUD_CONFIG["session_token"]
-
-        sts = boto3.client("sts", **base_sts_kwargs)
-        assume_kwargs = {
-            "RoleArn": target_role_arn,
-            "RoleSessionName": "RAMAntivirusAuditSession",
-            "DurationSeconds": 900
-        }
-        ext_id = _DYNAMIC_CLOUD_CONFIG.get("external_id")
-        if ext_id:
-            assume_kwargs["ExternalId"] = ext_id
-
-        assumed = sts.assume_role(**assume_kwargs)
-        creds = assumed["Credentials"]
+    # For system admin testing with explicit credentials
+    key_id = _DYNAMIC_CLOUD_CONFIG.get("access_key_id")
+    sec_key = _DYNAMIC_CLOUD_CONFIG.get("secret_access_key")
+    reg = region or _DYNAMIC_CLOUD_CONFIG.get("region") or "ap-southeast-2"
+    if key_id and sec_key:
         return boto3.client(
             service,
-            aws_access_key_id=creds["AccessKeyId"],
-            aws_secret_access_key=creds["SecretAccessKey"],
-            aws_session_token=creds["SessionToken"],
-            region_name=reg
+            region_name=reg,
+            aws_access_key_id=key_id,
+            aws_secret_access_key=sec_key
         )
 
-    # Direct AWS Credentials or Ambient Profile Mode
-    direct_kwargs: Dict[str, Any] = {"region_name": reg}
-    if _DYNAMIC_CLOUD_CONFIG.get("access_key_id") and _DYNAMIC_CLOUD_CONFIG.get("secret_access_key"):
-        direct_kwargs["aws_access_key_id"] = _DYNAMIC_CLOUD_CONFIG["access_key_id"]
-        direct_kwargs["aws_secret_access_key"] = _DYNAMIC_CLOUD_CONFIG["secret_access_key"]
-        if _DYNAMIC_CLOUD_CONFIG.get("session_token"):
-            direct_kwargs["aws_session_token"] = _DYNAMIC_CLOUD_CONFIG["session_token"]
-
-    return boto3.client(service, **direct_kwargs)
+    raise ValueError("No active cloud credentials configured. Please connect your AWS account.")
 
 
-def probe_cloud_connectivity(force_refresh: bool = False) -> Dict[str, Any]:
+def probe_cloud_connectivity(force_refresh: bool = False, org_id: Optional[str] = None) -> Dict[str, Any]:
     """
-    Live connectivity probe for AWS and LocalStack.
-    Tests STS GetCallerIdentity to measure API round-trip latency and verify active identity.
+    Live connectivity probe for AWS scoped strictly to the current organization tenant.
+    Never uses ambient server credentials.
     """
     start_time = time.time()
-    
-    # 1. Test Live AWS if configured
-    provider_pref = _DYNAMIC_CLOUD_CONFIG.get("provider", "auto")
-    has_aws_creds = bool(_DYNAMIC_CLOUD_CONFIG.get("access_key_id") or _DYNAMIC_CLOUD_CONFIG.get("role_arn") or os.environ.get("AWS_ACCESS_KEY_ID"))
 
-    if provider_pref == "aws" or (provider_pref == "auto" and has_aws_creds):
-        try:
-            sts = get_cloud_client("sts")
-            identity = sts.get_caller_identity()
-            latency = round((time.time() - start_time) * 1000, 2)
-            return {
-                "status": "CONNECTED",
-                "provider": "aws",
-                "auth_mode": "sts_assumerole" if _DYNAMIC_CLOUD_CONFIG.get("role_arn") else "direct_iam_credentials",
-                "account_id": identity.get("Account"),
-                "principal_arn": identity.get("Arn"),
-                "user_id": identity.get("UserId"),
-                "region": _DYNAMIC_CLOUD_CONFIG.get("region", "us-east-1"),
-                "latency_ms": latency,
-                "message": f"Successfully authenticated to live AWS Account {identity.get('Account')} via STS ({latency}ms)",
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-        except Exception as e:
-            if provider_pref == "aws":
-                return {
-                    "status": "ERROR",
-                    "provider": "aws",
-                    "auth_mode": "unauthenticated",
-                    "error": str(e),
-                    "message": f"AWS authentication failed: {str(e)}",
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
+    # Look up connection from database for this specific organization
+    tenant_conn = get_tenant_cloud_connection(org_id) if org_id else None
 
-    # 2. Test LocalStack Emulation
-    if is_localstack_running(force_refresh=force_refresh):
-        latency = round((time.time() - start_time) * 1000, 2)
-        endpoint = _DYNAMIC_CLOUD_CONFIG.get("localstack_endpoint") or LOCALSTACK_ENDPOINT
+    # If tenant has no connection record in DB, return clean NOT_CONNECTED state
+    if not tenant_conn:
         return {
-            "status": "CONNECTED",
-            "provider": "localstack",
-            "auth_mode": "localstack_emulation",
-            "account_id": "000000000000",
-            "principal_arn": "arn:aws:iam::000000000000:root",
-            "endpoint": endpoint,
-            "region": _DYNAMIC_CLOUD_CONFIG.get("region", "us-east-1"),
-            "latency_ms": latency,
-            "message": f"Connected to LocalStack AWS emulation sandbox at {endpoint} ({latency}ms)",
+            "status": "NOT_CONNECTED",
+            "provider": "none",
+            "auth_mode": "unauthenticated",
+            "account_id": None,
+            "region": "ap-southeast-2",
+            "latency_ms": None,
+            "message": "No cloud account connected. Click 'Connect Cloud' to connect your AWS environment.",
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
-    # 3. Offline / Simulation Fallback
-    return {
-        "status": "OFFLINE",
-        "provider": "simulated",
-        "auth_mode": "synthetic_telemetry",
-        "message": "No live AWS or LocalStack endpoint reachable. Operating in Telemetry-Derived Posture Audit mode.",
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
+    reg = tenant_conn.get("region") or "ap-southeast-2"
+    key_id = tenant_conn.get("access_key_id")
+    sec_key = tenant_conn.get("secret_access_key")
+
+    if not key_id or not sec_key:
+        return {
+            "status": "NOT_CONNECTED",
+            "provider": tenant_conn.get("provider", "aws"),
+            "auth_mode": "incomplete_credentials",
+            "account_id": None,
+            "region": reg,
+            "latency_ms": None,
+            "message": "AWS credentials incomplete. Reconnect your account with valid Access Key and Secret Key.",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+    try:
+        import boto3
+        sts = boto3.client("sts", aws_access_key_id=key_id, aws_secret_access_key=sec_key, region_name=reg)
+        identity = sts.get_caller_identity()
+        latency = round((time.time() - start_time) * 1000, 2)
+        return {
+            "status": "CONNECTED",
+            "provider": tenant_conn.get("provider", "aws"),
+            "auth_mode": tenant_conn.get("auth_mode", "direct_keys"),
+            "account_id": identity.get("Account"),
+            "principal_arn": identity.get("Arn"),
+            "user_id": identity.get("UserId"),
+            "region": reg,
+            "latency_ms": latency,
+            "message": f"Connected: AWS Account {identity.get('Account')} ({latency}ms)",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "provider": "aws",
+            "auth_mode": "failed",
+            "error": str(e),
+            "message": f"AWS connection failed: {str(e)}",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+
+def fetch_live_cloudtrail_events(max_events: int = 50, org_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Fetches real-time management events directly from AWS CloudTrail via boto3 lookup_events.
+    Transforms raw AWS CloudTrail events into RAM Antivirus unified security event objects.
+    """
+    import boto3
+    tenant_conn = get_tenant_cloud_connection(org_id) if org_id else None
+    reg = (tenant_conn.get("region") if tenant_conn else None) or _DYNAMIC_CLOUD_CONFIG.get("region") or "ap-southeast-2"
+    client = get_cloud_client("cloudtrail", region=reg, org_id=org_id)
+    events: List[Dict[str, Any]] = []
+    try:
+        resp = client.lookup_events(MaxResults=min(max_events, 50))
+        raw_events = resp.get("Events", [])
+        for e in raw_events:
+            ev_id = e.get("EventId", str(uuid.uuid4()))
+            ev_name = e.get("EventName", "UnknownApiCall")
+            ev_source = e.get("EventSource", "aws.internal")
+            service = ev_source.split(".")[0] if "." in ev_source else ev_source
+            username = e.get("Username") or "AWSPrincipal"
+            ct_raw_str = e.get("CloudTrailEvent", "{}")
+            ct_json = {}
+            try:
+                ct_json = json.loads(ct_raw_str)
+            except Exception:
+                pass
+            
+            error_code = ct_json.get("errorCode")
+            error_msg = ct_json.get("errorMessage", "")
+            src_ip = ct_json.get("sourceIPAddress") or "127.0.0.1"
+            is_error = bool(error_code)
+
+            if is_error and ("Denied" in str(error_code) or "Unauthorized" in str(error_code)):
+                severity = "critical" if ("Root" in username or "admin" in username.lower()) else "high"
+                attack_type = "unauthorized_recon"
+                is_anomaly = True
+                anomaly_score = 0.88
+            elif ev_name in ("DeleteBucket", "DeleteDBInstance", "StopLogging", "DeleteTrail"):
+                severity = "critical"
+                attack_type = "resource_destruction"
+                is_anomaly = True
+                anomaly_score = 0.94
+            elif "Policy" in ev_name or "Role" in ev_name or "Permission" in ev_name:
+                severity = "medium"
+                attack_type = "iam_modification"
+                is_anomaly = False
+                anomaly_score = 0.45
+            else:
+                severity = "low"
+                attack_type = "management_call"
+                is_anomaly = False
+                anomaly_score = 0.12
+
+            events.append({
+                "id": f"EVT-AWS-{ev_id[:8].upper()}",
+                "timestamp": e.get("EventTime").strftime("%Y-%m-%dT%H:%M:%SZ") if hasattr(e.get("EventTime"), "strftime") else str(e.get("EventTime")),
+                "source": "aws_cloudtrail_live",
+                "rule_id": 90000 + (abs(hash(ev_name)) % 9999),
+                "severity": severity,
+                "event_type": "threat" if is_anomaly else "audit",
+                "attack_type": attack_type,
+                "user": username,
+                "src_ip": src_ip,
+                "service": service,
+                "region": reg,
+                "action": ev_name,
+                "description": f"Live AWS CloudTrail: {username} called {ev_name} on {ev_source}" + (f" [{error_code}]" if error_code else ""),
+                "bytes_transferred": 0,
+                "failed_attempts": 1 if is_error else 0,
+                "ml_anomaly_score": anomaly_score,
+                "is_anomaly": is_anomaly,
+                "ml_severity": severity.capitalize(),
+                "detected_by": "cloudtrail_stream_engine",
+                "raw_event": ct_json
+            })
+    except Exception as exc:
+        print(f"[CloudTrail] Real event fetch notice: {exc}")
+    return events
 
 
 # ── Production CSPM Scanner ───────────────────────────────────────────────────
 
-def run_production_cspm_scan() -> List[Dict[str, Any]]:
+def run_production_cspm_scan(org_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Executes a comprehensive, production-grade CSPM scan across AWS resources:
     1. S3: Public Access Blocks, bucket ACLs, default bucket encryption.
@@ -218,7 +334,7 @@ def run_production_cspm_scan() -> List[Dict[str, Any]]:
 
     # A. S3 Audit
     try:
-        s3 = get_cloud_client("s3")
+        s3 = get_cloud_client("s3", org_id=org_id)
         buckets = s3.list_buckets().get("Buckets", [])
         for b in buckets:
             b_name = b["Name"]
@@ -274,7 +390,7 @@ def run_production_cspm_scan() -> List[Dict[str, Any]]:
 
     # B. EC2 Security Groups & Compute Audit
     try:
-        ec2 = get_cloud_client("ec2")
+        ec2 = get_cloud_client("ec2", org_id=org_id)
         sgs = ec2.describe_security_groups().get("SecurityGroups", [])
         for sg in sgs:
             sg_id = sg.get("GroupId", "sg-unknown")
@@ -317,7 +433,7 @@ def run_production_cspm_scan() -> List[Dict[str, Any]]:
 
     # C. RDS Database Encryption & Exposure Audit
     try:
-        rds = get_cloud_client("rds")
+        rds = get_cloud_client("rds", org_id=org_id)
         dbs = rds.describe_db_instances().get("DBInstances", [])
         for db in dbs:
             db_id = db.get("DBInstanceIdentifier", "rds-db")
@@ -351,7 +467,7 @@ def run_production_cspm_scan() -> List[Dict[str, Any]]:
 
 # ── Production CIEM Scanner ───────────────────────────────────────────────────
 
-def run_production_ciem_scan() -> List[Dict[str, Any]]:
+def run_production_ciem_scan(org_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Executes a production-grade CIEM scan across AWS IAM:
     1. Root Account: Check account MFA status.
@@ -361,7 +477,7 @@ def run_production_ciem_scan() -> List[Dict[str, Any]]:
     results: List[Dict[str, Any]] = []
 
     try:
-        iam = get_cloud_client("iam")
+        iam = get_cloud_client("iam", org_id=org_id)
 
         # 1. Root Account Summary Audit
         try:

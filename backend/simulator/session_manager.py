@@ -217,21 +217,11 @@ class SessionManager:
             f["verification_status"] = "VERIFIED" if f.get("attack_category") in TAXONOMY_SLUGS else "NOT_CONFIGURED"
 
         if not session.findings:
-            persisted_f = get_findings_db(limit=40)
-            if persisted_f:
-                session.findings = persisted_f
-                persisted_inc = get_incidents_db(limit=15)
-                session.incidents = persisted_inc or [inc.model_dump(mode="json") for inc in correlate_findings(persisted_f)]
-            else:
-                save_findings_db(session.findings)
-                incidents = correlate_findings(session.findings)
-                session.incidents = [inc.model_dump(mode="json") for inc in incidents]
-                save_incidents_db(session.incidents)
+            session.findings = []
+            session.incidents = []
         else:
-            save_findings_db(session.findings)
             incidents = correlate_findings(session.findings)
             session.incidents = [inc.model_dump(mode="json") for inc in incidents]
-            save_incidents_db(session.incidents)
 
         # Posture scans on baseline
         if is_localstack_running():

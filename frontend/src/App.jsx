@@ -21,16 +21,16 @@ import {
   Zap,
   Terminal,
   Sun,
-  Moon
+  Moon,
+  ShieldCheck
 } from 'lucide-react';
 import logoUrl from './assets/LOGO.png';
 import LoginPage from './components/LoginPage';
 import OverviewTab from './components/OverviewTab';
 import AlertsIncidentsTab from './components/AlertsIncidentsTab';
 import RiskScoreTab from './components/RiskScoreTab';
-import MLComparisonTab from './components/MLComparisonTab';
+import ComplianceTab from './components/ComplianceTab';
 import RemediationTab from './components/RemediationTab';
-import AttackSimulationTab from './components/AttackSimulationTab';
 import LiveLogsTab from './components/LiveLogsTab';
 import UserManagementTab from './components/UserManagementTab';
 import DataSourcesTab from './components/DataSourcesTab';
@@ -165,12 +165,20 @@ const App = () => {
     if (savedToken && savedUser) {
       setToken(savedToken);
       setUser(JSON.parse(savedUser));
+      if (localStorage.getItem('first_time_setup') === 'true') {
+        localStorage.removeItem('first_time_setup');
+        setActiveTab('datasources');
+      }
     }
   }, []);
 
   const handleLogin = (userData, tokenData) => {
     setUser(userData);
     setToken(tokenData);
+    if (localStorage.getItem('first_time_setup') === 'true') {
+      localStorage.removeItem('first_time_setup');
+      setActiveTab('datasources');
+    }
   };
 
   const handleLogout = () => {
@@ -222,7 +230,7 @@ const App = () => {
     try {
       const [summaryRes, eventsRes, cspmRes, ciemRes, vulnsRes] = await Promise.all([
         axios.get(`${API_URL}/dashboard/summary`),
-        axios.get(`${API_URL}/simulate/events?hours=6&normal=50&attacks=10`),
+        axios.get(`${API_URL}/events?limit=50`),
         axios.get(`${API_URL}/cspm/scan`),
         axios.get(`${API_URL}/ciem/scan`),
         axios.get(`${API_URL}/vulnerabilities`)
@@ -385,24 +393,20 @@ const App = () => {
     return hasPermission(tab.perm);
   };
 
-  // Role-tailored navigation tabs:
-  // - Viewer: Executive dashboards and compliance reports only (no ML training, no simulation, no admin configs)
-  // - Analyst: Investigation, ML Benchmarking, Attack Simulation, Compliance
-  // - Admin: Full suite + Live Log Generator daemon + User Management + Remediation
+  // Production Enterprise Navigation Tabs
   const navTabs = [
     { id: 'overview', label: 'Overview', icon: <Shield size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
     { id: 'alerts', label: 'Alerts & Incidents', icon: <AlertTriangle size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
+    { id: 'compliance', label: 'Compliance & CSPM', icon: <ShieldCheck size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
     { id: 'risk', label: 'Risk Score', icon: <Gauge size={16} />, perm: 'risk:read', roles: ['admin', 'analyst', 'viewer'] },
     { id: 'remediation', label: 'Remediation', icon: <Wrench size={16} />, perm: 'remediation:read', roles: ['admin', 'analyst', 'viewer'] },
-    { id: 'ml', label: 'ML Comparison', icon: <Cpu size={16} />, perm: 'ml:read', roles: ['admin', 'analyst'] },
-    { id: 'simulation', label: 'Attack Simulation', icon: <FlaskConical size={16} />, perm: 'simulation:read', roles: ['admin', 'analyst'] },
-    { id: 'livelogs', label: 'Live Log Stream', icon: <Terminal size={16} />, perm: 'admin', roles: ['admin'] },
-    { id: 'users', label: 'Users', icon: <Users size={16} />, perm: 'users:read', roles: ['admin'] },
+    { id: 'livelogs', label: 'Live Log Stream', icon: <Terminal size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst'] },
+    { id: 'users', label: 'Team & Access', icon: <Users size={16} />, perm: 'users:read', roles: ['admin'] },
   ];
 
   const footerTabs = [
-    { id: 'datasources', label: 'Data sources', icon: <Database size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
-    { id: 'settings', label: 'Platform settings', icon: <Settings size={16} />, perm: 'dashboard:read', roles: ['admin'] },
+    { id: 'datasources', label: 'Cloud Connectors', icon: <Database size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
+    { id: 'settings', label: 'Workspace Settings', icon: <Settings size={16} />, perm: 'dashboard:read', roles: ['admin'] },
   ];
 
   useEffect(() => {
@@ -418,7 +422,7 @@ const App = () => {
   const pageMeta = {
     overview: {
       title: 'Overview',
-      subtitle: 'Production telemetry · Wazuh SIEM & CloudTrail active stream',
+      subtitle: 'Cloud Security Posture & Real-time Workload Telemetry',
       action: (
         <button className="figma-btn-secondary" onClick={fetchDashboardData} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
@@ -427,7 +431,7 @@ const App = () => {
     },
     alerts: {
       title: 'Alerts & Incidents',
-      subtitle: 'Production telemetry · Wazuh SIEM & CloudTrail active stream',
+      subtitle: 'Deterministic Multi-Signal Attack Correlation & Real-time Audit Stream',
       action: (
         <button className="figma-btn-secondary" onClick={() => fetchFindings(findingsAttackMode)} disabled={findingsLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
           <RefreshCw size={13} className={findingsLoading ? 'animate-spin' : ''} /> Refresh
@@ -443,9 +447,9 @@ const App = () => {
         </button>
       )
     },
-    ml: {
-      title: 'ML Comparison',
-      subtitle: 'Specialist anomaly detection benchmarks & PyOD evaluation',
+    compliance: {
+      title: 'Compliance & CSPM Posture',
+      subtitle: 'CIS AWS Foundations Benchmark, ISO 27001, SOC 2, and GDPR controls',
       action: null
     },
     remediation: {
@@ -456,11 +460,6 @@ const App = () => {
           <Shield size={13} style={{ color: 'var(--accent-orange)' }} /> Safe Dry-Run Mode
         </div>
       )
-    },
-    simulation: {
-      title: 'Attack Simulation',
-      subtitle: 'MITRE ATT&CK sandbox runner & adversary emulation',
-      action: null
     },
     users: {
       title: 'Users',
@@ -604,14 +603,19 @@ const App = () => {
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)'
             }}
           >
-            {user?.full_name
-              ? user.full_name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .substring(0, 2)
-                  .toUpperCase()
-              : 'SA'}
+            {(() => {
+              const rawName = (user?.full_name || '').trim();
+              const rawUser = (user?.username || '').trim();
+              const company = (user?.company_name || '').trim();
+              const isBad = (str) => !str || str.toLowerCase().includes('password') || str.toLowerCase() === 'password123';
+              const cleanName = !isBad(rawName) ? rawName : (!isBad(rawUser) ? rawUser : (company ? `${company} Admin` : 'CA'));
+              return cleanName
+                .split(' ')
+                .map((n) => n[0])
+                .join('')
+                .substring(0, 2)
+                .toUpperCase() || 'CA';
+            })()}
           </div>
 
           {!sidebarCollapsed && (
@@ -626,7 +630,16 @@ const App = () => {
                   textOverflow: 'ellipsis'
                 }}
               >
-                {user?.full_name || 'Security Analyst'}
+                {(() => {
+                  const rawName = (user?.full_name || '').trim();
+                  const rawUser = (user?.username || '').trim();
+                  const company = (user?.company_name || '').trim();
+                  const isBad = (str) => !str || str.toLowerCase().includes('password') || str.toLowerCase() === 'password123';
+                  if (!isBad(rawName)) return rawName;
+                  if (!isBad(rawUser)) return rawUser;
+                  if (company) return `${company} Admin`;
+                  return user?.role === 'admin' ? 'Company Admin' : 'Security Analyst';
+                })()}
               </span>
               <span
                 style={{
@@ -647,7 +660,7 @@ const App = () => {
                     boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)'
                   }}
                 />
-                {user?.role || 'analyst'} &bull; online
+                {user?.role_label || (user?.role === 'admin' ? (user?.company_name ? 'Company Admin' : 'System Admin') : (user?.role || 'analyst'))} &bull; online
               </span>
             </div>
           )}
@@ -796,7 +809,7 @@ const App = () => {
             />
           )}
 
-          {activeTab === 'ml' && <MLComparisonTab showToast={showToast} />}
+          {activeTab === 'compliance' && <ComplianceTab showToast={showToast} />}
 
           {activeTab === 'remediation' && (
             <RemediationTab
@@ -816,8 +829,6 @@ const App = () => {
             />
           )}
 
-          {activeTab === 'simulation' && <AttackSimulationTab showToast={showToast} onNavigateTab={handleNavigateTab} />}
-
           {activeTab === 'livelogs' && <LiveLogsTab showToast={showToast} />}
 
           {activeTab === 'users' && <UserManagementTab token={token} showToast={showToast} />}
@@ -826,6 +837,7 @@ const App = () => {
 
           {activeTab === 'settings' && (
             <WorkspaceSettingsTab
+              user={user}
               theme={theme}
               onToggleTheme={toggleTheme}
               showToast={showToast}

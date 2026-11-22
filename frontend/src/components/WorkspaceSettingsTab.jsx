@@ -1,23 +1,52 @@
 import React, { useState } from 'react';
-import { AlertCircle, Sliders, Shield, Sun, Moon } from 'lucide-react';
+import { AlertCircle, Sliders, Shield, Sun, Moon, Building2, Key, CheckCircle2 } from 'lucide-react';
 
-const WorkspaceSettingsTab = ({ theme, onToggleTheme, showToast }) => {
+const WorkspaceSettingsTab = ({ user, theme, onToggleTheme, showToast }) => {
   const [windowSec, setWindowSec] = useState(60);
   const [failThreshold, setFailThreshold] = useState(5);
   const [prodSafeLock, setProdSafeLock] = useState(true);
 
   const handleSave = () => {
-    if (showToast) showToast('Platform settings saved');
+    if (showToast) showToast('Workspace settings saved successfully');
   };
 
   return (
     <div>
-      {/* 1. FIGMA NOTICE CALLOUT */}
-      <div className="figma-callout">
-        <AlertCircle size={18} className="figma-callout-icon" />
-        <div className="figma-callout-content">
-          <h4>System configuration · Active cluster</h4>
-          <p>Controls detection engine sensitivity parameters, display themes, and execution safety locks.</p>
+      {/* 1. TENANT ORGANIZATION HEADER */}
+      <div className="figma-card" style={{ marginBottom: '20px', padding: '18px 22px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(240, 106, 26, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--accent-orange)'
+            }}>
+              <Building2 size={22} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                {user?.company_name || 'Enterprise Workspace'}
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', margin: 0 }}>
+                Organization Tenant ID: <code style={{ color: 'var(--text-primary)' }}>{user?.org_id || 'org_master_admin'}</code> · External ID: <code style={{ color: 'var(--text-primary)' }}>{user?.external_id || 'RAM-ENTERPRISE'}</code>
+              </p>
+            </div>
+          </div>
+          <span style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            padding: '4px 10px',
+            borderRadius: '4px',
+            backgroundColor: 'rgba(52, 199, 89, 0.12)',
+            color: 'var(--success-color)'
+          }}>
+            ORGANIZATION ACTIVE
+          </span>
         </div>
       </div>
 
@@ -26,7 +55,7 @@ const WorkspaceSettingsTab = ({ theme, onToggleTheme, showToast }) => {
         {/* Left Column: Detection Parameters */}
         <div className="figma-card">
           <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
-            Detector sensitivity parameters
+            Workload security & detector thresholds
           </h3>
 
           <div style={{ marginBottom: '20px' }}>
@@ -34,7 +63,7 @@ const WorkspaceSettingsTab = ({ theme, onToggleTheme, showToast }) => {
               Sliding evaluation window
             </label>
             <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'block', marginBottom: '8px' }}>
-              Time horizon for aggregating authentication failures per identity (current: {windowSec}s)
+              Time horizon for aggregating authentication and API telemetry per identity (current: {windowSec}s)
             </span>
             <input
               type="range"
@@ -49,10 +78,10 @@ const WorkspaceSettingsTab = ({ theme, onToggleTheme, showToast }) => {
 
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-              Failure threshold
+              Threat alert threshold
             </label>
             <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'block', marginBottom: '8px' }}>
-              Minimum consecutive failed attempts to trigger Category 1 alerts (current: {failThreshold})
+              Minimum anomaly confidence score to trigger high-severity alerts (current: {failThreshold})
             </span>
             <input
               type="range"
@@ -66,7 +95,7 @@ const WorkspaceSettingsTab = ({ theme, onToggleTheme, showToast }) => {
           </div>
 
           <button className="figma-btn-primary" onClick={handleSave}>
-            Update detector policy
+            Save Workspace Settings
           </button>
         </div>
 
@@ -111,7 +140,7 @@ const WorkspaceSettingsTab = ({ theme, onToggleTheme, showToast }) => {
               Lock production mutations (Dry-run enforced)
             </label>
             <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Prevents unauthorized live cloud resource tampering.
+              Prevents autonomous cloud resource alterations without explicit security analyst confirmation.
             </span>
           </div>
         </div>

@@ -1,5 +1,5 @@
 const ATTACK_CATEGORIES_CATALOG = [
-  { key: 'brute_force', name: 'Brute Force & Credential Stuffing', tactic: 'Initial Access', detectorId: 'DET-BF-01', telemetry: 'Wazuh HIDS & Linux PAM', tacticColor: '#3b82f6' },
+  { key: 'brute_force', name: 'Brute Force & Credential Stuffing', tactic: 'Initial Access', detectorId: 'DET-BF-01', telemetry: 'Cloud Workload & Host Telemetry', tacticColor: '#3b82f6' },
   { key: 'data_exfiltration', name: 'Data Exfiltration (S3/Web)', tactic: 'Exfiltration', detectorId: 'DET-EX-02', telemetry: 'AWS S3 Access & VPC Flow', tacticColor: '#ef4444' },
   { key: 'iam_privilege_escalation', name: 'IAM Privilege Escalation', tactic: 'Privilege Escalation', detectorId: 'DET-PE-03', telemetry: 'CloudTrail IAM Events', tacticColor: '#8b5cf6' },
   { key: 'malware_ransomware', name: 'Malware & Ransomware', tactic: 'Impact', detectorId: 'DET-RW-04', telemetry: 'Auditd Syscalls & FIM', tacticColor: '#ef4444' },
@@ -7,7 +7,7 @@ const ATTACK_CATEGORIES_CATALOG = [
   { key: 'bola_ssrf', name: 'BOLA & SSRF Exploitation', tactic: 'Initial Access', detectorId: 'DET-API-06', telemetry: 'AWS WAF & ALB HTTP Logs', tacticColor: '#3b82f6' },
   { key: 'account_takeover', name: 'Account Takeover (ATO)', tactic: 'Credential Access', detectorId: 'DET-ATO-07', telemetry: 'Cognito & Okta Auth Events', tacticColor: '#f59e0b' },
   { key: 'defense_tampering', name: 'Defense & Log Tampering', tactic: 'Defense Evasion', detectorId: 'DET-DT-08', telemetry: 'CloudTrail StopLogging', tacticColor: '#f59e0b' },
-  { key: 'suspicious_api_activity', name: 'CloudTrail Anomalous API', tactic: 'Defense Evasion', detectorId: 'DET-API-09', telemetry: 'PyOD Anomaly Stream', tacticColor: '#8b5cf6' },
+  { key: 'suspicious_api_activity', name: 'CloudTrail Anomalous API', tactic: 'Defense Evasion', detectorId: 'DET-API-09', telemetry: 'Cloud Behavioral Anomaly Engine', tacticColor: '#8b5cf6' },
   { key: 'container_k8s', name: 'Container & K8s Threats', tactic: 'Execution', detectorId: 'DET-K8S-10', telemetry: 'K8s Audit & Containerd', tacticColor: '#8b5cf6' },
   { key: 'serverless_abuse', name: 'Serverless Function Abuse', tactic: 'Execution', detectorId: 'DET-LAM-11', telemetry: 'AWS Lambda Concurrency Logs', tacticColor: '#8b5cf6' },
   { key: 'cryptomining', name: 'Hostile Cryptomining', tactic: 'Impact', detectorId: 'DET-MIN-12', telemetry: 'EC2 CPU & Network Egress', tacticColor: '#ef4444' },
@@ -148,36 +148,22 @@ const OverviewTab = ({
     const distinctLiveHours = Object.keys(liveCounts).length;
     let distribution = [];
 
-    // Realistic baseline distribution curve weights across 10 hours (smooth curve peaking in recent hours)
-    const baselineWeights = [14, 16, 18, 22, 17, 24, 21, 35, 42, 28];
-    const weightSum = baselineWeights.reduce((a, b) => a + b, 0); // 237
-
-    if (distinctLiveHours >= 4) {
-      // Natural live distribution across multiple hours
-      distribution = rollingHours.map(h => ({
+    // Real live distribution strictly from ingested events. If no events ingested, zero out all bars.
+    if (!rawEvents || rawEvents.length === 0) {
+      return rollingHours.map(h => ({
         time: h,
-        count: liveCounts[h] || 0
+        count: 0,
+        isHighlight: false
       }));
-    } else {
-      // Scale event volume smoothly across the 10-hour rolling window to avoid unnatural spikes
-      const totalRaw = rawEvents.length > 0 ? rawEvents.length : 200;
-      const targetTotal = Math.max(totalRaw, 220);
-
-      distribution = rollingHours.map((h, idx) => {
-        const weight = baselineWeights[idx] || 20;
-        const baseCount = Math.round((weight / weightSum) * targetTotal);
-        const liveForHour = liveCounts[h] || 0;
-        // Blend in actual recorded events without a jarring single-bar explosion
-        const finalCount = liveForHour > 0 ? Math.round(baseCount * 0.7 + Math.min(liveForHour, 45) * 0.3) : baseCount;
-        return {
-          time: h,
-          count: Math.max(finalCount, 8)
-        };
-      });
     }
 
-    // 3. Highlight STRICTLY the single peak bar (never multiple orange bars)
-    const maxCount = Math.max(...distribution.map(b => b.count), 1);
+    distribution = rollingHours.map(h => ({
+      time: h,
+      count: liveCounts[h] || 0
+    }));
+
+    // Highlight strictly the single peak bar
+    const maxCount = Math.max(...distribution.map(b => b.count), 0);
     return distribution.map(b => ({
       ...b,
       isHighlight: b.count === maxCount && maxCount > 0
@@ -195,14 +181,14 @@ const OverviewTab = ({
   const [hoveredSlice, setHoveredSlice] = useState(null);
 
   const severitySegments = React.useMemo(() => {
-    const rawTotal = criticalCount + highCount + mediumCount + lowCount;
-    const total = rawTotal > 0 ? rawTotal : (totalFindings || 1);
+    if (totalFindings === 0) return [];
     const items = [
       { key: 'critical', label: 'Critical', count: criticalCount, color: '#ff453a' },
       { key: 'high', label: 'High', count: highCount, color: '#f06a1a' },
       { key: 'medium', label: 'Medium', count: mediumCount, color: '#ff9f0a' },
       { key: 'low', label: 'Low', count: lowCount, color: '#30d158' },
-    ];
+    ].filter(i => i.count > 0);
+    const total = totalFindings || 1;
     let offset = 0;
     const circumference = 2 * Math.PI * 52; // ~326.72
     return items.map(item => {
@@ -220,19 +206,20 @@ const OverviewTab = ({
   }, [criticalCount, highCount, mediumCount, lowCount, totalFindings]);
 
   const sourceSegments = React.useMemo(() => {
-    const baseTotal = totalFindings > 0 ? totalFindings : 100;
-    const wazuhCount = Math.round(baseTotal * 0.46) || 46;
-    const cloudTrailCount = Math.round(baseTotal * 0.28) || 28;
-    const vpcFlowCount = Math.round(baseTotal * 0.16) || 16;
-    const iamCount = Math.max(baseTotal - wazuhCount - cloudTrailCount - vpcFlowCount, 10);
-    const total = wazuhCount + cloudTrailCount + vpcFlowCount + iamCount;
+    if (totalFindings === 0) return [];
+    const cloudTrailCount = findings.filter(f => (f.data_source || '').toUpperCase().includes('CLOUDTRAIL') || (f.attack_category || '').toLowerCase().includes('cloudtrail')).length;
+    const cspmCount = findings.filter(f => (f.attack_category || '').toLowerCase().includes('cspm') || (f.finding_id || '').startsWith('CSPM')).length;
+    const ciemCount = findings.filter(f => (f.attack_category || '').toLowerCase().includes('ciem') || (f.finding_id || '').startsWith('CIEM')).length;
+    const vpcCount = Math.max(0, totalFindings - cloudTrailCount - cspmCount - ciemCount);
 
     const items = [
-      { key: 'wazuh', label: 'Wazuh SIEM', count: wazuhCount, color: '#30d158' },
-      { key: 'cloudtrail', label: 'CloudTrail', count: cloudTrailCount, color: '#f06a1a' },
-      { key: 'vpc_flow', label: 'VPC Flow', count: vpcFlowCount, color: '#0a84ff' },
-      { key: 'iam', label: 'IAM / CIEM', count: iamCount, color: '#bf5af2' },
-    ];
+      { key: 'cspm', label: 'AWS Posture (CSPM)', count: cspmCount, color: '#30d158' },
+      { key: 'cloudtrail', label: 'CloudTrail Audit', count: cloudTrailCount, color: '#f06a1a' },
+      { key: 'ciem', label: 'Identity / CIEM', count: ciemCount, color: '#bf5af2' },
+      { key: 'workload', label: 'Workload & VPC', count: vpcCount, color: '#0a84ff' },
+    ].filter(i => i.count > 0);
+
+    const total = items.reduce((acc, i) => acc + i.count, 0) || 1;
     let offset = 0;
     const circumference = 2 * Math.PI * 52;
     return items.map(item => {
@@ -247,16 +234,16 @@ const OverviewTab = ({
       offset += strokeLength;
       return res;
     });
-  }, [totalFindings]);
+  }, [findings, totalFindings]);
 
   const activeSegments = donutView === 'severity' ? severitySegments : sourceSegments;
   const activeHoveredItem = hoveredSlice ? activeSegments.find(s => s.key === hoveredSlice) : null;
   const centerVal = activeHoveredItem
     ? `${activeHoveredItem.count}`
-    : (donutView === 'severity' ? `${totalFindings}` : '100%');
+    : (totalFindings === 0 ? '0' : (donutView === 'severity' ? `${totalFindings}` : '100%'));
   const centerLabel = activeHoveredItem
     ? `${activeHoveredItem.label.toUpperCase()} (${activeHoveredItem.pct}%)`
-    : (donutView === 'severity' ? 'TOTAL THREATS' : 'COVERAGE');
+    : (totalFindings === 0 ? 'NO THREATS' : (donutView === 'severity' ? 'TOTAL THREATS' : 'COVERAGE'));
 
   return (
     <div>
@@ -376,7 +363,7 @@ const OverviewTab = ({
                 </h3>
               </div>
               <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-                {selectedMetric === 'total_events' && 'Normalized event stream ingested from connected telemetry sources (Wazuh SIEM & AWS CloudTrail).'}
+                {selectedMetric === 'total_events' && 'Normalized event stream ingested from connected cloud telemetry sources (AWS CloudTrail & VPC Flow).'}
                 {selectedMetric === 'threats' && 'High-probability attacks where user actions or network traffic deviated significantly from baseline activity.'}
                 {selectedMetric === 'findings' && 'Violations matched by specialized rule detectors, covering brute force, privilege escalation, and exfiltration vectors.'}
                 {selectedMetric === 'incidents' && 'Active security alerts that are currently open and have not yet been neutralized or remediated.'}
@@ -412,30 +399,30 @@ const OverviewTab = ({
           {/* Telemetry records detail list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {selectedMetric === 'total_events' && (
-              (data?.events && data.events.length > 0 ? data.events.slice(0, 5) : [
-                { id: 'EVT-01', user: 'admin', action: 'ConsoleLogin', status: 'failure', src_ip: '198.51.100.23', timestamp: new Date().toISOString() },
-                { id: 'EVT-02', user: 'alice', action: 'AssumeRole', status: 'success', src_ip: '10.0.0.15', timestamp: new Date(Date.now() - 60000).toISOString() },
-                { id: 'EVT-03', user: 'compromised_app', action: 'GetObject', status: 'success', src_ip: '185.220.101.5', timestamp: new Date(Date.now() - 120000).toISOString() },
-                { id: 'EVT-04', user: 'service-worker', action: 'DescribeInstances', status: 'success', src_ip: '10.0.1.20', timestamp: new Date(Date.now() - 180000).toISOString() },
-                { id: 'EVT-05', user: 'attacker', action: 'SYN_SCAN', status: 'blocked', src_ip: '45.33.32.156', timestamp: new Date(Date.now() - 240000).toISOString() }
-              ]).map((ev, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface-muted)', borderRadius: '8px', fontSize: '12.5px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: ev.status === 'failure' || ev.status === 'blocked' ? 'var(--sev-high)' : 'var(--success-color)' }} />
-                    <div>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                        User <code style={{ color: 'var(--accent-orange)' }}>{ev.user || 'system'}</code> performed <strong>{ev.action}</strong>
-                      </div>
-                      <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                        Source IP: {ev.src_ip || 'internal'} · Status: <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{ev.status || 'recorded'}</span>
+              (!data?.events || data.events.length === 0) ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                  No telemetry events recorded yet. Connect an active cloud environment to stream real events.
+                </div>
+              ) : (
+                data.events.slice(0, 5).map((ev, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface-muted)', borderRadius: '8px', fontSize: '12.5px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: ev.status === 'failure' || ev.status === 'blocked' ? 'var(--sev-high)' : 'var(--success-color)' }} />
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          User <code style={{ color: 'var(--accent-orange)' }}>{ev.user || 'system'}</code> performed <strong>{ev.action}</strong>
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                          Source IP: {ev.src_ip || 'internal'} · Status: <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{ev.status || 'recorded'}</span>
+                        </div>
                       </div>
                     </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                      {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' UTC' : 'Recent'}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                    {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' UTC' : 'Recent'}
-                  </div>
-                </div>
-              ))
+                ))
+              )
             )}
 
             {selectedMetric === 'threats' && (
@@ -530,7 +517,7 @@ const OverviewTab = ({
               <BarChart3 size={16} style={{ color: 'var(--accent-orange)' }} />
               <h3>Event activity</h3>
             </div>
-            <span>{totalEventVolume.toLocaleString()} events analyzed · Ingestion Daemon</span>
+            <span>{totalEventVolume.toLocaleString()} events analyzed · Real-Time Pipeline</span>
           </div>
 
           <div className="figma-bar-column-wrap">
@@ -772,7 +759,7 @@ const OverviewTab = ({
               </div>
               <div>
                 <div className="item-title" style={{ fontSize: '13.5px', fontWeight: 600 }}>
-                  {data?.summary?.posture?.cspm_open_issues || 2} cloud configuration findings
+                  {data?.summary?.posture?.cspm_open_issues ?? 0} cloud configuration findings
                 </div>
                 <div className="item-subtitle" style={{ fontSize: '12px' }}>
                   AWS Config & Infrastructure Posture Scan
@@ -792,7 +779,7 @@ const OverviewTab = ({
               </div>
               <div>
                 <div className="item-title" style={{ fontSize: '13.5px', fontWeight: 600 }}>
-                  {data?.summary?.posture?.ciem_open_risks || 1} open IAM policy finding
+                  {data?.summary?.posture?.ciem_open_risks ?? 0} open IAM policy findings
                 </div>
                 <div className="item-subtitle" style={{ fontSize: '12px' }}>
                   IAM Entitlement & Role Security Audit
@@ -818,17 +805,17 @@ const OverviewTab = ({
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Production ingestion</span>
-            <span style={{ fontSize: '11px', fontWeight: 600, color: data?.summary?.data_source === 'LIVE' ? 'var(--success-color)' : 'var(--accent-orange)' }}>
-              'ACTIVE • CLOUD TELEMETRY STREAM'
+            <span style={{ fontSize: '11px', fontWeight: 600, color: data?.summary?.cloud_connected ? 'var(--success-color)' : 'var(--text-tertiary)' }}>
+              {data?.summary?.cloud_connected ? 'ACTIVE • AWS LIVE' : 'NO CLOUD LINKED'}
             </span>
           </div>
 
           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Active telemetry source</span>
-              <span style={{ fontWeight: 500 }}>Wazuh SIEM & CloudTrail Stream</span>
+              <span style={{ fontWeight: 500 }}>{data?.summary?.cloud_connected ? 'AWS CloudTrail & Audit Stream' : 'None connected'}</span>
             </div>
-            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Wazuh SIEM · CloudTrail · Security Group</span>
+            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>CloudTrail · IAM · VPC Flow · Security Group</span>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginTop: '4px' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Total events evaluated</span>
@@ -850,7 +837,7 @@ const OverviewTab = ({
               </h3>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '3px', margin: 0 }}>
-              Continuous inspection across Wazuh host agents, CloudTrail API telemetry, VPC network flows, and PyOD anomaly models.
+              Continuous posture inspection across AWS CloudTrail API telemetry, IAM policy graphs, and cloud workloads.
             </p>
           </div>
           <button
@@ -995,8 +982,8 @@ const OverviewTab = ({
           <tbody>
             {recentItems.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                  No security findings detected in active buffer.
+                <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                  No security findings detected. Connect your cloud account to run continuous posture audits.
                 </td>
               </tr>
             ) : (

@@ -40,7 +40,7 @@ const normalizeBackendEvent = (e) => {
   let eventSource = 'aws.cloudtrail';
   if (service === 's3') eventSource = 'aws.s3';
   else if (service === 'ec2' || service === 'vpc-flow' || service === 'network') eventSource = 'vpc.flow';
-  else if (service === 'wazuh' || service === 'sshd' || service === 'linux') eventSource = 'wazuh.hids';
+  else if (service === 'sshd' || service === 'linux' || service === 'host') eventSource = 'cloud.host';
   else if (service === 'lambda') eventSource = 'aws.lambda';
   else if (service === 'k8s' || service === 'container') eventSource = 'k8s.audit';
 
@@ -82,7 +82,7 @@ const normalizeBackendEvent = (e) => {
       statusCode: statusCode
     },
     _siem_inference: {
-      pyod_anomaly_score: Number(anomalyScore),
+      ml_anomaly_score: Number(anomalyScore),
       inferred_severity: inferredSev.toUpperCase(),
       detector_engine: detectorTag
     }
@@ -502,7 +502,7 @@ const LiveLogsTab = ({ showToast }) => {
             <option value="all">Source: All</option>
             <option value="aws.cloudtrail">CloudTrail</option>
             <option value="vpc.flow">VPC Flow</option>
-            <option value="wazuh.hids">Wazuh HIDS</option>
+            <option value="cloud.host">Host & Linux Audit</option>
             <option value="aws.s3">AWS S3</option>
             <option value="aws.lambda">AWS Lambda</option>
           </select>
@@ -717,7 +717,7 @@ const LiveLogsTab = ({ showToast }) => {
           }}
         >
           <div style={{ color: '#64748b', marginBottom: '10px', fontSize: '11px', borderBottom: '1px solid #1e293b', paddingBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
-            <span>--- RAM ANTIVIRUS TELEMETRY STREAM INGEST [AWS_CLOUDTRAIL + VPC_FLOW + WAZUH_HIDS] ---</span>
+            <span>--- RAM ANTIVIRUS TELEMETRY STREAM INGEST [AWS_CLOUDTRAIL + VPC_FLOW + WORKLOAD_AUDIT] ---</span>
             <span style={{ color: '#10b981' }}>▲ REAL-TIME BUFFER INGESTION</span>
           </div>
 
@@ -823,13 +823,13 @@ const LiveLogsTab = ({ showToast }) => {
               <div><span style={{ color: 'var(--text-tertiary)' }}>Source IP:</span> <code>{selectedLog.src_ip}</code></div>
               <div><span style={{ color: 'var(--text-tertiary)' }}>Target Resource:</span> <code>{selectedLog.targetResource}</code></div>
               <div><span style={{ color: 'var(--text-tertiary)' }}>HTTP / Result:</span> <code>{selectedLog.statusCode}</code></div>
-              <div><span style={{ color: 'var(--text-tertiary)' }}>PyOD Anomaly Score:</span> <code>{selectedLog.anomalyScore}</code></div>
-              <div><span style={{ color: 'var(--text-tertiary)' }}>SIEM Engine Tag:</span> <code>{selectedLog.detectorTag}</code></div>
+              <div><span style={{ color: 'var(--text-tertiary)' }}>Telemetry Anomaly Score:</span> <code>{selectedLog.anomalyScore}</code></div>
+              <div><span style={{ color: 'var(--text-tertiary)' }}>Detection Engine Tag:</span> <code>{selectedLog.detectorTag}</code></div>
             </div>
 
             <div style={{ backgroundColor: '#0c1017', padding: '14px', borderRadius: '8px', fontSize: '11.5px', marginBottom: '16px', position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ color: '#94a3b8', fontWeight: 600 }}>Raw CloudTrail / Wazuh Event Payload:</span>
+                <span style={{ color: '#94a3b8', fontWeight: 600 }}>Raw CloudTrail / Audit Event Payload:</span>
                 <button
                   type="button"
                   onClick={handleCopyRaw}
@@ -903,10 +903,10 @@ const LiveLogsTab = ({ showToast }) => {
 
         <div className="figma-card" style={{ padding: '14px 18px', borderRadius: '10px' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>
-            Ingestion Daemon
+            Telemetry Pipeline
           </span>
           <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '4px' }}>
-            PyOD + Rule Engine Active
+            Continuous Telemetry Posture Active
           </div>
         </div>
       </div>

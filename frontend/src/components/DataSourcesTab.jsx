@@ -2,51 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   AlertCircle, CheckCircle, Database, Server, RefreshCw, X, Sliders, 
-  ShieldCheck, Cloud, Download, Key, ExternalLink, Activity, Play, Zap, Check, AlertTriangle, ChevronDown, ChevronUp
+  ShieldCheck, Cloud, Download, Key, ExternalLink, Activity, Play, Zap, Check, AlertTriangle, 
+  ChevronDown, ChevronUp, Upload, FileText, HelpCircle
 } from 'lucide-react';
 import { API_URL } from '../config';
 
-const CONNECTOR_CONFIGS = {
-  'Wazuh Agent Ingestion': {
-    title: 'Wazuh Agent & SIEM Ingestion Settings',
-    description: 'Configure real-time log forwarding, Wazuh Manager REST API endpoints, and agent daemon bindings.',
-    fields: [
-      { key: 'host', label: 'Wazuh Manager Host / URL', value: 'https://wazuh-manager.corp.internal' },
-      { key: 'port', label: 'Syslog UDP Port / API Port', value: '1514 (Syslog) / 55000 (REST)' },
-      { key: 'user', label: 'API Authentication User', value: 'wazuh-api-admin' },
-      { key: 'path', label: 'Log File Ingestion Source', value: '/var/ossec/logs/alerts/alerts.json' },
-      { key: 'protocol', label: 'Streaming Protocol', value: 'TCP + TLS Mutual Auth (v1.3)' },
-      { key: 'interval', label: 'Polling Frequency', value: 'Every 5 seconds (Real-time socket)' },
-    ],
-    testResult: 'Wazuh daemon reachable at local loopback socket. 50 benign + 15 attack fixtures loaded in active session buffer.'
-  },
-  'SQLite Local Persistence': {
-    title: 'SQLite Database & Storage Engine Settings',
-    description: 'Operational database settings for findings persistence, user accounts, and risk score timeline history.',
-    fields: [
-      { key: 'db_path', label: 'Database Storage Path', value: './backend/security.db' },
-      { key: 'journal', label: 'Journaling Mode', value: 'WAL (Write-Ahead Logging)' },
-      { key: 'pool', label: 'Connection Pool Size', value: '20 concurrent worker connections' },
-      { key: 'timeout', label: 'Busy Timeout', value: '5000 ms' },
-      { key: 'sync', label: 'Synchronous Mode', value: 'NORMAL' },
-      { key: 'vacuum', label: 'Auto-Vacuum Strategy', value: 'INCREMENTAL' },
-    ],
-    testResult: 'SQLite operational database verified intact. Tables active: users, findings, risk_history, compliance_scores.'
-  },
-  'PyOD Anomaly Detectors': {
-    title: 'PyOD Specialist ML Engine Settings',
-    description: 'Tune hyperparameters, contamination rates, and ensemble voting weights across the 3 specialist models.',
-    fields: [
-      { key: 'contamination', label: 'Isolation Forest Contamination', value: '0.465 (NSL-KDD benchmark)' },
-      { key: 'knn', label: 'KNN Metric & Neighbors', value: 'k=5, Minkowski metric (NSL-KDD benchmark)' },
-      { key: 'hbos', label: 'HBOS Bin Strategy', value: 'Dynamic histogram bins (NSL-KDD benchmark)' },
-      { key: 'ensemble', label: 'Ensemble Combination Rule', value: 'Max Anomaly Score (Conservative)' },
-      { key: 'threshold', label: 'Inference Threshold', value: 'Score >= 0.70 (Critical Severity)' },
-      { key: 'dimensions', label: 'Feature Vector Dimensions', value: '9-D Flow: [duration, src/dst_bytes, count, error_rates, srv_rates]' },
-    ],
-    testResult: 'PyOD models loaded in memory. joblib weights verified: iforest.pkl, knn.pkl, hbos.pkl.'
-  }
-};
+// No internal connector configs needed for company-facing UI
 
 const DataSourcesTab = ({ showToast }) => {
   const [activeConfig, setActiveConfig] = useState(null);
@@ -58,18 +19,70 @@ const DataSourcesTab = ({ showToast }) => {
   // Real Cloud State
   const [cloudProbe, setCloudProbe] = useState(null);
   const [cloudLoading, setCloudLoading] = useState(false);
-  // Default to 'localstack' or 'direct_keys' which is easiest for students and evaluators
-  const [authMode, setAuthMode] = useState('localstack'); 
+  // Default to direct AWS credentials
+  const [authMode, setAuthMode] = useState('direct_keys'); 
+  const [showGuide, setShowGuide] = useState(false);
   const [awsForm, setAwsForm] = useState({
-    target_account_id: '123456789012',
+    target_account_id: '',
     role_name: 'RAMAntivirusAuditRole',
-    external_id: 'RAM-ANTIVIRUS-ENTERPRISE-TENANT-001',
-    region: 'us-east-1',
+    external_id: '',
+    region: 'ap-southeast-2',
     access_key_id: '',
     secret_access_key: '',
     session_token: '',
     localstack_endpoint: 'http://localhost:4566'
   });
+
+  // Automatically parse AWS credentials CSV file
+  const handleCsvUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result;
+        if (typeof text !== 'string') return;
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        let keyId = '';
+        let secKey = '';
+        
+        for (const line of lines) {
+          const parts = line.split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
+          for (let i = 0; i < parts.length; i++) {
+            if (/^(AKIA|ASIA)[A-Z0-9]{16}$/.test(parts[i])) {
+              keyId = parts[i];
+              if (parts[i + 1] && parts[i + 1].length >= 30) {
+                secKey = parts[i + 1];
+              }
+            }
+          }
+        }
+        
+        if (!keyId && lines.length >= 2) {
+          const vals = lines[1].split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
+          if (vals[0] && vals[1]) {
+            keyId = vals[0];
+            secKey = vals[1];
+          }
+        }
+
+        if (keyId && secKey) {
+          setAwsForm(prev => ({
+            ...prev,
+            access_key_id: keyId,
+            secret_access_key: secKey
+          }));
+          if (showToast) showToast(`Parsed keys for ${keyId.slice(0, 8)}... from CSV!`, 'success');
+        } else {
+          if (showToast) showToast('Could not find AWS access keys in the uploaded CSV.', 'error');
+        }
+      } catch (err) {
+        if (showToast) showToast('Failed to parse CSV file', 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   const [scanResult, setScanResult] = useState(null);
   const [scanningCloud, setScanningCloud] = useState(false);
@@ -94,14 +107,9 @@ const DataSourcesTab = ({ showToast }) => {
   }, []);
 
   const handleOpenSettings = (sourceName) => {
-    if (sourceName.includes('AWS') || sourceName.includes('CloudTrail') || sourceName.includes('Cloud')) {
-      setIsAwsModalOpen(true);
-      setTestResult(null);
-      setScanResult(null);
-    } else {
-      setActiveConfig(CONNECTOR_CONFIGS[sourceName] || null);
-      setTestResult(null);
-    }
+    setIsAwsModalOpen(true);
+    setTestResult(null);
+    setScanResult(null);
   };
 
   // Connect & Verify Cloud Connection
@@ -224,61 +232,38 @@ const DataSourcesTab = ({ showToast }) => {
   };
 
   // General connection test for other sources
-  const handleGenericTest = async () => {
-    setTestingConnection(true);
-    setTestResult(null);
-    try {
-      const res = await axios.get(`${API_URL}/assets/connectors`);
-      const connectors = res.data?.connectors || {};
-      let msg = activeConfig?.testResult || 'Connection parameters validated.';
-      if (activeConfig?.title?.includes('Wazuh') && connectors.wazuh) {
-        msg = `Wazuh Connector: Status = ${connectors.wazuh.status} (${connectors.wazuh.mode}) · Source: ${connectors.wazuh.source_path}`;
-      }
-      setTestResult({ type: 'success', text: msg });
-      if (showToast) showToast('Connector probe executed successfully!');
-    } catch (err) {
-      setTestResult({ type: 'success', text: activeConfig?.testResult || 'Connection validated.' });
-    }
-    setTestingConnection(false);
-  };
 
   const sources = [
     {
       name: 'AWS Cloud & Workload Telemetry',
       type: 'Cloud Posture & Real-Time Audit (CSPM / CIEM)',
-      status: cloudProbe?.status || 'CONNECTED',
-      lastIngest: cloudProbe?.latency_ms ? `${cloudProbe.latency_ms}ms latency` : 'Real-time',
-      detail: cloudProbe?.account_id 
-        ? `Target: AWS Account ${cloudProbe.account_id} · Mode: ${cloudProbe.auth_mode || 'STS'}`
-        : 'Connect real AWS accounts or run offline with LocalStack sandbox',
-      badge: cloudProbe?.status === 'CONNECTED' 
-        ? (cloudProbe.provider === 'aws' ? 'Live AWS' : 'LocalStack Sandbox') 
-        : 'Active Fallback',
+      status: cloudProbe?.status || 'NOT_CONNECTED',
+      lastIngest: cloudProbe?.latency_ms ? `${cloudProbe.latency_ms}ms latency` : cloudProbe?.status === 'CONNECTED' ? 'Real-time' : '—',
+      detail: cloudProbe?.status === 'CONNECTED' && cloudProbe?.account_id
+        ? `Connected: AWS Account ${cloudProbe.account_id} · Region: ${cloudProbe.region || 'ap-southeast-2'}`
+        : 'Not connected. Click "Connect Cloud" to link your AWS account.',
+      badge: cloudProbe?.status === 'CONNECTED'
+        ? 'Live AWS'
+        : 'Not Connected',
       isAws: true
     },
     {
-      name: 'Wazuh Agent Ingestion',
-      type: 'Host / OSSEC Cloud Telemetry',
-      status: 'CONNECTED',
-      lastIngest: 'Real-time stream',
-      detail: 'Live Cloud Telemetry Ingestion · Host activity and authentication logs active',
-      badge: 'Active Feed'
+      name: 'Google Cloud Platform (GCP)',
+      type: 'GCP Security Command Center & IAM Audit',
+      status: 'AVAILABLE',
+      lastIngest: '—',
+      detail: 'Enterprise IAM Service Account & Cloud Logging connector.',
+      badge: 'Available',
+      isAws: false
     },
     {
-      name: 'SQLite Local Persistence',
-      type: 'Database Engine',
-      status: 'CONNECTED',
-      lastIngest: 'Continuous (WAL)',
-      detail: 'Operational local database storage for users, findings, and telemetry state',
-      badge: 'Connected'
-    },
-    {
-      name: 'PyOD Anomaly Detectors',
-      type: 'ML Inference Engine',
-      status: 'CONNECTED',
-      lastIngest: 'On-demand pipeline',
-      detail: 'Isolation Forest, KNN, HBOS specialist detectors loaded in backend memory',
-      badge: 'Connected'
+      name: 'Microsoft Azure Cloud',
+      type: 'Azure Defender & Activity Log Stream',
+      status: 'AVAILABLE',
+      lastIngest: '—',
+      detail: 'Azure App Registration & Service Principal connector.',
+      badge: 'Available',
+      isAws: false
     }
   ];
 
@@ -289,9 +274,9 @@ const DataSourcesTab = ({ showToast }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <AlertCircle size={18} className="figma-callout-icon" />
           <div className="figma-callout-content">
-            <h4>Cloud Platform Connections & Ingestion Status</h4>
+            <h4>Cloud Platform Connection</h4>
             <p>
-              Connect your cloud in seconds. Supports <strong>1-Click Local Demo</strong> (no AWS account needed), <strong>Real AWS Access Keys</strong>, or <strong>Enterprise IAM Roles</strong>.
+              Connect your AWS account using <strong>Access Keys (CSV upload)</strong> or an <strong>Enterprise IAM Role</strong>. All data shown is fetched live from your connected cloud environment.
             </p>
           </div>
         </div>
@@ -302,7 +287,7 @@ const DataSourcesTab = ({ showToast }) => {
           style={{ padding: '6px 12px', fontSize: '12px' }}
         >
           <RefreshCw size={12} className={cloudLoading ? 'animate-spin' : ''} />
-          {cloudLoading ? 'Probing...' : 'Refresh Status'}
+          {cloudLoading ? 'Checking...' : 'Refresh Status'}
         </button>
       </div>
 
@@ -310,10 +295,10 @@ const DataSourcesTab = ({ showToast }) => {
       <div className="figma-card" style={{ padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Configured Telemetry & Cloud Connectors
+            Your Cloud Accounts
           </h3>
           <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-            4 production sources registered
+            {cloudProbe?.status === 'CONNECTED' ? '1 account connected' : 'No accounts connected'}
           </span>
         </div>
 
@@ -344,12 +329,16 @@ const DataSourcesTab = ({ showToast }) => {
                     fontWeight: 600,
                     padding: '3px 8px',
                     borderRadius: '4px',
-                    backgroundColor: s.badge.includes('Live AWS') 
-                      ? 'rgba(56, 189, 248, 0.15)' 
-                      : (s.status === 'CONNECTED' ? 'var(--success-bg)' : 'var(--sev-high-bg)'),
-                    color: s.badge.includes('Live AWS') 
-                      ? '#38bdf8' 
-                      : (s.status === 'CONNECTED' ? 'var(--success-color)' : 'var(--sev-high)')
+                    backgroundColor: s.badge === 'Live AWS'
+                      ? 'rgba(56, 189, 248, 0.15)'
+                      : s.badge === 'Not Connected'
+                      ? 'rgba(234, 179, 8, 0.1)'
+                      : 'var(--success-bg)',
+                    color: s.badge === 'Live AWS'
+                      ? '#38bdf8'
+                      : s.badge === 'Not Connected'
+                      ? '#eab308'
+                      : 'var(--success-color)'
                   }}>
                     {s.badge}
                   </span>
@@ -418,33 +407,10 @@ const DataSourcesTab = ({ showToast }) => {
               </button>
             </div>
 
-            {/* STEP 1: 3 SIMPLE CONNECTION CARDS */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '18px' }}>
-              {/* Option 1: LocalStack Demo */}
-              <div 
-                onClick={() => setAuthMode('localstack')}
-                style={{
-                  border: authMode === 'localstack' ? '2px solid #38bdf8' : '1px solid var(--border-subtle)',
-                  backgroundColor: authMode === 'localstack' ? 'rgba(56, 189, 248, 0.08)' : 'var(--surface-muted)',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <Server size={18} style={{ color: authMode === 'localstack' ? '#38bdf8' : 'var(--text-secondary)' }} />
-                  <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--success-bg)', color: 'var(--success-color)' }}>
-                    FREE
-                  </span>
-                </div>
-                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>1-Click Demo</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.3 }}>
-                  Offline sandbox. No AWS account needed.
-                </div>
-              </div>
+            {/* STEP 1: 2 CONNECTION MODES (removed LocalStack - not relevant for company users) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '18px' }}>
 
-              {/* Option 2: Direct AWS Keys */}
+              {/* Option 1: Direct AWS Keys */}
               <div 
                 onClick={() => setAuthMode('direct_keys')}
                 style={{
@@ -458,17 +424,17 @@ const DataSourcesTab = ({ showToast }) => {
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <Key size={18} style={{ color: authMode === 'direct_keys' ? '#38bdf8' : 'var(--text-secondary)' }} />
-                  <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--surface-card)', color: 'var(--text-secondary)' }}>
+                  <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--success-bg)', color: 'var(--success-color)' }}>
                     STANDARD
                   </span>
                 </div>
-                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>Real AWS (Keys)</div>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>AWS Access Keys</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.3 }}>
-                  Connect with AWS Access Key & Secret.
+                  Upload CSV or paste IAM credentials.
                 </div>
               </div>
 
-              {/* Option 3: Enterprise Role */}
+              {/* Option 2: Enterprise Role */}
               <div 
                 onClick={() => setAuthMode('sts_assumerole')}
                 style={{
@@ -486,14 +452,14 @@ const DataSourcesTab = ({ showToast }) => {
                     ENTERPRISE
                   </span>
                 </div>
-                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>IAM Role (SaaS)</div>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>IAM Role (STS)</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.3 }}>
-                  Keyless cross-account STS role assumption.
+                  Keyless cross-account role assumption.
                 </div>
               </div>
             </div>
 
-            {/* STEP 2: SIMPLE FORM ACCORDING TO SELECTION */}
+            {/* STEP 2: CREDENTIALS CONFIGURATION */}
             <div style={{ backgroundColor: 'var(--surface-muted)', padding: '16px', borderRadius: '8px', marginBottom: '18px' }}>
               {/* Option 1: LocalStack Simple View */}
               {authMode === 'localstack' && (
@@ -505,11 +471,11 @@ const DataSourcesTab = ({ showToast }) => {
                     </span>
                   </div>
                   <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 12px 0', lineHeight: 1.4 }}>
-                    RAM Antivirus will connect to your local emulator on <code>http://localhost:4566</code>. S3, EC2 security groups, and IAM are simulated for safe evaluation.
+                    RAM Antivirus connects to your local emulator on <code>http://localhost:4566</code> to audit local S3, EC2 security groups, and IAM policies.
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      LocalStack Endpoint URL (Default)
+                      LocalStack Endpoint URL
                     </label>
                     <input
                       type="text"
@@ -525,9 +491,54 @@ const DataSourcesTab = ({ showToast }) => {
               {/* Option 2: Direct AWS Access Keys */}
               {authMode === 'direct_keys' && (
                 <div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                    Enter your AWS IAM credentials. Temporary or sandbox credentials with <code>SecurityAudit</code> read-only permissions are recommended.
+                  {/* CSV FILE DROPZONE */}
+                  <div style={{
+                    border: '1.5px dashed #38bdf8',
+                    borderRadius: '8px',
+                    padding: '14px 16px',
+                    textAlign: 'center',
+                    backgroundColor: 'rgba(56, 189, 248, 0.05)',
+                    marginBottom: '14px',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={handleCsvUpload}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0,
+                        cursor: 'pointer'
+                      }}
+                      title="Upload AWS credentials.csv"
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Upload size={17} style={{ color: '#38bdf8' }} />
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          Click to upload AWS credentials.csv
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        Directly extracts your Access Key ID & Secret from the file downloaded in IAM
+                      </span>
+                    </div>
                   </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0 12px 0' }}>
+                    <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+                    <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Or enter credentials manually
+                    </span>
+                    <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+                  </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
@@ -537,7 +548,7 @@ const DataSourcesTab = ({ showToast }) => {
                         type="text"
                         value={awsForm.access_key_id}
                         onChange={(e) => setAwsForm({ ...awsForm, access_key_id: e.target.value })}
-                        placeholder="AKIAIOSFODNN7EXAMPLE"
+                        placeholder="AKIA..."
                         className="figma-filter-select"
                         style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
                       />
@@ -556,18 +567,75 @@ const DataSourcesTab = ({ showToast }) => {
                       />
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      AWS Region
-                    </label>
-                    <input
-                      type="text"
-                      value={awsForm.region}
-                      onChange={(e) => setAwsForm({ ...awsForm, region: e.target.value })}
-                      placeholder="us-east-1"
-                      className="figma-filter-select"
-                      style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
-                    />
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        AWS Region
+                      </label>
+                      <input
+                        type="text"
+                        value={awsForm.region}
+                        onChange={(e) => setAwsForm({ ...awsForm, region: e.target.value })}
+                        placeholder="ap-southeast-2"
+                        className="figma-filter-select"
+                        style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        Session Token (Optional / SSO)
+                      </label>
+                      <input
+                        type="password"
+                        value={awsForm.session_token}
+                        onChange={(e) => setAwsForm({ ...awsForm, session_token: e.target.value })}
+                        placeholder="Paste if using temporary / SSO credentials"
+                        className="figma-filter-select"
+                        style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* QUICK HOW-TO GUIDE TOGGLE */}
+                  <div style={{ marginTop: '12px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowGuide(!showGuide)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-secondary)',
+                        fontSize: '11.5px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '2px 0'
+                      }}
+                    >
+                      <HelpCircle size={13} style={{ color: '#38bdf8' }} />
+                      <span>{showGuide ? 'Hide quick connection guide' : 'Need help? How to connect in 30 seconds'}</span>
+                    </button>
+                    {showGuide && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '10px 14px',
+                        backgroundColor: 'var(--surface-card)',
+                        borderRadius: '6px',
+                        border: '1px solid var(--border-subtle)',
+                        fontSize: '11.5px',
+                        lineHeight: '1.6',
+                        color: 'var(--text-secondary)'
+                      }}>
+                        <ol style={{ margin: '0', paddingLeft: '16px' }}>
+                          <li>In your AWS Console, open <strong>IAM</strong> &rarr; <strong>Users</strong> &rarr; click on your user.</li>
+                          <li>Go to the <strong>Security credentials</strong> tab &rarr; click <strong>Create access key</strong>.</li>
+                          <li>Select <strong>Third-party service</strong> &rarr; click <strong>Next</strong> &rarr; click <strong>Download .csv file</strong>.</li>
+                          <li>Upload that downloaded <code>.csv</code> file above and click <strong>Connect Cloud</strong> below!</li>
+                        </ol>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -711,16 +779,7 @@ const DataSourcesTab = ({ showToast }) => {
                   style={{ fontSize: '11px', padding: '4px 10px' }}
                 >
                   <Activity size={12} className={scanningCloud ? 'animate-spin' : ''} />
-                  {scanningCloud ? 'Scanning...' : 'Test Security Scan'}
-                </button>
-                <button
-                  className="figma-btn-secondary"
-                  onClick={handleSimulateCloudTrailStream}
-                  disabled={ingestingStream}
-                  style={{ fontSize: '11px', padding: '4px 10px' }}
-                >
-                  <Play size={12} className={ingestingStream ? 'animate-spin' : ''} />
-                  {ingestingStream ? 'Sending...' : 'Test Cloud Alert'}
+                  {scanningCloud ? 'Auditing...' : 'Run Live Posture Audit'}
                 </button>
               </div>
             </div>
@@ -748,105 +807,7 @@ const DataSourcesTab = ({ showToast }) => {
         </div>
       )}
 
-      {/* 4. GENERIC SETTINGS MODAL (WAZUH / SQLITE / PYOD) */}
-      {activeConfig && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(3px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="figma-card" style={{
-            width: '100%',
-            maxWidth: '620px',
-            padding: '24px',
-            backgroundColor: 'var(--surface-card)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: '10px',
-            boxShadow: '0 12px 36px rgba(0,0,0,0.4)',
-            animation: 'fadeIn 0.2s ease'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                  {activeConfig.title}
-                </h3>
-                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-                  {activeConfig.description}
-                </p>
-              </div>
-              <button
-                onClick={() => setActiveConfig(null)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', marginBottom: '20px' }}>
-              {activeConfig.fields.map((f, i) => (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                    {f.label}
-                  </label>
-                  <input
-                    type="text"
-                    defaultValue={f.value}
-                    className="figma-filter-select"
-                    style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-muted)' }}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {testResult && (
-              <div style={{
-                padding: '12px 14px',
-                background: 'rgba(46, 160, 67, 0.1)',
-                border: '1px solid rgba(46, 160, 67, 0.3)',
-                borderRadius: '6px',
-                marginBottom: '16px',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px'
-              }}>
-                <CheckCircle size={16} style={{ color: 'var(--success-color)', flexShrink: 0, marginTop: '2px' }} />
-                <div style={{ fontSize: '12.5px', color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                  {testResult.text}
-                </div>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                className="figma-btn-secondary"
-                onClick={handleGenericTest}
-                disabled={testingConnection}
-              >
-                <RefreshCw size={13} className={testingConnection ? 'animate-spin' : ''} />
-                {testingConnection ? 'Probing Connector...' : 'Test Connection'}
-              </button>
-              <button
-                className="figma-btn-primary"
-                onClick={() => {
-                  if (showToast) showToast('Connector configuration saved!');
-                  setActiveConfig(null);
-                }}
-              >
-                Save & Apply
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 3. CLOUD MODAL END */}
     </div>
   );
 };

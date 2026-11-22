@@ -55,7 +55,7 @@ export const ForensicsBanner = ({ incident, explainable }) => {
         <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--success-color)', marginTop: '2px' }}>
           {Math.round((incident.correlation_score || 0.96) * 100)}% Verified
         </div>
-        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Wazuh + CloudTrail Telemetry</span>
+        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>AWS CloudTrail & Audit Telemetry</span>
       </div>
     </div>
   );

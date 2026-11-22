@@ -72,11 +72,18 @@ def _verify_password(password: str, stored_hash: str) -> bool:
 def _row_to_user(row) -> Dict:
     if row is None:
         return None
+    d = dict(row)
     return {
-        "user_id": row["user_id"], "username": row["username"], "email": row["email"],
-        "password_hash": row["password_hash"], "role": row["role"], "full_name": row["full_name"],
-        "created_at": row["created_at"], "last_login": row["last_login"],
-        "is_active": bool(row["is_active"])
+        "user_id": d.get("user_id"),
+        "org_id": d.get("org_id"),
+        "username": d.get("username"),
+        "email": d.get("email"),
+        "password_hash": d.get("password_hash"),
+        "role": d.get("role"),
+        "full_name": d.get("full_name"),
+        "created_at": d.get("created_at"),
+        "last_login": d.get("last_login"),
+        "is_active": bool(d.get("is_active", 1))
     }
 
 
@@ -91,21 +98,20 @@ def _save_user(user: Dict):
     conn = get_conn()
     conn.execute(
         """INSERT OR REPLACE INTO users
-           (user_id,username,email,password_hash,role,full_name,created_at,last_login,is_active)
-           VALUES (?,?,?,?,?,?,?,?,?)""",
-        (user["user_id"], user["username"], user["email"], user["password_hash"],
+           (user_id,org_id,username,email,password_hash,role,full_name,created_at,last_login,is_active)
+           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+        (user["user_id"], user.get("org_id"), user["username"], user["email"], user["password_hash"],
          user["role"], user["full_name"], user["created_at"], user["last_login"], int(user["is_active"]))
     )
     conn.commit()
     conn.close()
 
 
-# Seed default users if not present
+# Seed default users if not present (Admin & Demo User)
 def _seed_defaults():
     _defaults = [
-        {"username": "admin",    "password": "admin123",   "email": "admin@ramantivirus.com",   "role": "admin",   "full_name": "System Administrator"},
-        {"username": "analyst1", "password": "analyst123", "email": "analyst@ramantivirus.com", "role": "analyst", "full_name": "Security Analyst"},
-        {"username": "viewer1",  "password": "viewer123",  "email": "viewer@ramantivirus.com",  "role": "viewer",  "full_name": "Dashboard Viewer"},
+        {"username": "admin", "password": "admin123", "email": "admin@ramantivirus.com", "role": "admin", "full_name": "System Administrator"},
+        {"username": "demo",  "password": "demo123",  "email": "demo@ramantivirus.com",  "role": "analyst", "full_name": "Demo User"},
     ]
     for u in _defaults:
         existing = _get_user(u["username"])
@@ -164,7 +170,7 @@ ROLE_PERMISSIONS = {
 
 
 # ── Registration ─────────────────────────────────────────────────────────────
-def register_user(username: str, password: str, email: str, role: str = "viewer", full_name: str = "") -> Dict:
+def register_user(username: str, password: str, email: str, role: str = "viewer", full_name: str = "", org_id: Optional[str] = None) -> Dict:
     """
     Register a new user with the given credentials and role.
     Returns user info (without password hash) or error.
@@ -190,10 +196,16 @@ def register_user(username: str, password: str, email: str, role: str = "viewer"
 
     user_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Sanitize full_name - never allow password strings to become the display name
+    safe_full_name = full_name.strip() if full_name else username
+    if safe_full_name.lower() in ("password", "password123", password.lower(), ""):
+        safe_full_name = f"{username.capitalize()} User"
+
     _save_user({
-        "user_id": user_id, "username": username, "email": email,
+        "user_id": user_id, "org_id": org_id, "username": username, "email": email,
         "password_hash": _hash_password(password), "role": role,
-        "full_name": full_name or username, "created_at": now,
+        "full_name": safe_full_name, "created_at": now,
         "last_login": None, "is_active": True
     })
     
@@ -201,14 +213,81 @@ def register_user(username: str, password: str, email: str, role: str = "viewer"
         "success": True,
         "user": {
             "user_id": user_id,
+            "org_id": org_id,
             "username": username,
             "email": email,
             "role": role,
-            "full_name": full_name or username,
+            "full_name": safe_full_name,
             "permissions": ROLE_PERMISSIONS[role]["permissions"],
             "created_at": now
         }
     }
+
+
+def register_company(company_name: str, admin_name: str, email: str, password: str, username: str = None) -> Dict:
+    """
+    Self-serve registration for new enterprise company accounts.
+    Creates an organization record, tenant ID, unique AWS External ID, and initial admin account.
+    """
+    if not company_name or len(company_name.strip()) < 2:
+        return {"success": False, "error": "Company name must be at least 2 characters"}
+    if not email or "@" not in email:
+        return {"success": False, "error": "A valid business email is required"}
+    if not password or len(password) < 6:
+        return {"success": False, "error": "Password must be at least 6 characters"}
+
+    user_name = (username or email.split("@")[0]).lower().replace(".", "_").replace("-", "_")
+    base_user = user_name
+    counter = 1
+    while _get_user(user_name):
+        user_name = f"{base_user}_{counter}"
+        counter += 1
+
+    org_id = f"org_{uuid.uuid4().hex[:8]}"
+    clean_org_slug = "".join(c for c in company_name.upper() if c.isalnum() or c == "-")[:12] or "TENANT"
+    external_id = f"RAM-{clean_org_slug}-{uuid.uuid4().hex[:6].upper()}"
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    conn = get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO organizations (org_id, name, external_id, industry, created_at) VALUES (?, ?, ?, ?, ?)",
+            (org_id, company_name.strip(), external_id, "Cloud Infrastructure", now)
+        )
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+    # Sanitize admin name to prevent accidental password autofill leaks
+    safe_admin_name = admin_name.strip() if admin_name else f"{company_name.strip()} Admin"
+    if safe_admin_name.lower() in ("password", "password123", password.lower(), ""):
+        safe_admin_name = f"{company_name.strip()} Admin"
+
+    user_res = register_user(
+        username=user_name,
+        password=password,
+        email=email.strip().lower(),
+        role="admin",
+        full_name=safe_admin_name,
+        org_id=org_id
+    )
+    if not user_res.get("success"):
+        return user_res
+
+    login_res = login_user(user_name, password)
+    if not login_res.get("success"):
+        return login_res
+
+    login_res["organization"] = {
+        "org_id": org_id,
+        "company_name": company_name.strip(),
+        "external_id": external_id
+    }
+    login_res["is_new_registration"] = True
+    return login_res
+    return login_res
 
 
 # ── Login & Token Generation ─────────────────────────────────────────────────
@@ -234,12 +313,32 @@ def login_user(username: str, password: str) -> Dict:
     now = datetime.now(timezone.utc)
     user["last_login"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     _save_user(user)
+
+    # Fetch organization details for multi-tenant isolation
+    org_id = user.get("org_id")
+    company_name = None
+    external_id = None
+    if org_id:
+        conn = get_conn()
+        org_row = conn.execute("SELECT name, external_id FROM organizations WHERE org_id = ?", (org_id,)).fetchone()
+        conn.close()
+        if org_row:
+            company_name = org_row["name"]
+            external_id = org_row["external_id"]
+    elif user["username"] == "admin":
+        company_name = "RAM Antivirus Platform"
+        org_id = "org_system_master"
+
+    role_label = "System Admin" if user["username"] == "admin" else ("Company Admin" if user["role"] == "admin" else "Security Analyst")
     
     # Generate JWT token
     payload = {
         "user_id": user["user_id"],
         "username": user["username"],
         "role": user["role"],
+        "role_label": role_label,
+        "org_id": org_id,
+        "company_name": company_name,
         "permissions": ROLE_PERMISSIONS[user["role"]]["permissions"],
         "iat": now,
         "exp": now + timedelta(hours=JWT_EXPIRATION_HOURS),
@@ -251,13 +350,18 @@ def login_user(username: str, password: str) -> Dict:
     return {
         "success": True,
         "token": token,
+        "access_token": token,
         "token_type": "Bearer",
         "expires_in": JWT_EXPIRATION_HOURS * 3600,
         "user": {
             "user_id": user["user_id"],
+            "org_id": org_id,
+            "company_name": company_name,
+            "external_id": external_id,
             "username": user["username"],
             "email": user["email"],
             "role": user["role"],
+            "role_label": role_label,
             "full_name": user["full_name"],
             "permissions": ROLE_PERMISSIONS[user["role"]]["permissions"]
         }
@@ -296,7 +400,11 @@ def check_permission(token: str, required_permission: str) -> Dict:
             "user": {
                 "user_id": result["payload"]["user_id"],
                 "username": result["payload"]["username"],
-                "role": result["payload"]["role"]
+                "role": result["payload"]["role"],
+                "org_id": result["payload"].get("org_id"),
+                "company_name": result["payload"].get("company_name"),
+                "full_name": result["payload"].get("full_name"),
+                "permissions": user_permissions
             }
         }
     

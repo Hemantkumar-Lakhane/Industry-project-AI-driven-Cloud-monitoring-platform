@@ -35,66 +35,34 @@ const RiskScoreTab = ({
   }, []);
 
   // Compute live posture metrics from real findings & telemetry data
-  const totalFindings = findings.length > 0 ? findings.length : 101;
-  const criticalCount = findings.filter(f => (f.severity || '').toLowerCase() === 'critical').length || 14;
-  const highCount = findings.filter(f => (f.severity || '').toLowerCase() === 'high').length || 87;
+  const totalFindings = findings.length;
+  const criticalCount = findings.filter(f => (f.severity || '').toLowerCase() === 'critical').length;
+  const highCount = findings.filter(f => (f.severity || '').toLowerCase() === 'high').length;
 
-  // Real fallback score calculated from actual telemetry findings density
-  const calculatedFallbackScore = Math.min(Math.round(40 + (criticalCount * 2.2) + (highCount * 0.1)), 94);
-  const unifiedScore = risk?.unified_risk_score ?? calculatedFallbackScore;
-  const riskLevel = risk?.unified_risk_level?.toUpperCase() ?? (unifiedScore >= 75 ? 'CRITICAL' : (unifiedScore >= 50 ? 'HIGH' : 'MEDIUM'));
-  const scoreColor = unifiedScore >= 75 ? 'var(--sev-critical)' : (unifiedScore >= 50 ? 'var(--sev-high)' : 'var(--sev-medium)');
+  const isEvaluated = Boolean(risk?.unified_risk_score && risk.unified_risk_score > 0) || totalFindings > 0;
+  const unifiedScore = isEvaluated
+    ? (risk?.unified_risk_score ?? Math.min(Math.round(20 + (criticalCount * 25) + (highCount * 12)), 95))
+    : 0;
+
+  const riskLevel = !isEvaluated
+    ? 'NOT EVALUATED'
+    : (risk?.unified_risk_level?.toUpperCase() ?? (unifiedScore >= 75 ? 'CRITICAL' : (unifiedScore >= 50 ? 'HIGH' : 'MEDIUM')));
+
+  const scoreColor = !isEvaluated
+    ? 'var(--text-tertiary)'
+    : (unifiedScore >= 75 ? 'var(--sev-critical)' : (unifiedScore >= 50 ? 'var(--sev-high)' : 'var(--sev-medium)'));
 
   // 7-Day Trend ending at current live date
-  const trendData = risk?.trend || [
-    { period: '21 Oct', score: 62.0 },
-    { period: '22 Oct', score: 64.5 },
-    { period: '23 Oct', score: 68.0 },
-    { period: '24 Oct', score: 71.2 },
-    { period: '25 Oct', score: 74.0 },
-    { period: '26 Oct', score: 78.4 },
-    { period: liveTime ? liveTime.dayMonth : 'Today', score: unifiedScore },
-  ];
+  const trendData = (risk?.trend && Array.isArray(risk.trend))
+    ? risk.trend
+    : (isEvaluated ? [{ period: liveTime ? liveTime.dayMonth : 'Today', score: unifiedScore }] : []);
 
-  // Actionable risk drivers mapped directly to real active findings or backend drivers
-  const realDrivers = (findings.length > 0 ? findings.slice(0, 4) : [
-    {
-      finding_id: 'FIND-IAM_-7DA1C793',
-      title: 'IAM Privilege Escalation: Excessive Access Granted via User attached AdministratorAccess policy',
-      affected_principal: 'svc-worker',
-      affected_resource: 'arn:aws:iam::123456789012:user/svc-worker',
-      data_source: 'LIVE · CloudTrail',
-      severity: 'critical'
-    },
-    {
-      finding_id: 'FIND-IAM_-89814445',
-      title: 'Privilege escalation via sudo without authorization ticket',
-      affected_principal: 'dave',
-      affected_resource: 'host-bastion-prod-01',
-      data_source: 'LIVE · Wazuh SIEM',
-      severity: 'critical'
-    },
-    {
-      finding_id: 'FIND-NETW-001',
-      title: 'Security Group ingress open to all internet traffic (0.0.0.0/0:22)',
-      affected_principal: 'network-admin',
-      affected_resource: 'sg-public-ssh-web',
-      data_source: 'CSPM · Network',
-      severity: 'high'
-    },
-    {
-      finding_id: 'FIND-STOR-002',
-      title: 'S3 public access block disabled on sensitive records bucket',
-      affected_principal: 'storage-service',
-      affected_resource: 's3://prod-customer-archive-2026',
-      data_source: 'CSPM · Storage',
-      severity: 'high'
-    }
-  ]).map((f, i) => ({
+  // Actionable risk drivers mapped directly to real active findings
+  const realDrivers = findings.slice(0, 4).map((f, i) => ({
     id: f.finding_id || `FIND-SEC-${i + 1}`,
-    title: f.title || 'Security Anomaly',
+    title: f.title || 'Security Finding',
     resource: `${f.affected_principal || f.affected_resource || 'cloud-resource'} ↗`,
-    source: (f.data_source || 'LIVE').toUpperCase(),
+    source: (f.data_source || 'LIVE_AWS').toUpperCase(),
     severity: (f.severity || 'high').toLowerCase(),
     raw: f
   }));
@@ -168,7 +136,7 @@ const RiskScoreTab = ({
             </div>
 
             <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '14px' }}>
-              Trend <span style={{ color: 'var(--sev-high)', fontWeight: 600 }}>+3.2%</span> vs last baseline · Last evaluation <strong>{liveTime ? liveTime.timeStr + ' UTC' : 'Active'}</strong>
+              Trend <span style={{ color: isEvaluated ? 'var(--sev-high)' : 'var(--text-tertiary)', fontWeight: 600 }}>{risk?.trend || '0.0%'}</span> vs baseline · Last evaluation <strong>{isEvaluated && liveTime ? liveTime.timeStr + ' UTC' : 'Not Evaluated'}</strong>
             </div>
 
             <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>
@@ -337,24 +305,30 @@ const RiskScoreTab = ({
           </div>
 
           <div style={{ height: '200px', width: '100%' }}>
-            <ResponsiveContainer>
-              <LineChart data={trendData}>
-                <XAxis dataKey="period" stroke="#8b949e" tick={{ fontSize: 11 }} />
-                <YAxis stroke="#8b949e" domain={[40, 100]} tick={{ fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: '8px', fontSize: '12px' }}
-                  formatter={(val) => [`${val} / 100`, 'Risk Score']}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="score"
-                  stroke="var(--accent-orange)"
-                  strokeWidth={2.5}
-                  dot={{ fill: 'var(--accent-orange)', r: 4 }}
-                  activeDot={{ r: 6, fill: 'var(--sev-critical)' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {trendData && trendData.length > 0 ? (
+              <ResponsiveContainer>
+                <LineChart data={trendData}>
+                  <XAxis dataKey="period" stroke="#8b949e" tick={{ fontSize: 11 }} />
+                  <YAxis stroke="#8b949e" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: '8px', fontSize: '12px' }}
+                    formatter={(val) => [`${val} / 100`, 'Risk Score']}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="var(--accent-orange)"
+                    strokeWidth={2.5}
+                    dot={{ fill: 'var(--accent-orange)', r: 4 }}
+                    activeDot={{ r: 6, fill: 'var(--sev-critical)' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                No historical trend data yet. Connect AWS to establish baseline risk metrics.
+              </div>
+            )}
           </div>
         </div>
 
@@ -363,17 +337,24 @@ const RiskScoreTab = ({
             <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
               Automated Response Thresholds
             </h3>
-            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sev-critical)' }}>
-              ACTIVE GUARDRAILS
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: '4px',
+              backgroundColor: (isEvaluated && criticalCount > 0) ? 'rgba(255, 69, 58, 0.15)' : 'rgba(52, 199, 89, 0.15)',
+              color: (isEvaluated && criticalCount > 0) ? 'var(--sev-critical)' : 'var(--success-color)'
+            }}>
+              {(isEvaluated && criticalCount > 0) ? 'ACTIVE THREAT DETECTED' : 'GUARDRAILS ARMED'}
             </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {[
-              { action: 'Auto-Remediate High Risk', triggered: true, desc: 'Execute validated dry-run playbooks' },
-              { action: 'Isolate Compromised Identities', triggered: true, desc: 'Revoke active STS sessions for flagged principals' },
-              { action: 'Enforce Least-Privilege Guardrails', triggered: true, desc: 'Detach wildcards and admin policies' },
-              { action: 'Generate Incident Report', triggered: true, desc: 'Compile compliance audit trail' },
+              { action: 'Auto-Remediate High Risk', triggered: isEvaluated && criticalCount > 0, desc: 'Execute validated dry-run playbooks' },
+              { action: 'Isolate Compromised Identities', triggered: isEvaluated && criticalCount > 1, desc: 'Revoke active STS sessions for flagged principals' },
+              { action: 'Enforce Least-Privilege Guardrails', triggered: isEvaluated && criticalCount > 2, desc: 'Detach wildcards and admin policies' },
+              { action: 'Generate Incident Report', triggered: isEvaluated && totalFindings > 0, desc: 'Compile compliance audit trail' },
               { action: 'Block Malicious Ingress IPs', triggered: false, desc: 'WAF / Security Group rate limiting' }
             ].map((item, i) => (
               <div
@@ -434,47 +415,55 @@ const RiskScoreTab = ({
             </tr>
           </thead>
           <tbody>
-            {displayDrivers.map((driver, idx) => (
-              <tr
-                key={idx}
-                onClick={() => {
-                  if (onInvestigateFinding) onInvestigateFinding(driver.raw || driver);
-                }}
-                style={{ cursor: 'pointer' }}
-                title="Click to remediate this finding"
-              >
-                <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className={`figma-dot-badge ${driver.severity || 'high'}`}>
-                      {(driver.severity || 'high').toUpperCase()}
-                    </span>
-                    <div>
-                      <div>{driver.title}</div>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                        {driver.id || driver.finding_id}
+            {displayDrivers.length > 0 ? (
+              displayDrivers.map((driver, idx) => (
+                <tr
+                  key={idx}
+                  onClick={() => {
+                    if (onInvestigateFinding) onInvestigateFinding(driver.raw || driver);
+                  }}
+                  style={{ cursor: 'pointer' }}
+                  title="Click to remediate this finding"
+                >
+                  <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className={`figma-dot-badge ${driver.severity || 'high'}`}>
+                        {(driver.severity || 'high').toUpperCase()}
                       </span>
+                      <div>
+                        <div>{driver.title}</div>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                          {driver.id || driver.finding_id}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td style={{ color: 'var(--accent-orange)' }}>
-                  {driver.resource}
-                </td>
-                <td style={{ color: 'var(--text-secondary)', fontSize: '12.5px' }}>
-                  {driver.source}
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <button
-                    className="figma-link-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onInvestigateFinding) onInvestigateFinding(driver.raw || driver);
-                    }}
-                  >
-                    Remediate →
-                  </button>
+                  </td>
+                  <td style={{ color: 'var(--accent-orange)' }}>
+                    {driver.resource}
+                  </td>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                    {driver.source}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      className="figma-link-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onInvestigateFinding) onInvestigateFinding(driver.raw || driver);
+                      }}
+                    >
+                      Remediate →
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                  No active risk drivers. All posture checks clear or cloud environment not yet linked.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>

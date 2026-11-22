@@ -38,16 +38,9 @@ def get_wazuh_log_path() -> str:
         if os.path.exists(p) and os.path.getsize(p) > 0:
             return p
 
-    # Auto-seed baseline alerts.json if missing so Wazuh is always available
     default_log = os.path.join(base_dir, "data", "alerts.json")
-    try:
-        os.makedirs(os.path.dirname(default_log), exist_ok=True)
-        from simulator.log_generator import generate_batch, append_to_log
-        append_to_log(generate_batch())
-        if os.path.exists(default_log):
-            return default_log
-    except Exception:
-        pass
+    if os.path.exists(default_log) and os.path.getsize(default_log) > 0:
+        return default_log
 
     return env_path or "/var/ossec/logs/alerts/alerts.json"
 

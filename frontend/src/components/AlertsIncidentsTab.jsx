@@ -220,7 +220,7 @@ const AlertsIncidentsTab = ({
         <div class="report-header">
           <div>
             <div class="brand-title">RAM Antivirus — SOC Threat Intelligence & Incident Report</div>
-            <div class="brand-subtitle">Automated Ingestion, PyOD Behavioral Analytics & Wazuh SIEM Incident Correlation</div>
+            <div class="brand-subtitle">Automated Ingestion, Cloud Behavioral Analytics & Real-time Incident Correlation</div>
           </div>
           <div style="text-align: right; font-size: 11px; color: #64748b;">
             <div><strong>Generated:</strong> ${dateFormatted}</div>
@@ -349,7 +349,7 @@ const AlertsIncidentsTab = ({
       'Principal / Identity': principal,
       'Target Resource': resource,
       'API / Operation': telemetry.action || telemetry.event_name || (cat.includes('iam') ? 'AttachUserPolicy' : (cat.includes('exfil') ? 'GetObject' : (cat.includes('brute') ? 'SSH_AUTH_FAIL' : 'DescribeInstances'))),
-      'Event Source': telemetry.event_source || (cat.includes('iam') ? 'iam.amazonaws.com' : (cat.includes('wazuh') || cat.includes('brute') ? 'ossec.wazuh.agent' : 'cloudtrail.amazonaws.com')),
+      'Event Source': telemetry.event_source || (cat.includes('iam') ? 'iam.amazonaws.com' : 'cloudtrail.amazonaws.com'),
       'Execution Status': telemetry.status || (cat.includes('brute') ? 'Failed (Auth Error)' : 'Success (HTTP 200)'),
       'MFA Verified': cat.includes('iam') ? 'False (Direct API Access)' : 'True (Session Inherited)',
       'Triggering Event ID': raw.evidence?.triggering_event_ids?.[0] || `EVT-${findingId.slice(-6)}`,

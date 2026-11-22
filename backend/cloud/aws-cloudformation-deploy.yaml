@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RAM Antivirus - Autonomous AI-Driven Cloud Workload Security Platform (AWS Production Deployment)'
+
+Parameters:
+  ServiceName:
+    Type: String
+    Default: 'ram-antivirus-platform'
+    Description: 'Name of the App Runner service'
+
+  ContainerImageUri:
+    Type: String
+    Description: 'ECR container image URI (e.g. 617711904818.dkr.ecr.ap-southeast-2.amazonaws.com/ram-antivirus:latest)'
+    Default: 'public.ecr.aws/docker/library/python:3.11-slim'
+
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: 'Production JWT Secret for session signing'
+    Default: 'ram-antivirus-production-enterprise-jwt-key-2026'
+
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: 'PostgreSQL Database Connection String'
+    Default: 'postgresql://cloudresume_admin:YourDbPassword@cloudresume-postgres.cd8ewc4qw5qp.ap-southeast-2.rds.amazonaws.com:5432/cloudresumeai_prod'
+
+Resources:
+  # 1. IAM Execution Role for App Runner
+  AppRunnerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ServiceName}-execution-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: build.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
+
+  # 2. IAM Instance Role for Auditing AWS Telemetry (SecurityAudit & ViewOnlyAccess)
+  AppRunnerInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ServiceName}-instance-audit-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/SecurityAudit
+        - arn:aws:iam::aws:policy/job-function/ViewOnlyAccess
+
+  # 3. AWS App Runner Production Service
+  AppRunnerService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Ref ServiceName
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !GetAtt AppRunnerExecutionRole.Arn
+        AutoDeploymentsEnabled: true
+        ImageRepository:
+          ImageIdentifier: !Ref ContainerImageUri
+          ImageRepositoryType: ECR
+          ImageConfiguration:
+            Port: '8000'
+            RuntimeEnvironmentVariables:
+              - Name: ENV
+                Value: 'production'
+              - Name: JWT_SECRET
+                Value: !Ref JwtSecret
+              - Name: DATABASE_URL
+                Value: !Ref DatabaseUrl
+              - Name: AWS_DEFAULT_REGION
+                Value: !Ref 'AWS::Region'
+      InstanceConfiguration:
+        Cpu: '1024'
+        Memory: '2048'
+        InstanceRoleArn: !GetAtt AppRunnerInstanceRole.Arn
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: '/healthz'
+        Interval: 10
+        Timeout: 5
+        HealthyThreshold: 1
+        UnhealthyThreshold: 3
+
+Outputs:
+  ServiceUrl:
+    Description: 'Public HTTPS URL for the deployed RAM Antivirus SaaS Platform'
+    Value: !GetAtt AppRunnerService.ServiceUrl
+  ServiceArn:
+    Description: 'ARN of the deployed App Runner service'
+    Value: !GetAtt AppRunnerService.ServiceArn

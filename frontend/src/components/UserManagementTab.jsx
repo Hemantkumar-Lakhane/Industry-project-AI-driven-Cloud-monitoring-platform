@@ -86,7 +86,7 @@ const UserManagementTab = ({ token, showToast }) => {
     }
   };
 
-  // Only display real users from SQLite database - NO FAKE FALLBACK USERS
+  // Display real authenticated users for this organization
   const displayUsers = (users || []).map(u => ({
     name: u.full_name || u.username,
     username: u.username,

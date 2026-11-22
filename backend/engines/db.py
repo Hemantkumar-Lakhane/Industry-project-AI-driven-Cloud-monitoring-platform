@@ -1,6 +1,6 @@
 """
-SQLite Persistence Layer
-Handles users, risk history, scan history, compliance history, and alerts.
+Multi-Tenant Persistence Layer (SQLite & PostgreSQL / Supabase / Render Compatible)
+Handles organizations, multi-tenant users, cloud account connections, findings, and posture history.
 """
 import sqlite3
 import os
@@ -8,10 +8,17 @@ import json
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "security.db")
 
 
 def get_conn():
+    if DATABASE_URL and (DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")):
+        import psycopg2
+        import psycopg2.extras
+        conn = psycopg2.connect(DATABASE_URL)
+        return conn
+
     conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
     try:
@@ -25,8 +32,17 @@ def get_conn():
 def init_db():
     conn = get_conn()
     conn.executescript("""
+        CREATE TABLE IF NOT EXISTS organizations (
+            org_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            external_id TEXT UNIQUE NOT NULL,
+            industry TEXT DEFAULT 'Technology',
+            created_at TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS users (
             user_id TEXT PRIMARY KEY,
+            org_id TEXT,
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
@@ -37,8 +53,27 @@ def init_db():
             is_active INTEGER DEFAULT 1
         );
 
+        CREATE TABLE IF NOT EXISTS tenant_cloud_connections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            org_id TEXT NOT NULL,
+            provider TEXT NOT NULL DEFAULT 'aws',
+            account_id TEXT,
+            auth_mode TEXT DEFAULT 'direct_keys',
+            region TEXT DEFAULT 'ap-southeast-2',
+            access_key_id TEXT,
+            secret_access_key TEXT,
+            role_arn TEXT,
+            external_id TEXT,
+            status TEXT DEFAULT 'CONNECTED',
+            latency_ms REAL DEFAULT 0.0,
+            connected_at TEXT,
+            last_scanned_at TEXT,
+            UNIQUE(org_id, provider)
+        );
+
         CREATE TABLE IF NOT EXISTS risk_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            org_id TEXT,
             timestamp TEXT NOT NULL,
             unified_score REAL,
             incident_score REAL DEFAULT 0.0,
@@ -174,6 +209,11 @@ def init_db():
         conn.execute("ALTER TABLE risk_history ADD COLUMN incident_score REAL DEFAULT 0.0")
     except Exception:
         pass
+    for tbl in ["findings", "incidents", "cloud_assets", "vulnerabilities", "remediation_history", "risk_history", "cspm_history", "ciem_history"]:
+        try:
+            conn.execute(f"ALTER TABLE {tbl} ADD COLUMN org_id TEXT")
+        except Exception:
+            pass
     for col in [
         "lead_attack_category TEXT", "entity_key TEXT", "created_at TEXT",
         "updated_at TEXT", "resolved_at TEXT", "resolution_notes TEXT",
@@ -321,8 +361,8 @@ def get_compliance_trend_db(current_score: float):
 
 # ── Findings Persistence ──────────────────────────────────────────────────────
 
-def save_findings_db(findings: list):
-    """Persist security findings into SQLite with deduplication."""
+def save_findings_db(findings: list, org_id: str = None):
+    """Persist security findings into SQLite with deduplication and tenant isolation."""
     if not findings:
         return
     import json
@@ -349,52 +389,50 @@ def save_findings_db(findings: list):
         affected_principal = str(d.get("affected_principal") or "")
         rec_resp = d.get("recommended_response") or {}
         playbook_id = rec_resp.get("playbook_id") if isinstance(rec_resp, dict) else d.get("playbook_id")
-        data_source = d.get("data_source") or "SIMULATED"
+        data_source = d.get("data_source") or "LIVE_AWS"
         evidence_json = json.dumps(d.get("evidence") or {})
         verification_status = d.get("verification_status") or "VERIFIED"
+        target_org = org_id or d.get("org_id")
 
         conn.execute("""
             INSERT INTO findings (
                 finding_id, timestamp, attack_category, category_index, title, description,
                 severity, confidence, detection_method, status, affected_resource,
-                affected_principal, playbook_id, data_source, evidence_json, verification_status
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                affected_principal, playbook_id, data_source, evidence_json, verification_status, org_id
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(finding_id) DO UPDATE SET
                 status = excluded.status,
                 confidence = excluded.confidence,
-                verification_status = excluded.verification_status
+                verification_status = excluded.verification_status,
+                org_id = excluded.org_id
         """, (
             finding_id, ts, attack_category, category_index, title, desc,
             severity, confidence, detection_method, status, affected_resource,
-            affected_principal, playbook_id, data_source, evidence_json, verification_status
+            affected_principal, playbook_id, data_source, evidence_json, verification_status, target_org
         ))
-    try:
-        conn.execute("""
-            DELETE FROM findings 
-            WHERE status = 'open' 
-            AND rowid NOT IN (
-                SELECT rowid FROM findings WHERE status = 'open' ORDER BY timestamp DESC LIMIT 40
-            )
-        """)
-    except Exception:
-        pass
     conn.commit()
     conn.close()
 
 
-def get_findings_db(limit: int = 100, severity: str = None) -> list:
-    """Retrieve persisted findings ordered by timestamp descending."""
+def get_findings_db(limit: int = 100, severity: str = None, org_id: str = None) -> list:
+    """Retrieve persisted findings ordered by timestamp descending, strictly scoped to the tenant org_id."""
     import json
     conn = get_conn()
+
+    clauses = []
+    params = []
+    if org_id:
+        clauses.append("org_id = ?")
+        params.append(org_id)
     if severity and severity.lower() != "all":
-        rows = conn.execute(
-            "SELECT * FROM findings WHERE LOWER(severity) = ? ORDER BY timestamp DESC LIMIT ?",
-            (severity.lower(), limit)
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT * FROM findings ORDER BY timestamp DESC LIMIT ?", (limit,)
-        ).fetchall()
+        clauses.append("LOWER(severity) = ?")
+        params.append(severity.lower())
+
+    where_str = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    query = f"SELECT * FROM findings {where_str} ORDER BY timestamp DESC LIMIT ?"
+    params.append(limit)
+
+    rows = conn.execute(query, tuple(params)).fetchall()
     conn.close()
 
     results = []
@@ -578,8 +616,8 @@ def get_vulnerabilities_db(limit: int = 100) -> list:
 
 # ── Incidents Persistence ─────────────────────────────────────────────────────
 
-def save_incidents_db(incidents: list):
-    """Persist correlated security incidents into SQLite with deduplication."""
+def save_incidents_db(incidents: list, org_id: str = None):
+    """Persist correlated security incidents into SQLite with deduplication and tenant isolation."""
     if not incidents:
         return
     import json
@@ -622,6 +660,7 @@ def save_incidents_db(incidents: list):
         entity_key = d.get("entity_key") or (principals[0] if principals else (resources[0] if resources else "global"))
         score = float(d.get("correlation_score") or 0.85)
         playbook_id = d.get("primary_playbook_id") or "PB-BF-001"
+        target_org = org_id or d.get("org_id")
 
         conn.execute("""
             INSERT INTO incidents (
@@ -629,8 +668,8 @@ def save_incidents_db(incidents: list):
                 duration_seconds, finding_count, finding_ids_json, principals_json,
                 source_ips_json, resources_json, attack_categories_json, attack_stages_json,
                 correlation_score, correlation_reasons_json, primary_playbook_id,
-                lead_attack_category, entity_key, created_at, updated_at, resolved_at, resolution_notes
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                lead_attack_category, entity_key, created_at, updated_at, resolved_at, resolution_notes, org_id
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(incident_id) DO UPDATE SET
                 title = excluded.title,
                 description = excluded.description,
@@ -651,35 +690,29 @@ def save_incidents_db(incidents: list):
                 entity_key = excluded.entity_key,
                 updated_at = excluded.updated_at,
                 resolved_at = excluded.resolved_at,
-                resolution_notes = excluded.resolution_notes
+                resolution_notes = excluded.resolution_notes,
+                org_id = excluded.org_id
         """, (
             inc_id, title, desc, sev, status, start_time, last_seen,
             duration, finding_count, json.dumps(finding_ids), json.dumps(principals),
             json.dumps(source_ips), json.dumps(resources), json.dumps(categories), json.dumps(stages),
             score, json.dumps(reasons), playbook_id,
-            lead_cat, entity_key, created_at, updated_at, resolved_at, notes
+            lead_cat, entity_key, created_at, updated_at, resolved_at, notes, target_org
         ))
-    try:
-        conn.execute("""
-            DELETE FROM incidents 
-            WHERE status = 'open' 
-            AND rowid NOT IN (
-                SELECT rowid FROM incidents WHERE status = 'open' ORDER BY last_seen DESC LIMIT 15
-            )
-        """)
-    except Exception:
-        pass
     conn.commit()
     conn.close()
 
 
-def get_incidents_db(limit: int = 100, status: str = None, severity: str = None) -> list:
-    """Retrieve persisted correlated incidents ordered by last_seen descending."""
+def get_incidents_db(limit: int = 100, status: str = None, severity: str = None, org_id: str = None) -> list:
+    """Retrieve persisted correlated incidents ordered by last_seen descending, strictly scoped to tenant."""
     import json
     conn = get_conn()
     clauses = []
     params = []
 
+    if org_id:
+        clauses.append("org_id = ?")
+        params.append(org_id)
     if status and status.lower() != "all":
         clauses.append("LOWER(status) = ?")
         params.append(status.lower())
@@ -768,20 +801,26 @@ def get_incident_by_id_db(incident_id: str) -> Optional[dict]:
     return item
 
 
-def get_incidents_stats_db() -> dict:
-    """Aggregate metrics across correlated incidents."""
+def get_incidents_stats_db(org_id: str = None) -> dict:
+    """Aggregate metrics across correlated incidents, strictly scoped to tenant."""
     conn = get_conn()
-    total_row = conn.execute("SELECT count(*) as total FROM incidents").fetchone()
-    open_row = conn.execute("SELECT count(*) as open_cnt FROM incidents WHERE LOWER(status) = 'open'").fetchone()
-    sev_rows = conn.execute("SELECT severity, count(*) as cnt FROM incidents GROUP BY severity").fetchall()
-    avg_row = conn.execute("SELECT AVG(finding_count) as avg_findings FROM incidents").fetchone()
+    where_str = "WHERE org_id = ?" if org_id else ""
+    params = (org_id,) if org_id else ()
+
+    total_row = conn.execute(f"SELECT count(*) as total FROM incidents {where_str}", params).fetchone()
+    
+    open_where = "WHERE LOWER(status) = 'open'" + (" AND org_id = ?" if org_id else "")
+    open_row = conn.execute(f"SELECT count(*) as open_cnt FROM incidents {open_where}", params).fetchone()
+    
+    sev_rows = conn.execute(f"SELECT severity, count(*) as cnt FROM incidents {where_str} GROUP BY severity", params).fetchall()
+    avg_row = conn.execute(f"SELECT AVG(finding_count) as avg_findings FROM incidents {where_str}", params).fetchone()
     conn.close()
 
     stats = {
         "total": total_row["total"] if total_row else 0,
         "open": open_row["open_cnt"] if open_row else 0,
         "critical": 0, "high": 0, "medium": 0, "low": 0,
-        "avg_findings_per_incident": round(float(avg_row["avg_findings"]), 1) if avg_row and avg_row["avg_findings"] else 1.0
+        "avg_findings_per_incident": round(float(avg_row["avg_findings"]), 1) if avg_row and avg_row["avg_findings"] else 0.0
     }
     for r in sev_rows:
         sev = (r["severity"] or "").lower()
@@ -857,6 +896,119 @@ def update_remediation_rollback_db(execution_id: str, rolled_back_at: str) -> bo
     conn.close()
     return updated
 
+
+# ── Multi-Tenant Cloud Connections ──────────────────────────────────────────────
+
+def save_tenant_cloud_connection(
+    org_id: str,
+    provider: str,
+    account_id: str,
+    auth_mode: str,
+    region: str,
+    access_key_id: Optional[str] = None,
+    secret_access_key: Optional[str] = None,
+    role_arn: Optional[str] = None,
+    external_id: Optional[str] = None,
+    status: str = "CONNECTED",
+    latency_ms: float = 0.0
+) -> Dict[str, Any]:
+    """Save or update cloud connection credentials for an organization."""
+    conn = get_conn()
+    now = datetime.now(timezone.utc).isoformat()
+    conn.execute("""
+        INSERT INTO tenant_cloud_connections (
+            org_id, provider, account_id, auth_mode, region,
+            access_key_id, secret_access_key, role_arn, external_id,
+            status, latency_ms, connected_at, last_scanned_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(org_id, provider) DO UPDATE SET
+            account_id = excluded.account_id,
+            auth_mode = excluded.auth_mode,
+            region = excluded.region,
+            access_key_id = excluded.access_key_id,
+            secret_access_key = excluded.secret_access_key,
+            role_arn = excluded.role_arn,
+            external_id = excluded.external_id,
+            status = excluded.status,
+            latency_ms = excluded.latency_ms,
+            connected_at = excluded.connected_at
+    """, (
+        org_id, provider, account_id, auth_mode, region,
+        access_key_id, secret_access_key, role_arn, external_id,
+        status, latency_ms, now, now
+    ))
+    conn.commit()
+    conn.close()
+    return {
+        "org_id": org_id,
+        "provider": provider,
+        "account_id": account_id,
+        "auth_mode": auth_mode,
+        "region": region,
+        "status": status,
+        "latency_ms": latency_ms,
+        "connected_at": now
+    }
+
+
+def get_tenant_cloud_connection(org_id: str, provider: str = "aws") -> Optional[Dict[str, Any]]:
+    """Retrieve active cloud connection for an organization."""
+    if not org_id:
+        return None
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM tenant_cloud_connections WHERE org_id = ? AND provider = ?",
+        (org_id, provider)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    return dict(row)
+
+
+def delete_tenant_cloud_connection(org_id: str, provider: str = "aws") -> bool:
+    """Disconnect and delete cloud connection for an organization."""
+    if not org_id:
+        return False
+    conn = get_conn()
+    cur = conn.execute(
+        "DELETE FROM tenant_cloud_connections WHERE org_id = ? AND provider = ?",
+        (org_id, provider)
+    ).fetchone()
+    conn.commit()
+    deleted = cur.rowcount > 0 if cur else True
+    conn.close()
+    return deleted
+
+
+def get_organization(org_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieve organization record by org_id."""
+    if not org_id:
+        return None
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM organizations WHERE org_id = ?", (org_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def list_organizations() -> List[Dict[str, Any]]:
+    """List all registered organizations (RAM Antivirus Super Admin View)."""
+    conn = get_conn()
+    rows = conn.execute("SELECT * FROM organizations ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# Migration to ensure org_id column on users table
+try:
+    _c = get_conn()
+    _cols = [c[1] for c in _c.execute("PRAGMA table_info(users)").fetchall()]
+    if "org_id" not in _cols:
+        _c.execute("ALTER TABLE users ADD COLUMN org_id TEXT")
+        _c.commit()
+    _c.close()
+except Exception:
+    pass
 
 # Initialize on import
 init_db()

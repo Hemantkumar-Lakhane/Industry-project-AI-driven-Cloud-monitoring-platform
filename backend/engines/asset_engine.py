@@ -160,6 +160,7 @@ def check_connectors() -> Dict[str, Any]:
         "auth_type": probe.get("auth_mode", "STS AssumeRole or Direct IAM"),
         "account_id": probe.get("account_id"),
         "principal_arn": probe.get("principal_arn"),
+        "region": probe.get("region", "ap-southeast-2"),
         "latency_ms": probe.get("latency_ms")
     }
 
@@ -274,12 +275,12 @@ def discover_assets(force_rescan: bool = False) -> List[Dict[str, Any]]:
     now_str = datetime.now(timezone.utc).isoformat()
     discovered: List[Dict[str, Any]] = []
 
-    # 1. Discover actual local workload compute assets & listening services
-    host_workloads = discover_local_workload_assets()
-    discovered.extend(host_workloads)
-
-    # 2. If Live AWS is connected, discover live S3 buckets and security groups
+    # 1. If Live AWS is connected, discover live S3 buckets, security groups, and RDS
     if connectors["aws"]["status"] == "CONNECTED":
+        acct_id = connectors["aws"].get("account_id") or "617711904818"
+        region = connectors["aws"].get("region") or "ap-southeast-2"
+
+        # A. Real S3 Buckets
         try:
             s3 = get_cloud_client("s3")
             for b in s3.list_buckets().get("Buckets", []):
@@ -289,49 +290,57 @@ def discover_assets(force_rescan: bool = False) -> List[Dict[str, Any]]:
                     "name": bname,
                     "asset_type": "s3_bucket",
                     "provider": "aws",
-                    "region": "us-east-1",
-                    "account_id": connectors["aws"].get("account_id", "live-aws"),
+                    "region": region,
+                    "account_id": acct_id,
                     "status": "active",
                     "connector_status": "LIVE_AWS_CONNECTED",
-                    "tags": {"Source": "Live-AWS-Discovery"}
+                    "tags": {"Source": "Live AWS Cloud API", "Region": region, "Account": acct_id}
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Asset Discovery S3] {e}")
+
+        # B. Real EC2 Security Groups
         try:
             ec2 = get_cloud_client("ec2")
             for sg in ec2.describe_security_groups().get("SecurityGroups", []):
                 sg_id = sg.get("GroupId")
+                sg_name = sg.get("GroupName", sg_id)
                 discovered.append({
                     "asset_id": sg_id,
-                    "name": sg.get("GroupName", sg_id),
+                    "name": sg_name,
                     "asset_type": "security_group",
                     "provider": "aws",
-                    "region": "us-east-1",
-                    "account_id": connectors["aws"].get("account_id", "live-aws"),
+                    "region": region,
+                    "account_id": acct_id,
                     "status": "active",
                     "connector_status": "LIVE_AWS_CONNECTED",
-                    "tags": {"Description": sg.get("Description", "")}
+                    "tags": {"Description": sg.get("Description", ""), "Region": region, "Account": acct_id}
                 })
-        except Exception:
+        except Exception as e:
+            print(f"[Asset Discovery EC2] {e}")
+
+        # C. Real RDS Databases
+        try:
+            rds = get_cloud_client("rds")
+            for db in rds.describe_db_instances().get("DBInstances", []):
+                db_id = db.get("DBInstanceIdentifier")
+                discovered.append({
+                    "asset_id": f"arn:aws:rds:{region}:{acct_id}:db:{db_id}",
+                    "name": db_id,
+                    "asset_type": "rds_database",
+                    "provider": "aws",
+                    "region": region,
+                    "account_id": acct_id,
+                    "status": db.get("DBInstanceStatus", "available"),
+                    "connector_status": "LIVE_AWS_CONNECTED",
+                    "tags": {"Engine": db.get("Engine", "postgres"), "Region": region, "Account": acct_id}
+                })
+        except Exception as e:
             pass
 
-    # 3. If LocalStack is running, attempt discovery from LocalStack
-    if connectors["localstack"]["status"] == "CONNECTED":
-        try:
-            # S3 buckets from LocalStack
-            req = urllib.request.Request("http://localhost:4566", method="GET")
-            with urllib.request.urlopen(req, timeout=2.0) as resp:
-                pass
-            # Mark sandbox assets as backed by LocalStack
-            for a in SANDBOX_ASSETS:
-                item = dict(a)
-                item["connector_status"] = "LOCALSTACK_CONNECTED"
-                discovered.append(item)
-        except Exception:
-            discovered.extend([dict(a) for a in SANDBOX_ASSETS])
     else:
-        # Include cloud baseline assets with clear SANDBOX_VERIFIED provenance
-        discovered.extend([dict(a) for a in SANDBOX_ASSETS])
+        # If no cloud environment is connected, do not inject synthetic assets
+        discovered = []
 
     # Correlate with existing findings from SQLite
     existing_findings = get_findings_db(limit=300)
@@ -378,9 +387,17 @@ def discover_assets(force_rescan: bool = False) -> List[Dict[str, Any]]:
 
 
 def get_asset_inventory() -> Dict[str, Any]:
-    """Retrieve current asset inventory from SQLite, performing initial scan if empty."""
+    """Retrieve current asset inventory, ensuring live cloud connections show pure live assets."""
+    connectors = check_connectors()
     persisted = get_cloud_assets_db(limit=200)
-    if not persisted:
+
+    # When Live AWS is connected, strictly filter out legacy mock sandbox assets
+    if connectors["aws"]["status"] == "CONNECTED":
+        persisted = [a for a in persisted if a.get("connector_status") == "LIVE_AWS_CONNECTED"]
+        if not persisted:
+            persisted = discover_assets(force_rescan=True)
+            persisted = [a for a in persisted if a.get("connector_status") == "LIVE_AWS_CONNECTED"]
+    elif not persisted:
         persisted = discover_assets()
 
     total_assets = len(persisted)
