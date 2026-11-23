@@ -278,34 +278,58 @@ def probe_cloud_connectivity(force_refresh: bool = False, org_id: Optional[str] 
 
 
 def fetch_live_cloudtrail_events(
-    max_events: int = 50,
+    max_events: int = 100,
     org_id: Optional[str] = None,
     force_refresh: bool = False,
-    service_filter: Optional[str] = None
+    service_filter: Optional[str] = None,
+    time_window: str = "24h"
 ) -> List[Dict[str, Any]]:
     """
     Fetches real-time management events directly from AWS CloudTrail via boto3 lookup_events.
-    Supports pagination (up to 500 events), caching to prevent throttling, and service filtering.
+    Supports multi-day and multi-month historical windows (24h, 7d, 30d, 60d, 90d),
+    pagination (up to 2,000 events), caching to prevent throttling, and service filtering.
     Transforms raw AWS CloudTrail events into RAM Antivirus unified security event objects.
     """
-    cache_key = f"{org_id or 'default'}_cloudtrail_{max_events}_{service_filter or 'all'}"
+    tw = (time_window or "24h").lower().strip()
+    cache_key = f"{org_id or 'default'}_cloudtrail_{max_events}_{service_filter or 'all'}_{tw}"
     if not force_refresh:
         cached = _get_from_cache(cache_key, ttl_seconds=30.0)
         if cached is not None:
             return cached
 
     import boto3
+    from datetime import datetime, timezone, timedelta
     tenant_conn = get_tenant_cloud_connection(org_id) if org_id else None
     reg = (tenant_conn.get("region") if tenant_conn else None) or _DYNAMIC_CLOUD_CONFIG.get("region") or "ap-southeast-2"
     client = get_cloud_client("cloudtrail", region=reg, org_id=org_id)
     events: List[Dict[str, Any]] = []
+
+    # Calculate time horizon for CloudTrail lookup
+    now = datetime.now(timezone.utc)
+    if tw in ("90d", "3m", "quarter"):
+        start_time = now - timedelta(days=90)
+    elif tw in ("60d", "2m"):
+        start_time = now - timedelta(days=60)
+    elif tw in ("30d", "1m", "month"):
+        start_time = now - timedelta(days=30)
+    elif tw in ("7d", "1w", "week"):
+        start_time = now - timedelta(days=7)
+    elif tw in ("12h", "halfday"):
+        start_time = now - timedelta(hours=12)
+    else:
+        start_time = now - timedelta(hours=24)
+
     try:
         raw_events = []
         next_token = None
-        remaining = max(1, min(max_events, 500))
+        remaining = max(1, min(max_events, 2000))
 
         while remaining > 0:
-            call_kwargs = {"MaxResults": min(remaining, 50)}
+            call_kwargs = {
+                "MaxResults": min(remaining, 50),
+                "StartTime": start_time,
+                "EndTime": now
+            }
             if next_token:
                 call_kwargs["NextToken"] = next_token
             resp = client.lookup_events(**call_kwargs)

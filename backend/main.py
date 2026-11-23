@@ -456,7 +456,7 @@ def _extract_user(authorization: Optional[str] = None, credentials: Optional[HTT
     return None
 
 
-def _get_events(normal: int = 80, attacks: int = 15, org_id: Optional[str] = None, limit: Optional[int] = None, service: Optional[str] = None, force_refresh: bool = False):
+def _get_events(normal: int = 80, attacks: int = 15, org_id: Optional[str] = None, limit: Optional[int] = None, service: Optional[str] = None, force_refresh: bool = False, time_window: str = "24h"):
     """
     Returns events for the active tenant.
     For regular tenants: Only returns real AWS CloudTrail events if the tenant has connected AWS.
@@ -483,7 +483,8 @@ def _get_events(normal: int = 80, attacks: int = 15, org_id: Optional[str] = Non
                 max_events=target_count,
                 org_id=org_id,
                 force_refresh=force_refresh,
-                service_filter=service
+                service_filter=service,
+                time_window=time_window
             )
             return live_events if live_events else []
     except Exception as exc:
@@ -1073,7 +1074,8 @@ def get_simulated_events(
     search: Optional[str] = Query(None, description="Search filter for user, IP, action, or description"),
     service: Optional[str] = Query(None, description="Filter by AWS service (iam, s3, ec2, rds, sts)"),
     severity: Optional[str] = Query(None, description="Filter by event severity (all, critical, high, medium, low)"),
-    limit: int = Query(200, ge=1, le=1000, description="Maximum number of events to return"),
+    limit: int = Query(200, ge=1, le=2000, description="Maximum number of events to return"),
+    time_window: str = Query("24h", description="Time window for CloudTrail events (24h, 7d, 30d, 60d, 90d)"),
     force_refresh: bool = Query(False, description="Bypass cache and force fresh CloudTrail fetch"),
     authorization: Optional[str] = Header(None, description="Bearer token"),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
@@ -1091,7 +1093,7 @@ def get_simulated_events(
             "source": "NOT_CONNECTED"
         }
 
-    raw_events = _get_events(normal, attacks, org_id=org_id, limit=limit, service=service, force_refresh=force_refresh)
+    raw_events = _get_events(normal, attacks, org_id=org_id, limit=limit, service=service, force_refresh=force_refresh, time_window=time_window)
     all_events = analyze_events(raw_events) if raw_events else []
     source_mode = "DEMO_SIMULATION" if org_id == "org_demo" else "LIVE_AWS"
 
@@ -2085,20 +2087,19 @@ def get_correlated_incidents(
 
     incidents = get_incidents_db(limit=limit, status=status, severity=severity, org_id=org_id)
     if not incidents:
-        try:
-            sess = session_manager.get_session()
-            if sess and getattr(sess, "incidents", None):
-                incidents = sess.incidents
-        except Exception:
-            pass
-
-    if not incidents:
-        current_findings = get_findings_db(limit=200, org_id=org_id)
+        current_findings = get_findings_db(limit=300, org_id=org_id)
         if current_findings:
             corr_incidents = correlate_findings(current_findings)
             incidents = [inc.model_dump(mode="json") if hasattr(inc, "model_dump") else inc for inc in corr_incidents]
             try:
                 save_incidents_db(incidents, org_id=org_id)
+            except Exception:
+                pass
+        elif org_id in ("org_demo", "org_master_admin"):
+            try:
+                sess = session_manager.get_session()
+                if sess and getattr(sess, "incidents", None):
+                    incidents = sess.incidents
             except Exception:
                 pass
 

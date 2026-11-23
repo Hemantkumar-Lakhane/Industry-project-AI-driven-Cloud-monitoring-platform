@@ -227,11 +227,12 @@ const App = () => {
     }
   };
 
-  const fetchEventsWithParams = async (limit = 100, service = null) => {
+  const fetchEventsWithParams = async (limit = 100, service = null, timeWindow = '24h') => {
     try {
       const params = new URLSearchParams();
       if (limit) params.append('limit', limit);
       if (service && service !== 'all') params.append('service', service);
+      if (timeWindow) params.append('time_window', timeWindow);
       const res = await axios.get(`${API_URL}/events?${params.toString()}`);
       if (res.data?.data) {
         setData(prev => ({ ...prev, events: res.data.data }));

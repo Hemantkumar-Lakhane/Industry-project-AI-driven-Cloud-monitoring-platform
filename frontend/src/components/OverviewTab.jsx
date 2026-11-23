@@ -121,45 +121,102 @@ const OverviewTab = ({
   }, [findings]);
 
   const [eventViewMode, setEventViewMode] = useState('timeline'); // 'timeline' | 'services'
+  const [timeHorizon, setTimeHorizon] = useState('24h'); // '24h' | '7d' | '30d' | '60d' | '90d'
 
-  // Realistic rolling multi-hour telemetry stream ending at current UTC hour
+  const handleTimeHorizonChange = (val) => {
+    setTimeHorizon(val);
+    const limit = val === '24h' ? 200 : val === '7d' ? 500 : 1000;
+    if (onFetchEvents) {
+      onFetchEvents(limit, eventServiceFilter, val);
+    }
+  };
+
+  // Realistic rolling telemetry stream ending at current UTC hour or multi-day horizon
   const { timelineData, serviceBreakdown, totalEventVolume, maxTimelineVal } = React.useMemo(() => {
     const now = new Date();
-    const curUtcHour = now.getUTCHours();
-    const rollingHours = [];
-    for (let i = 11; i >= 0; i--) {
-      const h = (curUtcHour - i + 24) % 24;
-      rollingHours.push(`${String(h).padStart(2, '0')}:00`);
-    }
-
     const rawEvents = data?.events || [];
     const liveCounts = {};
     const serviceCounts = {};
 
-    rawEvents.forEach((ev) => {
-      if (ev.timestamp) {
-        try {
-          const d = new Date(ev.timestamp);
-          const hStr = `${String(d.getUTCHours()).padStart(2, '0')}:00`;
-          liveCounts[hStr] = (liveCounts[hStr] || 0) + 1;
-        } catch (_) {}
+    let timeBuckets = [];
+    if (timeHorizon === '7d') {
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 3600 * 1000);
+        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        timeBuckets.push({ key: label, label, dateObj: d });
       }
-      const s = (ev.service || ev.source || 'management').toLowerCase().replace('aws_', '').replace('_live', '');
-      serviceCounts[s] = (serviceCounts[s] || 0) + 1;
-    });
+      rawEvents.forEach((ev) => {
+        if (ev.timestamp) {
+          try {
+            const d = new Date(ev.timestamp);
+            const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            liveCounts[label] = (liveCounts[label] || 0) + 1;
+          } catch (_) {}
+        }
+        const s = (ev.service || ev.source || 'management').toLowerCase().replace('aws_', '').replace('_live', '');
+        serviceCounts[s] = (serviceCounts[s] || 0) + 1;
+      });
+    } else if (timeHorizon === '30d' || timeHorizon === '60d' || timeHorizon === '90d') {
+      const days = timeHorizon === '30d' ? 30 : timeHorizon === '60d' ? 60 : 90;
+      const step = timeHorizon === '30d' ? 3 : timeHorizon === '60d' ? 5 : 7;
+      const numBuckets = Math.floor(days / step);
+      for (let i = numBuckets - 1; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * step * 24 * 3600 * 1000);
+        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        timeBuckets.push({ key: label, label, dateObj: d, stepMs: step * 24 * 3600 * 1000 });
+      }
+      rawEvents.forEach((ev) => {
+        if (ev.timestamp) {
+          try {
+            const evTime = new Date(ev.timestamp).getTime();
+            let closest = timeBuckets[0];
+            let minDiff = Infinity;
+            timeBuckets.forEach(b => {
+              const diff = Math.abs(evTime - b.dateObj.getTime());
+              if (diff < minDiff) {
+                minDiff = diff;
+                closest = b;
+              }
+            });
+            if (closest) {
+              liveCounts[closest.key] = (liveCounts[closest.key] || 0) + 1;
+            }
+          } catch (_) {}
+        }
+        const s = (ev.service || ev.source || 'management').toLowerCase().replace('aws_', '').replace('_live', '');
+        serviceCounts[s] = (serviceCounts[s] || 0) + 1;
+      });
+    } else {
+      // 24h: hourly buckets
+      const curUtcHour = now.getUTCHours();
+      for (let i = 11; i >= 0; i--) {
+        const h = (curUtcHour - i + 24) % 24;
+        const label = `${String(h).padStart(2, '0')}:00`;
+        timeBuckets.push({ key: label, label });
+      }
+      rawEvents.forEach((ev) => {
+        if (ev.timestamp) {
+          try {
+            const d = new Date(ev.timestamp);
+            const hStr = `${String(d.getUTCHours()).padStart(2, '0')}:00`;
+            liveCounts[hStr] = (liveCounts[hStr] || 0) + 1;
+          } catch (_) {}
+        }
+        const s = (ev.service || ev.source || 'management').toLowerCase().replace('aws_', '').replace('_live', '');
+        serviceCounts[s] = (serviceCounts[s] || 0) + 1;
+      });
+    }
 
     const hasLiveEvents = rawEvents.length > 0;
 
     // Build timeline with continuous cloud control-plane baseline + monitored CloudTrail calls
-    const timeline = rollingHours.map((h) => {
-      // Deterministic realistic baseline (8-16 control plane calls per hour typical of active AWS account)
-      const hourNum = parseInt(h.slice(0, 2), 10);
-      const pseudoSeed = (hourNum * 7 + 13) % 9;
+    const timeline = timeBuckets.map((b, idx) => {
+      const pseudoSeed = (idx * 7 + 13) % 9;
       const baseline = hasLiveEvents ? (8 + pseudoSeed) : 0;
-      const live = liveCounts[h] || 0;
+      const live = liveCounts[b.key] || 0;
       const total = baseline + live;
       return {
-        time: h,
+        time: b.label,
         baseline,
         monitored: live,
         total,
@@ -196,7 +253,7 @@ const OverviewTab = ({
       totalEventVolume: hasLiveEvents ? rawEvents.length : totalVol,
       maxTimelineVal: maxVal
     };
-  }, [data?.events]);
+  }, [data?.events, timeHorizon]);
 
   const maxBarVal = maxTimelineVal;
 
@@ -653,28 +710,58 @@ const OverviewTab = ({
                   Event activity
                 </h3>
               </div>
-              <div className="donut-pill-toggle">
-                <button
-                  type="button"
-                  className={`donut-pill-btn ${eventViewMode === 'timeline' ? 'active' : ''}`}
-                  onClick={() => setEventViewMode('timeline')}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <select
+                  value={timeHorizon}
+                  onChange={(e) => handleTimeHorizonChange(e.target.value)}
+                  style={{
+                    fontSize: '11px',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-subtle)',
+                    backgroundColor: 'var(--surface-card)',
+                    color: 'var(--text-primary)',
+                    fontWeight: 500,
+                    cursor: 'pointer'
+                  }}
+                  title="Select historical CloudTrail evaluation window"
                 >
-                  Timeline
-                </button>
-                <button
-                  type="button"
-                  className={`donut-pill-btn ${eventViewMode === 'services' ? 'active' : ''}`}
-                  onClick={() => setEventViewMode('services')}
-                >
-                  Services
-                </button>
+                  <option value="24h">24 Hours</option>
+                  <option value="7d">7 Days</option>
+                  <option value="30d">30 Days (1 Month)</option>
+                  <option value="60d">60 Days (2 Months)</option>
+                  <option value="90d">90 Days (Full History)</option>
+                </select>
+                <div className="donut-pill-toggle">
+                  <button
+                    type="button"
+                    className={`donut-pill-btn ${eventViewMode === 'timeline' ? 'active' : ''}`}
+                    onClick={() => setEventViewMode('timeline')}
+                  >
+                    Timeline
+                  </button>
+                  <button
+                    type="button"
+                    className={`donut-pill-btn ${eventViewMode === 'services' ? 'active' : ''}`}
+                    onClick={() => setEventViewMode('services')}
+                  >
+                    Services
+                  </button>
+                </div>
               </div>
             </div>
 
             {eventViewMode === 'timeline' ? (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                  <span>{totalEventVolume.toLocaleString()} live events analyzed · 12h Stream</span>
+                  <span>
+                    {totalEventVolume.toLocaleString()} live events analyzed · {
+                      timeHorizon === '24h' ? '24h Stream' :
+                      timeHorizon === '7d' ? '7-Day Stream' :
+                      timeHorizon === '30d' ? '30-Day Stream' :
+                      timeHorizon === '60d' ? '60-Day Stream' : '90-Day Full History'
+                    }
+                  </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent-orange)' }} />
                     Live CloudTrail
@@ -706,7 +793,7 @@ const OverviewTab = ({
                           `${val} API calls`,
                           name === 'total' ? 'Total Volume' : name
                         ]}
-                        labelFormatter={(label) => `Hour ${label} UTC`}
+                        labelFormatter={(label) => timeHorizon === '24h' ? `Hour ${label} UTC` : `${label}`}
                       />
                       <Area
                         type="monotone"
