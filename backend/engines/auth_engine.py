@@ -96,24 +96,26 @@ def _get_user(username: str) -> Optional[Dict]:
 
 def _save_user(user: Dict):
     conn = get_conn()
-    conn.execute(
-        """INSERT INTO users
-           (user_id,org_id,username,email,password_hash,role,full_name,created_at,last_login,is_active)
-           VALUES (?,?,?,?,?,?,?,?,?,?)
-           ON CONFLICT (user_id) DO UPDATE SET
-               org_id = EXCLUDED.org_id,
-               username = EXCLUDED.username,
-               email = EXCLUDED.email,
-               password_hash = EXCLUDED.password_hash,
-               role = EXCLUDED.role,
-               full_name = EXCLUDED.full_name,
-               last_login = EXCLUDED.last_login,
-               is_active = EXCLUDED.is_active""",
-        (user["user_id"], user.get("org_id"), user["username"], user["email"], user["password_hash"],
-         user["role"], user["full_name"], user["created_at"], user["last_login"], bool(user.get("is_active", True)))
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            """INSERT INTO users
+               (user_id,org_id,username,email,password_hash,role,full_name,created_at,last_login,is_active)
+               VALUES (?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT (user_id) DO UPDATE SET
+                   org_id = EXCLUDED.org_id,
+                   username = EXCLUDED.username,
+                   email = EXCLUDED.email,
+                   password_hash = EXCLUDED.password_hash,
+                   role = EXCLUDED.role,
+                   full_name = EXCLUDED.full_name,
+                   last_login = EXCLUDED.last_login,
+                   is_active = EXCLUDED.is_active""",
+            (user["user_id"], user.get("org_id"), user["username"], user["email"], user["password_hash"],
+             user["role"], user["full_name"], user["created_at"], user["last_login"], bool(user.get("is_active", True)))
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 # Seed default users if not present (Platform Superadmin & Demo User)
@@ -140,26 +142,33 @@ def _seed_defaults():
         conn.close()
 
     _defaults = [
+        {"username": "ramantivirus", "password": "admin123", "email": "platform@ramantivirus.com", "role": "admin", "full_name": "RAM Antivirus Platform Admin", "org_id": "org_master_admin"},
         {"username": "admin", "password": "admin123", "email": "admin@ramantivirus.com", "role": "admin", "full_name": "RAM Antivirus Admin", "org_id": "org_master_admin"},
         {"username": "demo",  "password": "demo123",  "email": "demo@ramantivirus.com",  "role": "analyst", "full_name": "Demo Simulation Lead", "org_id": "org_demo"},
     ]
     for u in _defaults:
-        existing = _get_user(u["username"])
-        if not existing:
-            _save_user({
-                "user_id": f"usr_{u['username']}_01", "org_id": u.get("org_id"), "username": u["username"], "email": u["email"],
-                "password_hash": _hash_password(u["password"]), "role": u["role"],
-                "full_name": u["full_name"], "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "last_login": None, "is_active": True
-            })
-        else:
-            # Ensure valid password hash for defaults
-            if not _verify_password(u["password"], existing["password_hash"]):
-                existing["password_hash"] = _hash_password(u["password"])
-                existing["full_name"] = u["full_name"]
-                _save_user(existing)
+        try:
+            existing = _get_user(u["username"])
+            if not existing:
+                _save_user({
+                    "user_id": f"usr_{u['username']}_01", "org_id": u.get("org_id"), "username": u["username"], "email": u["email"],
+                    "password_hash": _hash_password(u["password"]), "role": u["role"],
+                    "full_name": u["full_name"], "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "last_login": None, "is_active": True
+                })
+            else:
+                # Ensure valid password hash for defaults
+                if not _verify_password(u["password"], existing["password_hash"]):
+                    existing["password_hash"] = _hash_password(u["password"])
+                    existing["full_name"] = u["full_name"]
+                    _save_user(existing)
+        except Exception as e:
+            print(f"[AUTH] Note on user seed for {u['username']}: {e}")
 
-_seed_defaults()
+try:
+    _seed_defaults()
+except Exception as _e:
+    print(f"[AUTH] _seed_defaults outer catch: {_e}")
 
 
 # ── Role Permissions ─────────────────────────────────────────────────────────

@@ -624,34 +624,7 @@ const DataSourcesTab = ({ showToast }) => {
 
                 {/* STEP 2: CREDENTIALS CONFIGURATION */}
                 <div style={{ backgroundColor: 'var(--surface-muted)', padding: '16px', borderRadius: '8px', marginBottom: '18px' }}>
-                  {/* Option 1: LocalStack Simple View */}
-                  {authMode === 'localstack' && (
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <CheckCircle size={16} style={{ color: 'var(--success-color)' }} />
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          Cloud Security Sandbox Active
-                        </span>
-                      </div>
-                      <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 12px 0', lineHeight: 1.4 }}>
-                        RAM Antivirus connects to your local emulator on <code>http://localhost:4566</code> to audit local S3, EC2 security groups, and IAM policies.
-                      </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                          LocalStack Endpoint URL
-                        </label>
-                        <input
-                          type="text"
-                          value={awsForm.localstack_endpoint}
-                          onChange={(e) => setAwsForm({ ...awsForm, localstack_endpoint: e.target.value })}
-                          className="figma-filter-select"
-                          style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Option 2: Direct AWS Access Keys */}
+                  {/* Option 1: Direct AWS Access Keys */}
                   {authMode === 'direct_keys' && (
                     <div>
                       {/* CSV FILE DROPZONE */}

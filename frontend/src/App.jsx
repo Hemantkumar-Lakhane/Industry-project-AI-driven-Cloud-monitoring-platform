@@ -22,7 +22,8 @@ import {
   Terminal,
   Sun,
   Moon,
-  ShieldCheck
+  ShieldCheck,
+  Eye
 } from 'lucide-react';
 import logoUrl from './assets/LOGO.png';
 import LoginPage from './components/LoginPage';
@@ -226,12 +227,26 @@ const App = () => {
     }
   };
 
+  const fetchEventsWithParams = async (limit = 100, service = null) => {
+    try {
+      const params = new URLSearchParams();
+      if (limit) params.append('limit', limit);
+      if (service && service !== 'all') params.append('service', service);
+      const res = await axios.get(`${API_URL}/events?${params.toString()}`);
+      if (res.data?.data) {
+        setData(prev => ({ ...prev, events: res.data.data }));
+      }
+    } catch (e) {
+      console.error('Failed to fetch events with params:', e);
+    }
+  };
+
   const fetchDashboardData = async (isPolling = false) => {
     if (!isPolling) setLoading(true);
     try {
       const [summaryRes, eventsRes, cspmRes, ciemRes, vulnsRes] = await Promise.all([
         axios.get(`${API_URL}/dashboard/summary`),
-        axios.get(`${API_URL}/events?limit=50`),
+        axios.get(`${API_URL}/events?limit=100`),
         axios.get(`${API_URL}/cspm/scan`),
         axios.get(`${API_URL}/ciem/scan`),
         axios.get(`${API_URL}/vulnerabilities`)
@@ -839,6 +854,7 @@ const App = () => {
               liveTime={liveTime}
               onInvestigateFinding={handleInvestigateFinding}
               onNavigateTab={handleNavigateTab}
+              onFetchEvents={fetchEventsWithParams}
             />
           )}
 

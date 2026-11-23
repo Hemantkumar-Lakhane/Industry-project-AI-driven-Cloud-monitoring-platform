@@ -381,68 +381,6 @@ const LoginPage = ({ onLogin }) => {
             </button>
           </div>
         </form>
-
-        {/* QUICK 1-CLICK TEST LOGINS (ADMIN & DEMO USER) */}
-        <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
-          <button
-            type="button"
-            onClick={() => setShowDemoLogins(!showDemoLogins)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              fontSize: '12px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              width: '100%',
-              padding: '4px'
-            }}
-          >
-            <ShieldCheck size={13} style={{ color: 'var(--brand-primary, #6366f1)' }} />
-            <span>{showDemoLogins ? 'Hide quick access accounts' : 'Quick Access Profiles (Admin & Demo)'}</span>
-            {showDemoLogins ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-
-          {showDemoLogins && (
-            <div className="demo-btns" style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <button
-                type="button"
-                className={`demo-role-card demo-admin ${activeDemo === 'admin' ? 'loading' : ''}`}
-                onClick={() => demoLogin('admin', 'admin', 'admin123')}
-                disabled={loading}
-                style={{ padding: '8px 12px' }}
-              >
-                <div className="demo-role-icon">
-                  {activeDemo === 'admin' ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
-                </div>
-                <div className="demo-role-info" style={{ textAlign: 'left' }}>
-                  <span className="demo-role-name" style={{ fontWeight: 600 }}>Platform Admin</span>
-                  <span className="demo-role-sub" style={{ fontSize: '10.5px' }}>admin / admin123 (Full Security Ops)</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className={`demo-role-card demo-analyst ${activeDemo === 'demo' ? 'loading' : ''}`}
-                onClick={() => demoLogin('demo', 'demo', 'demo123')}
-                disabled={loading}
-                style={{ padding: '8px 12px' }}
-              >
-                <div className="demo-role-icon">
-                  {activeDemo === 'demo' ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
-                </div>
-                <div className="demo-role-info" style={{ textAlign: 'left' }}>
-                  <span className="demo-role-name" style={{ fontWeight: 600 }}>Demo Analyst</span>
-                  <span className="demo-role-sub" style={{ fontSize: '10.5px' }}>demo / demo123 (Interactive Telemetry)</span>
-                </div>
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

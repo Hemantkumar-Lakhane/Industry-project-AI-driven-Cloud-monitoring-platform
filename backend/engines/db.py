@@ -45,11 +45,12 @@ class PGCursorWrapper:
 
 
 class PGConnWrapper:
-    """Wrapper around psycopg2 connection to provide SQLite-like interface."""
+    """Wrapper around psycopg2 connection to provide SQLite-like interface with safe auto-close."""
     def __init__(self, raw_conn, pool=None):
         self.raw_conn = raw_conn
         self.pool = pool
         self.is_pg = True
+        self._closed = False
 
     def execute(self, sql, params=()):
         stripped = sql.strip().upper()
@@ -74,9 +75,13 @@ class PGConnWrapper:
         cur.execute(script)
 
     def commit(self):
-        self.raw_conn.commit()
+        if not self._closed and self.raw_conn and not getattr(self.raw_conn, "closed", False):
+            self.raw_conn.commit()
 
     def close(self):
+        if self._closed:
+            return
+        self._closed = True
         if self.pool:
             try:
                 self.pool.putconn(self.raw_conn)
@@ -91,6 +96,20 @@ class PGConnWrapper:
             except Exception:
                 pass
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            try:
+                self.raw_conn.rollback()
+            except Exception:
+                pass
+        self.close()
+
+    def __del__(self):
+        self.close()
+
 
 def get_conn():
     global _PG_POOL
@@ -100,18 +119,25 @@ def get_conn():
         import psycopg2.pool
         if _PG_POOL is None:
             try:
-                _PG_POOL = psycopg2.pool.ThreadedConnectionPool(minconn=1, maxconn=15, dsn=DATABASE_URL)
+                _PG_POOL = psycopg2.pool.SimpleConnectionPool(minconn=1, maxconn=5, dsn=DATABASE_URL)
             except Exception:
-                raw_conn = psycopg2.connect(DATABASE_URL)
+                raw_conn = psycopg2.connect(DATABASE_URL, connect_timeout=5)
                 return PGConnWrapper(raw_conn)
         try:
             raw_conn = _PG_POOL.getconn()
             if raw_conn.closed:
-                raw_conn = psycopg2.connect(DATABASE_URL)
+                try:
+                    _PG_POOL.putconn(raw_conn, close=True)
+                except Exception:
+                    pass
+                raw_conn = _PG_POOL.getconn()
             return PGConnWrapper(raw_conn, pool=_PG_POOL)
         except Exception:
-            raw_conn = psycopg2.connect(DATABASE_URL)
-            return PGConnWrapper(raw_conn)
+            try:
+                raw_conn = psycopg2.connect(DATABASE_URL, connect_timeout=5)
+                return PGConnWrapper(raw_conn)
+            except Exception:
+                pass
 
     conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row

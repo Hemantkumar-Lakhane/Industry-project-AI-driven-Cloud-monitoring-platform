@@ -23,6 +23,25 @@ CLOUD_PROVIDER = os.environ.get("CLOUD_PROVIDER", "auto").lower()  # "aws", "loc
 _LS_STATUS_CACHE = {"running": False, "last_checked": 0.0}
 _CACHE_TTL_SECONDS = 15.0
 
+# In-memory scan cache to avoid AWS API throttling and deliver ultra-fast dashboard queries
+_SCAN_CACHE: Dict[str, Dict[str, Any]] = {}
+
+def _get_from_cache(key: str, ttl_seconds: float = 45.0) -> Optional[Any]:
+    cached = _SCAN_CACHE.get(key)
+    if cached and (time.time() - cached.get("timestamp", 0) < ttl_seconds):
+        return cached.get("data")
+    return None
+
+def _set_in_cache(key: str, data: Any):
+    _SCAN_CACHE[key] = {"data": data, "timestamp": time.time()}
+
+def clear_scan_cache(org_id: Optional[str] = None):
+    global _SCAN_CACHE
+    if org_id:
+        _SCAN_CACHE = {k: v for k, v in _SCAN_CACHE.items() if not k.startswith(f"{org_id}_")}
+    else:
+        _SCAN_CACHE.clear()
+
 from engines.db import save_tenant_cloud_connection, get_tenant_cloud_connection, delete_tenant_cloud_connection
 
 # Dynamic in-memory fallback cache
@@ -95,6 +114,7 @@ def configure_cloud_credentials(config: Dict[str, Any], org_id: Optional[str] = 
                 status="CONNECTED",
                 latency_ms=latency
             )
+            clear_scan_cache(org_id)
 
         _DYNAMIC_CLOUD_CONFIG["user_connected"] = True
         return {
@@ -257,24 +277,56 @@ def probe_cloud_connectivity(force_refresh: bool = False, org_id: Optional[str] 
         }
 
 
-def fetch_live_cloudtrail_events(max_events: int = 50, org_id: Optional[str] = None) -> List[Dict[str, Any]]:
+def fetch_live_cloudtrail_events(
+    max_events: int = 50,
+    org_id: Optional[str] = None,
+    force_refresh: bool = False,
+    service_filter: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     Fetches real-time management events directly from AWS CloudTrail via boto3 lookup_events.
+    Supports pagination (up to 500 events), caching to prevent throttling, and service filtering.
     Transforms raw AWS CloudTrail events into RAM Antivirus unified security event objects.
     """
+    cache_key = f"{org_id or 'default'}_cloudtrail_{max_events}_{service_filter or 'all'}"
+    if not force_refresh:
+        cached = _get_from_cache(cache_key, ttl_seconds=30.0)
+        if cached is not None:
+            return cached
+
     import boto3
     tenant_conn = get_tenant_cloud_connection(org_id) if org_id else None
     reg = (tenant_conn.get("region") if tenant_conn else None) or _DYNAMIC_CLOUD_CONFIG.get("region") or "ap-southeast-2"
     client = get_cloud_client("cloudtrail", region=reg, org_id=org_id)
     events: List[Dict[str, Any]] = []
     try:
-        resp = client.lookup_events(MaxResults=min(max_events, 50))
-        raw_events = resp.get("Events", [])
+        raw_events = []
+        next_token = None
+        remaining = max(1, min(max_events, 500))
+
+        while remaining > 0:
+            call_kwargs = {"MaxResults": min(remaining, 50)}
+            if next_token:
+                call_kwargs["NextToken"] = next_token
+            resp = client.lookup_events(**call_kwargs)
+            batch = resp.get("Events", [])
+            raw_events.extend(batch)
+            next_token = resp.get("NextToken")
+            remaining -= len(batch)
+            if not next_token or len(batch) == 0:
+                break
+
         for e in raw_events:
             ev_id = e.get("EventId", str(uuid.uuid4()))
             ev_name = e.get("EventName", "UnknownApiCall")
             ev_source = e.get("EventSource", "aws.internal")
             service = ev_source.split(".")[0] if "." in ev_source else ev_source
+
+            if service_filter and service_filter.lower() != "all":
+                sf = service_filter.lower()
+                if sf not in service.lower() and sf not in ev_name.lower():
+                    continue
+
             username = e.get("Username") or "AWSPrincipal"
             ct_raw_str = e.get("CloudTrailEvent", "{}")
             ct_json = {}
@@ -331,6 +383,7 @@ def fetch_live_cloudtrail_events(max_events: int = 50, org_id: Optional[str] = N
                 "detected_by": "cloudtrail_stream_engine",
                 "raw_event": ct_json
             })
+        _set_in_cache(cache_key, events)
     except Exception as exc:
         print(f"[CloudTrail] Real event fetch notice: {exc}")
     return events
@@ -338,13 +391,19 @@ def fetch_live_cloudtrail_events(max_events: int = 50, org_id: Optional[str] = N
 
 # ── Production CSPM Scanner ───────────────────────────────────────────────────
 
-def run_production_cspm_scan(org_id: Optional[str] = None) -> List[Dict[str, Any]]:
+def run_production_cspm_scan(org_id: Optional[str] = None, force_refresh: bool = False) -> List[Dict[str, Any]]:
     """
     Executes a comprehensive, production-grade CSPM scan across AWS resources:
     1. S3: Public Access Blocks, bucket ACLs, default bucket encryption.
     2. EC2: Security Groups allowing 0.0.0.0/0 on SSH/RDP/Databases, unencrypted EBS.
     3. RDS: Storage encryption, public accessibility.
     """
+    cache_key = f"{org_id or 'default'}_cspm"
+    if not force_refresh:
+        cached = _get_from_cache(cache_key, ttl_seconds=45.0)
+        if cached is not None:
+            return cached
+
     results: List[Dict[str, Any]] = []
 
     # A. S3 Audit
@@ -477,18 +536,25 @@ def run_production_cspm_scan(org_id: Optional[str] = None) -> List[Dict[str, Any
     except Exception as e:
         pass  # RDS may not be supported or initialized in basic LocalStack
 
+    _set_in_cache(cache_key, results)
     return results
 
 
 # ── Production CIEM Scanner ───────────────────────────────────────────────────
 
-def run_production_ciem_scan(org_id: Optional[str] = None) -> List[Dict[str, Any]]:
+def run_production_ciem_scan(org_id: Optional[str] = None, force_refresh: bool = False) -> List[Dict[str, Any]]:
     """
     Executes a production-grade CIEM scan across AWS IAM:
     1. Root Account: Check account MFA status.
     2. Users: Check AdministratorAccess, missing MFA, and stale access keys (>90 days).
     3. Roles: Wildcard Action/Resource statements in attached and inline policies.
     """
+    cache_key = f"{org_id or 'default'}_ciem"
+    if not force_refresh:
+        cached = _get_from_cache(cache_key, ttl_seconds=45.0)
+        if cached is not None:
+            return cached
+
     results: List[Dict[str, Any]] = []
 
     try:
@@ -608,6 +674,7 @@ def run_production_ciem_scan(org_id: Optional[str] = None) -> List[Dict[str, Any
     except Exception as e:
         print(f"[CloudConnector CIEM IAM] {e}")
 
+    _set_in_cache(cache_key, results)
     return results
 
 
