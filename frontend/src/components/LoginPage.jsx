@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Lock, User, Mail, Building, Eye, EyeOff, Shield, Activity, ShieldCheck, ArrowRight, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { BrandMark } from './SharedComponents';
 import { API_URL } from '../config';
+
+const GOOGLE_CLIENT_ID = "935815727495-8a34omegvgel2s6q99u7kn6t4j2a4o0k.apps.googleusercontent.com";
 
 const LoginPage = ({ onLogin }) => {
   const [isRegister, setIsRegister] = useState(false);
@@ -18,6 +20,61 @@ const LoginPage = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [activeDemo, setActiveDemo] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleGoogleCallback = async (response) => {
+    if (!response || !response.credential) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.post(`${API_URL}/auth/google`, {
+        credential: response.credential
+      });
+      const data = res.data.data;
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      onLogin(data.user, data.token);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Google sign-in failed. Please verify credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const renderGoogleBtn = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCallback,
+          auto_select: false
+        });
+        const container = document.getElementById('google-btn-container');
+        if (container) {
+          container.innerHTML = '';
+          window.google.accounts.id.renderButton(container, {
+            theme: 'outline',
+            size: 'large',
+            width: 360,
+            text: isRegister ? 'signup_with' : 'signin_with',
+            shape: 'rectangular',
+            logo_alignment: 'left'
+          });
+        }
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      renderGoogleBtn();
+    } else {
+      const timer = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(timer);
+          renderGoogleBtn();
+        }
+      }, 300);
+      return () => clearInterval(timer);
+    }
+  }, [isRegister]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -211,6 +268,19 @@ const LoginPage = ({ onLogin }) => {
             )}
           </button>
 
+          <div style={{ display: 'flex', alignItems: 'center', margin: '14px 0', gap: '10px' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+            <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: '0.5px' }}>
+              OR CONTINUE WITH GOOGLE
+            </span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+          </div>
+
+          <div
+            id="google-btn-container"
+            style={{ minHeight: '44px', display: 'flex', justifyContent: 'center', marginBottom: '14px' }}
+          />
+
           <div className="toggle-mode">
             <span>{isRegister ? 'Already have an organization workspace?' : "Need to onboard a new organization?"}</span>
             <button
@@ -261,7 +331,7 @@ const LoginPage = ({ onLogin }) => {
                   {activeDemo === 'admin' ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
                 </div>
                 <div className="demo-role-info" style={{ textAlign: 'left' }}>
-                  <span className="demo-role-name" style={{ fontWeight: 600 }}>Admin</span>
+                  <span className="demo-role-name" style={{ fontWeight: 600 }}>Master Admin</span>
                   <span className="demo-role-sub" style={{ fontSize: '10.5px' }}>admin / admin123</span>
                 </div>
               </button>

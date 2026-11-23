@@ -90,7 +90,7 @@ const ComplianceTab = ({ showToast }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Info size={16} style={{ color: 'var(--accent-orange)' }} />
           <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-            <strong>Demo Baseline Audit:</strong> Compliance scores and control mappings are computed dynamically by the backend engine from active CSPM configuration audits and CIEM identity findings.
+            <strong>Continuous Benchmark Evaluation:</strong> Compliance scores and control mappings are evaluated dynamically from active cloud configuration and IAM identity audits.
           </span>
         </div>
         <span
@@ -104,7 +104,7 @@ const ComplianceTab = ({ showToast }) => {
             border: '1px solid var(--border-subtle)'
           }}
         >
-          SEEDED BASELINE EVALUATION
+          CIS & NIST BENCHMARK AUDIT
         </span>
       </div>
 

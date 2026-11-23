@@ -351,11 +351,11 @@ const RiskScoreTab = ({
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {[
-              { action: 'Auto-Remediate High Risk', triggered: isEvaluated && criticalCount > 0, desc: 'Execute validated dry-run playbooks' },
-              { action: 'Isolate Compromised Identities', triggered: isEvaluated && criticalCount > 1, desc: 'Revoke active STS sessions for flagged principals' },
-              { action: 'Enforce Least-Privilege Guardrails', triggered: isEvaluated && criticalCount > 2, desc: 'Detach wildcards and admin policies' },
-              { action: 'Generate Incident Report', triggered: isEvaluated && totalFindings > 0, desc: 'Compile compliance audit trail' },
-              { action: 'Block Malicious Ingress IPs', triggered: false, desc: 'WAF / Security Group rate limiting' }
+              { action: 'Auto-Remediate High Risk', active: isEvaluated && criticalCount > 0, desc: 'Validated dry-run playbooks ready for execution' },
+              { action: 'Isolate Compromised Identities', active: isEvaluated && criticalCount > 1, desc: 'STS session revocation guardrail armed' },
+              { action: 'Enforce Least-Privilege Guardrails', active: isEvaluated && criticalCount > 2, desc: 'Wildcard detachment and privilege restriction policy' },
+              { action: 'Generate Incident Report', active: isEvaluated && totalFindings > 0, desc: 'Continuous compliance audit logging active' },
+              { action: 'Block Malicious Ingress IPs', active: false, desc: 'WAF & Security Group automated rate limiting' }
             ].map((item, i) => (
               <div
                 key={i}
@@ -374,10 +374,10 @@ const RiskScoreTab = ({
                   fontWeight: 600,
                   padding: '2px 8px',
                   borderRadius: '4px',
-                  backgroundColor: item.triggered ? 'rgba(255, 69, 58, 0.15)' : 'rgba(52, 199, 89, 0.15)',
-                  color: item.triggered ? 'var(--sev-critical)' : 'var(--success-color)'
+                  backgroundColor: item.active ? 'rgba(56, 189, 248, 0.12)' : 'rgba(52, 199, 89, 0.12)',
+                  color: item.active ? '#38bdf8' : 'var(--success-color)'
                 }}>
-                  {item.triggered ? 'TRIGGERED' : 'MONITORING'}
+                  {item.active ? 'ENFORCING' : 'ARMED'}
                 </span>
               </div>
             ))}

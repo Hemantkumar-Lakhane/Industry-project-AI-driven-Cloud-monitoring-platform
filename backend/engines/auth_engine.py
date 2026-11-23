@@ -97,31 +97,46 @@ def _get_user(username: str) -> Optional[Dict]:
 def _save_user(user: Dict):
     conn = get_conn()
     conn.execute(
-        """INSERT OR REPLACE INTO users
+        """INSERT INTO users
            (user_id,org_id,username,email,password_hash,role,full_name,created_at,last_login,is_active)
-           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+           VALUES (?,?,?,?,?,?,?,?,?,?)
+           ON CONFLICT (user_id) DO UPDATE SET
+               org_id = EXCLUDED.org_id,
+               username = EXCLUDED.username,
+               email = EXCLUDED.email,
+               password_hash = EXCLUDED.password_hash,
+               role = EXCLUDED.role,
+               full_name = EXCLUDED.full_name,
+               last_login = EXCLUDED.last_login,
+               is_active = EXCLUDED.is_active""",
         (user["user_id"], user.get("org_id"), user["username"], user["email"], user["password_hash"],
-         user["role"], user["full_name"], user["created_at"], user["last_login"], int(user["is_active"]))
+         user["role"], user["full_name"], user["created_at"], user["last_login"], bool(user.get("is_active", True)))
     )
     conn.commit()
     conn.close()
 
 
-# Seed default users if not present (Admin & Demo User)
+# Seed default users if not present (Platform Superadmin & Demo User)
 def _seed_defaults():
     _defaults = [
-        {"username": "admin", "password": "admin123", "email": "admin@ramantivirus.com", "role": "admin", "full_name": "System Administrator"},
-        {"username": "demo",  "password": "demo123",  "email": "demo@ramantivirus.com",  "role": "analyst", "full_name": "Demo User"},
+        {"username": "admin", "password": "admin123", "email": "admin@ramantivirus.com", "role": "admin", "full_name": "RAM Antivirus Admin", "org_id": "org_master_admin"},
+        {"username": "demo",  "password": "demo123",  "email": "demo@ramantivirus.com",  "role": "analyst", "full_name": "Demo User", "org_id": "org_demo"},
     ]
     for u in _defaults:
         existing = _get_user(u["username"])
         if not existing:
             _save_user({
-                "user_id": str(uuid.uuid4()), "username": u["username"], "email": u["email"],
+                "user_id": f"usr_{u['username']}_01", "org_id": u.get("org_id"), "username": u["username"], "email": u["email"],
                 "password_hash": _hash_password(u["password"]), "role": u["role"],
                 "full_name": u["full_name"], "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "last_login": None, "is_active": True
             })
+        else:
+            # Ensure valid password hash for defaults
+            if not _verify_password(u["password"], existing["password_hash"]):
+                existing["password_hash"] = _hash_password(u["password"])
+                existing["full_name"] = u["full_name"]
+                _save_user(existing)
 
 _seed_defaults()
 
@@ -129,13 +144,26 @@ _seed_defaults()
 # ── Role Permissions ─────────────────────────────────────────────────────────
 ROLE_PERMISSIONS = {
     "admin": {
-        "description": "Full access to all endpoints, remediation, and management",
+        "description": "RAM Antivirus Platform Super Administrator — full access to all endpoints, platform oversight, and directory",
         "permissions": [
             "dashboard:read", "events:read", "cspm:read", "ciem:read",
             "ml:read", "ml:execute", "remediation:read", "remediation:execute",
             "compliance:read", "compliance:generate", "compliance:export",
             "simulation:read", "simulation:execute",
             "users:read", "users:manage",
+            "risk:read", "risk:configure",
+            "assets:read", "assets:write",
+            "vulnerabilities:read", "vulnerabilities:write",
+            "cloud:read", "cloud:configure", "cloud:scan", "telemetry:ingest",
+            "findings:read", "incidents:read"
+        ]
+    },
+    "user": {
+        "description": "Standard company tenant user — full cloud connection, scanning, posture auditing, and remediation for their organization",
+        "permissions": [
+            "dashboard:read", "events:read", "cspm:read", "ciem:read",
+            "ml:read", "ml:execute", "remediation:read", "remediation:execute",
+            "compliance:read", "compliance:generate", "compliance:export",
             "risk:read", "risk:configure",
             "assets:read", "assets:write",
             "vulnerabilities:read", "vulnerabilities:write",
@@ -269,7 +297,7 @@ def register_company(company_name: str, admin_name: str, email: str, password: s
         username=user_name,
         password=password,
         email=email.strip().lower(),
-        role="admin",
+        role="user",
         full_name=safe_admin_name,
         org_id=org_id
     )
@@ -286,7 +314,6 @@ def register_company(company_name: str, admin_name: str, email: str, password: s
         "external_id": external_id
     }
     login_res["is_new_registration"] = True
-    return login_res
     return login_res
 
 
@@ -364,6 +391,125 @@ def login_user(username: str, password: str) -> Dict:
             "role_label": role_label,
             "full_name": user["full_name"],
             "permissions": ROLE_PERMISSIONS[user["role"]]["permissions"]
+        }
+    }
+
+
+def login_google_user(email: str, name: str, google_sub: str) -> Dict:
+    """
+    Authenticate or self-provision a user signing in with Google OAuth 2.0.
+    Creates an organization and tenant user if first-time, or updates last login.
+    Returns standard JWT token and user details.
+    """
+    clean_email = email.strip().lower()
+    clean_name = name.strip() if name else clean_email.split("@")[0]
+
+    conn = get_conn()
+    user = conn.execute("SELECT * FROM users WHERE LOWER(email) = ?", (clean_email,)).fetchone()
+
+    if not user:
+        # Create organization for new user
+        org_id = f"org_{uuid.uuid4().hex[:8]}"
+        company_name = f"{clean_name.split()[0]}'s Cloud" if clean_name else "Cloud Workspace"
+        clean_org_slug = "".join(c for c in company_name.upper() if c.isalnum() or c == "-")[:12] or "TENANT"
+        external_id = f"RAM-{clean_org_slug}-{uuid.uuid4().hex[:6].upper()}"
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        try:
+            conn.execute(
+                "INSERT INTO organizations (org_id, name, external_id, industry, created_at) VALUES (?, ?, ?, ?, ?)",
+                (org_id, company_name, external_id, "Cloud Infrastructure", now)
+            )
+            conn.commit()
+        except Exception:
+            pass
+
+        user_id = str(uuid.uuid4())
+        base_username = clean_email.split("@")[0].lower().replace(".", "_").replace("-", "_")
+        user_name = base_username
+        counter = 1
+        while conn.execute("SELECT user_id FROM users WHERE username = ?", (user_name,)).fetchone():
+            user_name = f"{base_username}_{counter}"
+            counter += 1
+
+        dummy_hash = _hash_password(f"google_{google_sub}_{uuid.uuid4().hex}")
+        _save_user({
+            "user_id": user_id,
+            "org_id": org_id,
+            "username": user_name,
+            "email": clean_email,
+            "password_hash": dummy_hash,
+            "role": "user",
+            "full_name": clean_name,
+            "created_at": now,
+            "last_login": now,
+            "is_active": True
+        })
+        user = _get_user(user_name)
+    else:
+        # Update last login
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        user["last_login"] = now
+        _save_user(user)
+
+    conn.close()
+
+    if not user:
+        return {"success": False, "error": "Failed to retrieve or provision user"}
+
+    if not user.get("is_active", True):
+        return {"success": False, "error": "Account is deactivated. Contact administrator."}
+
+    # Fetch org details
+    org_id = user.get("org_id")
+    company_name = None
+    external_id = None
+    if org_id:
+        conn = get_conn()
+        org_row = conn.execute("SELECT name, external_id FROM organizations WHERE org_id = ?", (org_id,)).fetchone()
+        conn.close()
+        if org_row:
+            company_name = org_row["name"]
+            external_id = org_row["external_id"]
+
+    role = user.get("role", "user")
+    role_label = "System Admin" if user["username"] == "admin" else ("Company Admin" if role == "admin" else "Security Analyst")
+    now_dt = datetime.now(timezone.utc)
+
+    payload = {
+        "user_id": user["user_id"],
+        "username": user["username"],
+        "role": role,
+        "role_label": role_label,
+        "org_id": org_id,
+        "company_name": company_name,
+        "full_name": user.get("full_name") or clean_name,
+        "email": user["email"],
+        "permissions": ROLE_PERMISSIONS.get(role, {}).get("permissions", []),
+        "iat": now_dt,
+        "exp": now_dt + timedelta(hours=JWT_EXPIRATION_HOURS),
+        "iss": "ram-antivirus-cloud-security"
+    }
+
+    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+    return {
+        "success": True,
+        "token": token,
+        "access_token": token,
+        "token_type": "Bearer",
+        "expires_in": JWT_EXPIRATION_HOURS * 3600,
+        "user": {
+            "user_id": user["user_id"],
+            "org_id": org_id,
+            "company_name": company_name,
+            "external_id": external_id,
+            "username": user["username"],
+            "email": user["email"],
+            "role": role,
+            "role_label": role_label,
+            "full_name": user.get("full_name") or clean_name,
+            "permissions": ROLE_PERMISSIONS.get(role, {}).get("permissions", [])
         }
     }
 
@@ -506,6 +652,8 @@ def get_all_users() -> List[Dict]:
 
 
 def deactivate_user(username: str) -> Dict:
+    if username.strip().lower() in ("admin", "ramantivirus admin"):
+        return {"success": False, "error": "Cannot deactivate platform master admin account"}
     user = _get_user(username)
     if not user:
         return {"success": False, "error": f"User '{username}' not found"}

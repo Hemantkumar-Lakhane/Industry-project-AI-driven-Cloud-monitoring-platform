@@ -31,7 +31,6 @@ import AlertsIncidentsTab from './components/AlertsIncidentsTab';
 import RiskScoreTab from './components/RiskScoreTab';
 import ComplianceTab from './components/ComplianceTab';
 import RemediationTab from './components/RemediationTab';
-import LiveLogsTab from './components/LiveLogsTab';
 import UserManagementTab from './components/UserManagementTab';
 import DataSourcesTab from './components/DataSourcesTab';
 import WorkspaceSettingsTab from './components/WorkspaceSettingsTab';
@@ -395,18 +394,17 @@ const App = () => {
 
   // Production Enterprise Navigation Tabs
   const navTabs = [
-    { id: 'overview', label: 'Overview', icon: <Shield size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
-    { id: 'alerts', label: 'Alerts & Incidents', icon: <AlertTriangle size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
-    { id: 'compliance', label: 'Compliance & CSPM', icon: <ShieldCheck size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
-    { id: 'risk', label: 'Risk Score', icon: <Gauge size={16} />, perm: 'risk:read', roles: ['admin', 'analyst', 'viewer'] },
-    { id: 'remediation', label: 'Remediation', icon: <Wrench size={16} />, perm: 'remediation:read', roles: ['admin', 'analyst', 'viewer'] },
-    { id: 'livelogs', label: 'Live Log Stream', icon: <Terminal size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst'] },
+    { id: 'overview', label: 'Overview', icon: <Shield size={16} />, perm: 'dashboard:read', roles: ['admin', 'user', 'analyst', 'viewer'] },
+    { id: 'alerts', label: 'Alerts & Incidents', icon: <AlertTriangle size={16} />, perm: 'dashboard:read', roles: ['admin', 'user', 'analyst', 'viewer'] },
+    { id: 'compliance', label: 'Compliance & CSPM', icon: <ShieldCheck size={16} />, perm: 'dashboard:read', roles: ['admin', 'user', 'analyst', 'viewer'] },
+    { id: 'risk', label: 'Risk Score', icon: <Gauge size={16} />, perm: 'risk:read', roles: ['admin', 'user', 'analyst', 'viewer'] },
+    { id: 'remediation', label: 'Remediation', icon: <Wrench size={16} />, perm: 'remediation:read', roles: ['admin', 'user', 'analyst', 'viewer'] },
     { id: 'users', label: 'Team & Access', icon: <Users size={16} />, perm: 'users:read', roles: ['admin'] },
   ];
 
   const footerTabs = [
-    { id: 'datasources', label: 'Cloud Connectors', icon: <Database size={16} />, perm: 'dashboard:read', roles: ['admin', 'analyst', 'viewer'] },
-    { id: 'settings', label: 'Workspace Settings', icon: <Settings size={16} />, perm: 'dashboard:read', roles: ['admin'] },
+    { id: 'datasources', label: 'Cloud Connectors', icon: <Database size={16} />, perm: 'dashboard:read', roles: ['admin', 'user', 'analyst', 'viewer'] },
+    { id: 'settings', label: 'Workspace Settings', icon: <Settings size={16} />, perm: 'dashboard:read', roles: ['admin', 'user'] },
   ];
 
   useEffect(() => {
@@ -469,11 +467,6 @@ const App = () => {
           Invite user
         </button>
       )
-    },
-    livelogs: {
-      title: 'Live Log Stream',
-      subtitle: 'Real-time multi-cloud telemetry and behavioral anomaly stream',
-      action: null
     },
     datasources: {
       title: 'Data Sources',
@@ -660,7 +653,9 @@ const App = () => {
                     boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)'
                   }}
                 />
-                {user?.role_label || (user?.role === 'admin' ? (user?.company_name ? 'Company Admin' : 'System Admin') : (user?.role || 'analyst'))} &bull; online
+                {user?.username === 'admin'
+                  ? 'Platform Superadmin'
+                  : (user?.company_name ? `${user.company_name} User` : 'Company User')} &bull; online
               </span>
             </div>
           )}
@@ -828,8 +823,6 @@ const App = () => {
               }}
             />
           )}
-
-          {activeTab === 'livelogs' && <LiveLogsTab showToast={showToast} />}
 
           {activeTab === 'users' && <UserManagementTab token={token} showToast={showToast} />}
 

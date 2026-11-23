@@ -235,12 +235,18 @@ const UserManagementTab = ({ token, showToast }) => {
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button
-                      className="figma-link-btn"
-                      onClick={() => toggleUserStatus(u.username, u.isActive)}
-                    >
-                      {u.isActive ? 'Deactivate' : 'Reactivate'}
-                    </button>
+                    {u.username === 'admin' ? (
+                      <span style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', fontWeight: 500 }}>
+                        Master Superadmin (Protected)
+                      </span>
+                    ) : (
+                      <button
+                        className="figma-link-btn"
+                        onClick={() => toggleUserStatus(u.username, u.isActive)}
+                      >
+                        {u.isActive ? 'Deactivate' : 'Reactivate'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

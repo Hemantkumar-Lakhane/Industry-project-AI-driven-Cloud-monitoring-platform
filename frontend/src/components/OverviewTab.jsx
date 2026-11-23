@@ -371,8 +371,8 @@ const OverviewTab = ({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               {selectedMetric === 'total_events' && (
-                <button className="figma-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => onNavigateTab && onNavigateTab('livelogs')}>
-                  Open Live Stream Tab ↗
+                <button className="figma-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => onNavigateTab && onNavigateTab('alerts')}>
+                  Open Alerts Stream ↗
                 </button>
               )}
               {selectedMetric === 'threats' && (

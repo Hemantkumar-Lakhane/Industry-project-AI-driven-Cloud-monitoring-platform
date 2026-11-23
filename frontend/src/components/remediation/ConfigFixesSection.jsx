@@ -1,12 +1,31 @@
 import React from 'react';
-import { Settings, Users, Check, Wrench } from 'lucide-react';
+import { Settings, Users, Check, Wrench, ShieldCheck } from 'lucide-react';
 
 export const ConfigFixesSection = ({
+  cspmFindings = [],
+  ciemFindings = [],
   healedConfigs = new Set(),
   revokedEntities = new Set(),
   onAutoFixConfig,
   onRevokeAccess
 }) => {
+  // If no findings at all, render clean empty posture card
+  if (cspmFindings.length === 0 && ciemFindings.length === 0) {
+    return (
+      <div className="figma-card" style={{ marginTop: '24px', padding: '24px', textAlign: 'center', boxSizing: 'border-box' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--surface-muted)', marginBottom: '10px' }}>
+          <ShieldCheck size={20} style={{ color: 'var(--success-color, #10b981)' }} />
+        </div>
+        <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
+          Zero Infrastructure & Identity Misconfigurations
+        </h4>
+        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0 }}>
+          No open CSPM misconfigurations or excessive CIEM privileges detected in your cloud environment.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       display: 'grid',
@@ -25,61 +44,41 @@ export const ConfigFixesSection = ({
           <span style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>1-Click Security Corrections</span>
         </div>
 
-        <table className="figma-table">
-          <tbody>
-            <tr>
-              <td>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>Close public SSH port 22 on production server</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>Target: <code>prod-web-01 &bull; sg-0a1b2c3d</code></div>
-              </td>
-              <td style={{ textAlign: 'right' }}>
-                {healedConfigs.has('VULN-001') ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: 'var(--success-color)', background: 'var(--success-bg)', padding: '4px 10px', borderRadius: '6px' }}>
-                    <Check size={12} /> Closed & Secured
-                  </span>
-                ) : (
-                  <button className="figma-btn-secondary" style={{ padding: '5px 12px', fontSize: '12px' }} onClick={() => onAutoFixConfig('VULN-001')}>
-                    <Wrench size={12} /> Auto-Fix
-                  </button>
-                )}
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>Enable S3 Default Server-Side Encryption (KMS)</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>Target: <code>customer-financial-records-bucket</code></div>
-              </td>
-              <td style={{ textAlign: 'right' }}>
-                {healedConfigs.has('VULN-002') ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: 'var(--success-color)', background: 'var(--success-bg)', padding: '4px 10px', borderRadius: '6px' }}>
-                    <Check size={12} /> Encrypted & Secured
-                  </span>
-                ) : (
-                  <button className="figma-btn-secondary" style={{ padding: '5px 12px', fontSize: '12px' }} onClick={() => onAutoFixConfig('VULN-002')}>
-                    <Wrench size={12} /> Auto-Fix
-                  </button>
-                )}
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>Restrict Security Group 0.0.0.0/0 Outbound Rules</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>Target: <code>sg-db-private-cluster</code></div>
-              </td>
-              <td style={{ textAlign: 'right' }}>
-                {healedConfigs.has('VULN-003') ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: 'var(--success-color)', background: 'var(--success-bg)', padding: '4px 10px', borderRadius: '6px' }}>
-                    <Check size={12} /> Restricted
-                  </span>
-                ) : (
-                  <button className="figma-btn-secondary" style={{ padding: '5px 12px', fontSize: '12px' }} onClick={() => onAutoFixConfig('VULN-003')}>
-                    <Wrench size={12} /> Auto-Fix
-                  </button>
-                )}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {cspmFindings.length === 0 ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+            No open infrastructure posture misconfigurations.
+          </div>
+        ) : (
+          <table className="figma-table">
+            <tbody>
+              {cspmFindings.slice(0, 5).map((f) => {
+                const fid = f.finding_id || f.scan_id || f.id || 'CSPM-FIX';
+                const isFixed = healedConfigs.has(fid);
+                return (
+                  <tr key={fid}>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>{f.title}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                        Target: <code>{f.affected_resource || f.resource || 'AWS Resource'}</code>
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      {isFixed ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: 'var(--success-color)', background: 'var(--success-bg)', padding: '4px 10px', borderRadius: '6px' }}>
+                          <Check size={12} /> Corrected
+                        </span>
+                      ) : (
+                        <button className="figma-btn-secondary" style={{ padding: '5px 12px', fontSize: '12px' }} onClick={() => onAutoFixConfig(fid)}>
+                          <Wrench size={12} /> Auto-Fix
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* CIEM Identity Access Controls */}
@@ -92,44 +91,41 @@ export const ConfigFixesSection = ({
           <span style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>Least-Privilege Enforcement</span>
         </div>
 
-        <table className="figma-table">
-          <tbody>
-            <tr>
-              <td>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>Revoke unused AdministratorAccess policy from deploy-bot</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>Principal: <code>deploy-bot &bull; IAM User &bull; 90+ days inactive</code></div>
-              </td>
-              <td style={{ textAlign: 'right' }}>
-                {revokedEntities.has('deploy-bot') ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: 'var(--success-color)', background: 'var(--success-bg)', padding: '4px 10px', borderRadius: '6px' }}>
-                    <Check size={12} /> Privileges Revoked
-                  </span>
-                ) : (
-                  <button className="figma-btn-secondary" style={{ padding: '5px 12px', fontSize: '12px' }} onClick={() => onRevokeAccess('deploy-bot', 'user', 'critical')}>
-                    Revoke Access
-                  </button>
-                )}
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>Enforce Hardware MFA challenge on intern-alice</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>Principal: <code>intern-alice &bull; Cloud Console Access</code></div>
-              </td>
-              <td style={{ textAlign: 'right' }}>
-                {revokedEntities.has('intern-alice') ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: 'var(--success-color)', background: 'var(--success-bg)', padding: '4px 10px', borderRadius: '6px' }}>
-                    <Check size={12} /> MFA Enforced
-                  </span>
-                ) : (
-                  <button className="figma-btn-secondary" style={{ padding: '5px 12px', fontSize: '12px' }} onClick={() => onRevokeAccess('intern-alice', 'user', 'high')}>
-                    Enforce MFA
-                  </button>
-                )}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {ciemFindings.length === 0 ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+            No excessive privilege risks or missing MFA policies detected.
+          </div>
+        ) : (
+          <table className="figma-table">
+            <tbody>
+              {ciemFindings.slice(0, 5).map((f) => {
+                const eid = f.affected_principal || f.entity_name || f.finding_id || 'CIEM-FIX';
+                const isRevoked = revokedEntities.has(eid);
+                return (
+                  <tr key={eid}>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>{f.title || `Restrict access for ${eid}`}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                        Principal: <code>{eid} &bull; {f.affected_resource || 'IAM Principal'}</code>
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      {isRevoked ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: 'var(--success-color)', background: 'var(--success-bg)', padding: '4px 10px', borderRadius: '6px' }}>
+                          <Check size={12} /> Access Restricted
+                        </span>
+                      ) : (
+                        <button className="figma-btn-secondary" style={{ padding: '5px 12px', fontSize: '12px' }} onClick={() => onRevokeAccess(eid, 'user', f.severity || 'high')}>
+                          Revoke Access
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

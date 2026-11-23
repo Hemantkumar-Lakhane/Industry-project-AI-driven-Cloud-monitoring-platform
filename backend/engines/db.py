@@ -8,19 +8,114 @@ import json
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
+from dotenv import load_dotenv
+env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+load_dotenv(env_file)
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "security.db")
 
+_PG_POOL = None
+
+
+class PGCursorWrapper:
+    """Wrapper around psycopg2 cursor that normalizes dict rows and rowcount."""
+    def __init__(self, cur):
+        self.cur = cur
+
+    def fetchall(self):
+        try:
+            return [dict(r) for r in self.cur.fetchall()]
+        except Exception:
+            return []
+
+    def fetchone(self):
+        try:
+            r = self.cur.fetchone()
+            return dict(r) if r is not None else None
+        except Exception:
+            return None
+
+    @property
+    def rowcount(self):
+        return self.cur.rowcount
+
+    def __iter__(self):
+        return iter(self.fetchall())
+
+
+class PGConnWrapper:
+    """Wrapper around psycopg2 connection to provide SQLite-like interface."""
+    def __init__(self, raw_conn, pool=None):
+        self.raw_conn = raw_conn
+        self.pool = pool
+        self.is_pg = True
+
+    def execute(self, sql, params=()):
+        stripped = sql.strip().upper()
+        if stripped.startswith("PRAGMA"):
+            class DummyCursor:
+                def fetchall(self): return []
+                def fetchone(self): return None
+                @property
+                def rowcount(self): return 0
+                def __iter__(self): return iter([])
+            return DummyCursor()
+
+        # Translate ? parameter placeholder to %s for PostgreSQL
+        pg_sql = sql.replace("?", "%s")
+        import psycopg2.extras
+        cur = self.raw_conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(pg_sql, params)
+        return PGCursorWrapper(cur)
+
+    def executescript(self, script):
+        cur = self.raw_conn.cursor()
+        cur.execute(script)
+
+    def commit(self):
+        self.raw_conn.commit()
+
+    def close(self):
+        if self.pool:
+            try:
+                self.pool.putconn(self.raw_conn)
+            except Exception:
+                try:
+                    self.raw_conn.close()
+                except Exception:
+                    pass
+        else:
+            try:
+                self.raw_conn.close()
+            except Exception:
+                pass
+
 
 def get_conn():
+    global _PG_POOL
     if DATABASE_URL and (DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")):
         import psycopg2
         import psycopg2.extras
-        conn = psycopg2.connect(DATABASE_URL)
-        return conn
+        import psycopg2.pool
+        if _PG_POOL is None:
+            try:
+                _PG_POOL = psycopg2.pool.ThreadedConnectionPool(minconn=1, maxconn=15, dsn=DATABASE_URL)
+            except Exception:
+                raw_conn = psycopg2.connect(DATABASE_URL)
+                return PGConnWrapper(raw_conn)
+        try:
+            raw_conn = _PG_POOL.getconn()
+            if raw_conn.closed:
+                raw_conn = psycopg2.connect(DATABASE_URL)
+            return PGConnWrapper(raw_conn, pool=_PG_POOL)
+        except Exception:
+            raw_conn = psycopg2.connect(DATABASE_URL)
+            return PGConnWrapper(raw_conn)
 
     conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
+    conn.is_pg = False
     try:
         conn.execute("PRAGMA journal_mode = WAL;")
         conn.execute("PRAGMA busy_timeout = 5000;")
@@ -31,6 +126,22 @@ def get_conn():
 
 def init_db():
     conn = get_conn()
+    if getattr(conn, "is_pg", False):
+        # In PostgreSQL / Supabase, schema is initialized via schema_postgresql.sql
+        try:
+            cur = conn.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name='organizations';")
+            if not cur.fetchone():
+                schema_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "schema_postgresql.sql")
+                if os.path.exists(schema_path):
+                    with open(schema_path, "r", encoding="utf-8") as f:
+                        conn.executescript(f.read())
+                    conn.commit()
+        except Exception:
+            pass
+        finally:
+            conn.close()
+        return
+
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS organizations (
             org_id TEXT PRIMARY KEY,
@@ -850,9 +961,18 @@ def save_remediation_record_db(record: dict) -> bool:
         return False
     conn = get_conn()
     cur = conn.execute("""
-        INSERT OR REPLACE INTO remediation_history 
+        INSERT INTO remediation_history 
         (execution_id, playbook_id, target_fid, is_dry_run, pre_remediation_state, post_remediation_state, timestamp, rolled_back, rolled_back_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (execution_id) DO UPDATE SET
+            playbook_id = EXCLUDED.playbook_id,
+            target_fid = EXCLUDED.target_fid,
+            is_dry_run = EXCLUDED.is_dry_run,
+            pre_remediation_state = EXCLUDED.pre_remediation_state,
+            post_remediation_state = EXCLUDED.post_remediation_state,
+            timestamp = EXCLUDED.timestamp,
+            rolled_back = EXCLUDED.rolled_back,
+            rolled_back_at = EXCLUDED.rolled_back_at
     """, (
         record["execution_id"],
         record["playbook_id"],
@@ -1002,10 +1122,11 @@ def list_organizations() -> List[Dict[str, Any]]:
 # Migration to ensure org_id column on users table
 try:
     _c = get_conn()
-    _cols = [c[1] for c in _c.execute("PRAGMA table_info(users)").fetchall()]
-    if "org_id" not in _cols:
-        _c.execute("ALTER TABLE users ADD COLUMN org_id TEXT")
-        _c.commit()
+    if not getattr(_c, "is_pg", False):
+        _cols = [c[1] for c in _c.execute("PRAGMA table_info(users)").fetchall()]
+        if "org_id" not in _cols:
+            _c.execute("ALTER TABLE users ADD COLUMN org_id TEXT")
+            _c.commit()
     _c.close()
 except Exception:
     pass

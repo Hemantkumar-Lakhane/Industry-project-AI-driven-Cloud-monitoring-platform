@@ -46,7 +46,7 @@ from engines.compliance_engine import (
     generate_compliance_report, COMPLIANCE_FRAMEWORKS
 )
 from engines.auth_engine import (
-    register_user, register_company, login_user, verify_token, check_permission,
+    register_user, register_company, login_user, login_google_user, verify_token, check_permission,
     get_all_users, deactivate_user, reactivate_user, get_role_info, ROLE_PERMISSIONS,
     create_ws_ticket, redeem_ws_ticket, validate_ws_auth
 )
@@ -271,6 +271,8 @@ def health_check():
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://zrtjg51w-5173.inc1.devtunnels.ms",
@@ -296,6 +298,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+    return response
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -643,6 +651,41 @@ def api_login(request: Request, req: LoginRequest):
     return {"status": "success", "data": result}
 
 
+@app.post(
+    "/api/auth/google",
+    tags=["Authentication & Access Control"],
+    summary="Authenticate or Register via Google OAuth 2.0",
+    description="Validates Google ID Token from Google Identity Services, creates or retrieves user account, and returns platform JWT token."
+)
+@limiter.limit("10/minute")
+def api_auth_google(request: Request, payload: Dict[str, Any] = Body(...)):
+    credential = payload.get("credential")
+    if not credential:
+        raise HTTPException(status_code=400, detail="Google credential token is required")
+
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+
+    client_id = os.environ.get("GOOGLE_CLIENT_ID", "935815727495-8a34omegvgel2s6q99u7kn6t4j2a4o0k.apps.googleusercontent.com")
+    try:
+        idinfo = id_token.verify_oauth2_token(credential, google_requests.Request(), client_id)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Google token verification failed: {str(e)}")
+
+    email = str(idinfo.get("email", "")).strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Google account has no associated email address")
+
+    name = idinfo.get("name") or email.split("@")[0]
+    sub = str(idinfo.get("sub", ""))
+
+    result = login_google_user(email=email, name=name, google_sub=sub)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Google authentication failed"))
+
+    return {"status": "success", "data": result}
+
+
 @app.get(
     "/api/auth/me",
     tags=["Authentication & Access Control"],
@@ -864,9 +907,11 @@ def api_deactivate_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
     _require_permission(authorization, "users:manage", credentials)
+    if username.strip().lower() in ("admin", "ramantivirus admin"):
+        raise HTTPException(status_code=400, detail="Cannot deactivate the platform superadmin account")
     result = deactivate_user(username)
     if not result["success"]:
-        raise HTTPException(status_code=404, detail=result["error"])
+        raise HTTPException(status_code=400, detail=result["error"])
     return {"status": "success", "data": result}
 
 
