@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Lock, User, Mail, Building, Eye, EyeOff, Shield, Activity, ShieldCheck, ArrowRight, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { BrandMark } from './SharedComponents';
@@ -10,6 +10,7 @@ const LoginPage = ({ onLogin }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [showDemoLogins, setShowDemoLogins] = useState(false);
   const [gsiRendered, setGsiRendered] = useState(false);
+  const gsiInitializedRef = useRef(false);
   const [form, setForm] = useState({ 
     username: '', 
     password: '', 
@@ -58,11 +59,14 @@ const LoginPage = ({ onLogin }) => {
     const renderGoogleBtn = () => {
       if (window.google?.accounts?.id) {
         try {
-          window.google.accounts.id.initialize({
-            client_id: GOOGLE_CLIENT_ID,
-            callback: handleGoogleCallback,
-            auto_select: false
-          });
+          if (!gsiInitializedRef.current) {
+            window.google.accounts.id.initialize({
+              client_id: GOOGLE_CLIENT_ID,
+              callback: handleGoogleCallback,
+              auto_select: false
+            });
+            gsiInitializedRef.current = true;
+          }
           const btnContainer = document.getElementById('google-btn-container');
           if (btnContainer) {
             btnContainer.innerHTML = '';

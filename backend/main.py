@@ -308,7 +308,7 @@ app.add_middleware(
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
-    response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+    response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
     return response
 
 limiter = Limiter(
@@ -695,14 +695,29 @@ def api_auth_google(request: Request, payload: Dict[str, Any] = Body(...)):
     if not credential:
         raise HTTPException(status_code=400, detail="Google credential token is required")
 
-    from google.oauth2 import id_token
-    from google.auth.transport import requests as google_requests
-
     client_id = os.environ.get("GOOGLE_CLIENT_ID", "935815727495-8a34omegvgel2s6q99u7kn6t4j2a4o0k.apps.googleusercontent.com")
+    idinfo = None
+
     try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
         idinfo = id_token.verify_oauth2_token(credential, google_requests.Request(), client_id)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Google token verification failed: {str(e)}")
+    except Exception:
+        # High-reliability fallback: verify directly with Google Tokeninfo endpoint using standard library urllib
+        try:
+            import urllib.request
+            import urllib.parse
+            tokeninfo_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(str(credential))}"
+            req = urllib.request.Request(tokeninfo_url, headers={"User-Agent": "RAM-Antivirus-Cloud-Auth/2.0"})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                idinfo = json.loads(resp.read().decode("utf-8"))
+            aud = idinfo.get("aud")
+            if aud != client_id and client_id not in str(aud):
+                raise HTTPException(status_code=401, detail="Google token audience verification failed")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=401, detail=f"Google token verification failed: {str(e)}")
 
     email = str(idinfo.get("email", "")).strip().lower()
     if not email:
