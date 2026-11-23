@@ -846,6 +846,10 @@ const App = () => {
               findingsLoading={findingsLoading}
               findingsError={findingsError}
               fetchFindings={fetchFindings}
+              incidents={incidents}
+              incidentsLoading={incidentsLoading}
+              incidentsStats={incidentsStats}
+              fetchIncidents={fetchIncidents}
               liveTime={liveTime}
               onInvestigateFinding={handleInvestigateFinding}
               onNavigateTab={handleNavigateTab}

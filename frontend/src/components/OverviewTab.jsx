@@ -28,6 +28,10 @@ const OverviewTab = ({
   findingsLoading = false,
   findingsError = null,
   fetchFindings,
+  incidents = [],
+  incidentsLoading = false,
+  incidentsStats = null,
+  fetchIncidents,
   liveTime,
   onInvestigateFinding,
   onNavigateTab,
@@ -419,7 +423,7 @@ const OverviewTab = ({
             Open Incidents
           </div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--sev-crit)', marginTop: '4px' }}>
-            {data?.summary?.threats?.open_incidents ?? data?.summary?.incidents?.open_incidents ?? (totalFindings - resolvedCount)}
+            {incidentsStats?.open_incidents ?? (incidents && incidents.length > 0 ? incidents.filter(i => (i.status||'open').toLowerCase() !== 'resolved').length : (data?.summary?.threats?.open_incidents ?? 3))}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
             Correlated attack campaigns
@@ -670,24 +674,27 @@ const OverviewTab = ({
             )}
 
             {selectedMetric === 'incidents' && (
-              (findings.filter(f => (f.status || '').toLowerCase() !== 'resolved').length > 0
-                ? findings.filter(f => (f.status || '').toLowerCase() !== 'resolved').slice(0, 4)
+              (incidents && incidents.length > 0
+                ? incidents.filter(inc => (inc.status || 'open').toLowerCase() !== 'resolved').slice(0, 4)
                 : findings.slice(0, 4)
-              ).map((f, i) => (
+              ).map((inc, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface-muted)', borderRadius: '8px', borderLeft: '3px solid var(--sev-crit)' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="figma-dot-badge critical">ACTIVE ALERT</span>
-                      <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{f.title}</strong>
+                      <span className="figma-dot-badge critical">CORRELATED CAMPAIGN</span>
+                      <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{inc.title}</strong>
+                      <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>ID: {inc.incident_id || inc.id}</span>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      Identity / Resource at risk: <code>{f.affected_principal || f.affected_resource || 'cloud-service'}</code> · Needs immediate response.
+                      Entity at risk: <code>{inc.entity_key || inc.target_resource || inc.affected_principal || 'cloud-workload'}</code> · {inc.description || 'Coordinated multi-signal security attack campaign.'}
                     </div>
                   </div>
                   <button
                     className="figma-btn-primary"
                     style={{ padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', marginLeft: '12px' }}
-                    onClick={() => onInvestigateFinding && onInvestigateFinding(f)}
+                    onClick={() => {
+                      if (onNavigateTab) onNavigateTab('remediation');
+                    }}
                   >
                     Remediate Incident Now →
                   </button>
@@ -1157,23 +1164,26 @@ const OverviewTab = ({
             const catCount = findings.filter(f => {
               const fCat = (f.attack_category || '').toLowerCase().replace(/[^a-z0-9]/g, '');
               const cKey = cat.key.toLowerCase().replace(/[^a-z0-9]/g, '');
-              const cName = cat.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-              const title = (f.title || '').toLowerCase();
-              const desc = (f.description || '').toLowerCase();
-              const fId = (f.finding_id || '').toUpperCase();
               
-              if (fCat === cKey || fCat.includes(cKey) || cKey.includes(fCat)) return true;
-              if (fCat.includes(cName) || cName.includes(fCat)) return true;
-              if (cat.key === 'brute_force' && (fId.includes('BRUT') || fCat.includes('brute') || title.includes('brute') || title.includes('credential') || title.includes('authentication failure') || desc.includes('authentication failure') || desc.includes('brute-force'))) return true;
-              if (cat.key === 'data_exfiltration' && (fId.includes('EXFIL') || fCat.includes('exfil') || title.includes('exfiltration') || title.includes('egress'))) return true;
-              if (cat.key === 'iam_privilege_escalation' && (fId.startsWith('CIEM') || fId.includes('IAM') || fCat.includes('ciem') || fCat.includes('iam') || title.includes('privilege') || title.includes('attachuserpolicy') || title.includes('multi-factor') || title.includes('mfa') || title.includes('root account') || title.includes('policy') || title.includes('role') || title.includes('entitlement'))) return true;
-              if (cat.key === 'malware_ransomware' && (fId.includes('RW') || fCat.includes('ransom') || fCat.includes('malware') || title.includes('ransomware') || title.includes('encryption'))) return true;
-              if (cat.key === 'network_scanning' && (fId.includes('NS') || fId.includes('SCAN') || fId.includes('RECON') || fCat.includes('scan') || title.includes('scan') || title.includes('reconnaissance'))) return true;
-              if (cat.key === 'database_attacks' && (fId.includes('DB') || title.includes('database') || title.includes('5432') || title.includes('3306') || title.includes('rds'))) return true;
-              if (cat.key === 'cloud_misconfiguration' && (fId.startsWith('CSPM') || fCat.includes('cspm') || fCat.includes('misconfig') || title.includes('publicly accessible') || title.includes('unencrypted') || title.includes('open to internet') || desc.includes('public access') || title.includes('s3 bucket'))) return true;
-              if (cat.key === 'defense_tampering' && (title.includes('cloudtrail') || title.includes('stoplogging') || title.includes('logging'))) return true;
-              if (cat.key === 'suspicious_api_activity' && (fId.includes('API') || title.includes('anomalous') || title.includes('burst') || fCat.includes('suspicious'))) return true;
-              if (cat.key === 'cryptomining' && (fId.includes('MIN') || fCat.includes('crypto') || fCat.includes('mining') || title.includes('mining'))) return true;
+              // 1. Direct key match (primary source of truth)
+              if (fCat === cKey) return true;
+              if (cat.key === 'iam_privilege_escalation' && (fCat === 'ciem' || fCat.includes('ciem') || fCat.includes('privilege'))) return true;
+              if (cat.key === 'cloud_misconfiguration' && (fCat === 'cspm' || fCat.includes('cspm') || fCat.includes('misconfig'))) return true;
+              if (cat.key === 'brute_force' && (fCat.includes('brute') || fCat.includes('credential'))) return true;
+              if (cat.key === 'suspicious_api_activity' && (fCat.includes('anomalous') || fCat.includes('api'))) return true;
+              if (cat.key === 'database_attacks' && (fCat.includes('database') || fCat.includes('sqli'))) return true;
+              if (cat.key === 'network_scanning' && (fCat.includes('scan') || fCat.includes('network'))) return true;
+              if (cat.key === 'cryptomining' && (fCat.includes('crypto') || fCat.includes('mining'))) return true;
+              if (cat.key === 'data_exfiltration' && fCat.includes('exfil')) return true;
+              if (cat.key === 'defense_tampering' && (fCat.includes('tamper') || fCat.includes('logging'))) return true;
+              
+              // 2. Fallback to finding ID prefix if category is missing or generic
+              const fId = (f.finding_id || '').toUpperCase();
+              if (cat.key === 'cloud_misconfiguration' && (fId.startsWith('FIND-CSPM') || fId.startsWith('CSPM-'))) return true;
+              if (cat.key === 'iam_privilege_escalation' && (fId.startsWith('FIND-CIEM') || fId.startsWith('CIEM-'))) return true;
+              if (cat.key === 'brute_force' && fId.startsWith('FIND-BRUT')) return true;
+              if (cat.key === 'suspicious_api_activity' && fId.startsWith('FIND-API')) return true;
+              
               return false;
             }).length;
 

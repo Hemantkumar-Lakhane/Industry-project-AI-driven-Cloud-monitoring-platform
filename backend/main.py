@@ -1938,7 +1938,7 @@ def get_detected_findings(
 
     try:
         from engines.db import get_findings_db
-        db_findings = get_findings_db(limit=100, org_id=org_id, status="open")
+        db_findings = get_findings_db(limit=500, org_id=org_id, status="open")
         for df in db_findings:
             if not any(f.get("finding_id") == df.get("finding_id") for f in findings_data):
                 findings_data.append(df)

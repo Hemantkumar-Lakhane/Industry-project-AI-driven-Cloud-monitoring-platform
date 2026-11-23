@@ -418,8 +418,9 @@ def get_risk_trend_db(periods: int = 7):
 
     for i in range(periods - 1, -1, -1):
         target_date = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        ts_col = "timestamp::text" if getattr(conn, "is_pg", False) else "timestamp"
         row = conn.execute(
-            "SELECT unified_score, level FROM risk_history WHERE timestamp LIKE ? ORDER BY timestamp DESC LIMIT 1",
+            f"SELECT unified_score, level FROM risk_history WHERE {ts_col} LIKE ? ORDER BY timestamp DESC LIMIT 1",
             (f"{target_date}%",)
         ).fetchone()
 

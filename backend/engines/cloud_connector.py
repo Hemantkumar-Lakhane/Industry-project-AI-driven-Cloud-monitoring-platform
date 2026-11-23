@@ -12,6 +12,7 @@ Production-ready cloud connector providing:
 import os
 import time
 import uuid
+import hashlib
 import json
 import urllib.request
 from datetime import datetime, timezone, timedelta
@@ -443,8 +444,9 @@ def run_production_cspm_scan(org_id: Optional[str] = None, force_refresh: bool =
                 pab = s3.get_public_access_block(Bucket=b_name).get("PublicAccessBlockConfiguration", {})
                 if not (pab.get("BlockPublicAcls") and pab.get("IgnorePublicAcls") and
                         pab.get("BlockPublicPolicy") and pab.get("RestrictPublicBuckets")):
+                    h = hashlib.md5(b_name.encode()).hexdigest()[:8].upper()
                     results.append({
-                        "scan_id": str(uuid.uuid4())[:8],
+                        "scan_id": f"FIND-CSPM-S3-PAB-{h}",
                         "vulnerability_id": "CSPM-S3-001",
                         "title": "S3 Bucket Publicly Accessible (Public Access Block Disabled)",
                         "description": f"Bucket '{b_name}' has one or more PublicAccessBlock flags disabled.",
@@ -455,8 +457,9 @@ def run_production_cspm_scan(org_id: Optional[str] = None, force_refresh: bool =
                     })
             except Exception:
                 # No public access block configuration at all
+                h = hashlib.md5(b_name.encode()).hexdigest()[:8].upper()
                 results.append({
-                    "scan_id": str(uuid.uuid4())[:8],
+                    "scan_id": f"FIND-CSPM-S3-NOPAB-{h}",
                     "vulnerability_id": "CSPM-S3-001",
                     "title": "S3 Bucket — No Public Access Block Configured",
                     "description": f"Bucket '{b_name}' does not have PublicAccessBlock enabled.",
@@ -473,8 +476,9 @@ def run_production_cspm_scan(org_id: Optional[str] = None, force_refresh: bool =
                 if not rules:
                     raise ValueError("No encryption rules")
             except Exception:
+                h = hashlib.md5(b_name.encode()).hexdigest()[:8].upper()
                 results.append({
-                    "scan_id": str(uuid.uuid4())[:8],
+                    "scan_id": f"FIND-CSPM-S3-ENCR-{h}",
                     "vulnerability_id": "CSPM-S3-002",
                     "title": "S3 Bucket Missing Default Server-Side Encryption",
                     "description": f"Bucket '{b_name}' does not enforce default SSE-S3 or SSE-KMS encryption.",
@@ -505,7 +509,7 @@ def run_production_cspm_scan(org_id: Optional[str] = None, force_refresh: bool =
                         # Sensitive Remote Access Ports (SSH, RDP)
                         if is_all_traffic or (from_p and to_p and ((from_p <= 22 <= to_p) or (from_p <= 3389 <= to_p))):
                             results.append({
-                                "scan_id": str(uuid.uuid4())[:8],
+                                "scan_id": f"FIND-CSPM-SG-MGMT-{sg_id}-{from_p}-{to_p}",
                                 "vulnerability_id": "CSPM-EC2-002",
                                 "title": f"Management Port Open to Entire Internet (0.0.0.0/0)",
                                 "description": f"Security group {sg_id} ({sg_name}) allows inbound port {from_p}-{to_p} from 0.0.0.0/0.",
@@ -517,7 +521,7 @@ def run_production_cspm_scan(org_id: Optional[str] = None, force_refresh: bool =
                         # Database Ports Open to Internet
                         elif from_p and to_p and any(from_p <= p <= to_p for p in (3306, 5432, 27017, 6379)):
                             results.append({
-                                "scan_id": str(uuid.uuid4())[:8],
+                                "scan_id": f"FIND-CSPM-SG-DB-{sg_id}-{from_p}",
                                 "vulnerability_id": "CSPM-EC2-003",
                                 "title": f"Database Port Open to Internet ({from_p})",
                                 "description": f"Security group {sg_id} ({sg_name}) exposes database port {from_p} to 0.0.0.0/0.",
@@ -535,9 +539,10 @@ def run_production_cspm_scan(org_id: Optional[str] = None, force_refresh: bool =
         dbs = rds.describe_db_instances().get("DBInstances", [])
         for db in dbs:
             db_id = db.get("DBInstanceIdentifier", "rds-db")
+            h_db = hashlib.md5(db_id.encode()).hexdigest()[:8].upper()
             if not db.get("StorageEncrypted", False):
                 results.append({
-                    "scan_id": str(uuid.uuid4())[:8],
+                    "scan_id": f"FIND-CSPM-RDS-ENCR-{h_db}",
                     "vulnerability_id": "CSPM-RDS-001",
                     "title": "RDS Database Storage Unencrypted",
                     "description": f"Database instance '{db_id}' storage is not encrypted at rest with AWS KMS.",
@@ -548,7 +553,7 @@ def run_production_cspm_scan(org_id: Optional[str] = None, force_refresh: bool =
                 })
             if db.get("PubliclyAccessible", False):
                 results.append({
-                    "scan_id": str(uuid.uuid4())[:8],
+                    "scan_id": f"FIND-CSPM-RDS-PUB-{h_db}",
                     "vulnerability_id": "CSPM-RDS-002",
                     "title": "RDS Database Publicly Accessible",
                     "description": f"Database instance '{db_id}' has PubliclyAccessible flag set to True.",
@@ -589,7 +594,7 @@ def run_production_ciem_scan(org_id: Optional[str] = None, force_refresh: bool =
             summary = iam.get_account_summary().get("SummaryMap", {})
             if summary.get("AccountMFAEnabled", 1) == 0:
                 results.append({
-                    "scan_id": str(uuid.uuid4())[:8],
+                    "scan_id": "FIND-CIEM-ROOT-MFA",
                     "risk_id": "CIEM-ROOT-001",
                     "title": "Root Account Missing Multi-Factor Authentication",
                     "entity_name": "root",
@@ -607,6 +612,7 @@ def run_production_ciem_scan(org_id: Optional[str] = None, force_refresh: bool =
 
         for u in users:
             uname = u["UserName"]
+            h_u = hashlib.md5(uname.encode()).hexdigest()[:8].upper()
 
             # Check Attached Policies for AdministratorAccess
             try:
@@ -614,7 +620,7 @@ def run_production_ciem_scan(org_id: Optional[str] = None, force_refresh: bool =
                 for p in pols:
                     if p.get("PolicyName") == "AdministratorAccess":
                         results.append({
-                            "scan_id": str(uuid.uuid4())[:8],
+                            "scan_id": f"FIND-CIEM-ADMIN-{h_u}",
                             "risk_id": "CIEM-001",
                             "title": "Over-privileged User (AdministratorAccess)",
                             "entity_name": uname,
@@ -631,7 +637,7 @@ def run_production_ciem_scan(org_id: Optional[str] = None, force_refresh: bool =
                 mfa_devices = iam.list_mfa_devices(UserName=uname).get("MFADevices", [])
                 if not mfa_devices:
                     results.append({
-                        "scan_id": str(uuid.uuid4())[:8],
+                        "scan_id": f"FIND-CIEM-NOMFA-{h_u}",
                         "risk_id": "CIEM-002",
                         "title": "IAM User Missing MFA Enforcement",
                         "entity_name": uname,
@@ -656,8 +662,9 @@ def run_production_ciem_scan(org_id: Optional[str] = None, force_refresh: bool =
                         
                         age_days = (now_dt - c_dt).days
                         if age_days > 90 and k.get("Status") == "Active":
+                            h_k = hashlib.md5(k['AccessKeyId'].encode()).hexdigest()[:8].upper()
                             results.append({
-                                "scan_id": str(uuid.uuid4())[:8],
+                                "scan_id": f"FIND-CIEM-KEY-{h_k}",
                                 "risk_id": "CIEM-003",
                                 "title": f"Stale IAM Access Key Exceeds 90-Day Policy ({age_days}d)",
                                 "entity_name": f"{uname} ({k['AccessKeyId']})",
@@ -682,8 +689,9 @@ def run_production_ciem_scan(org_id: Optional[str] = None, force_refresh: bool =
                     pdoc = iam.get_role_policy(RoleName=rname, PolicyName=pname).get("PolicyDocument", {})
                     for stmt in pdoc.get("Statement", []):
                         if stmt.get("Effect") == "Allow" and (stmt.get("Action") == "*" or stmt.get("Resource") == "*"):
+                            h_r = hashlib.md5((rname + pname).encode()).hexdigest()[:8].upper()
                             results.append({
-                                "scan_id": str(uuid.uuid4())[:8],
+                                "scan_id": f"FIND-CIEM-ROLE-{h_r}",
                                 "risk_id": "CIEM-004",
                                 "title": "Wildcard Permissions in IAM Role Policy",
                                 "entity_name": rname,
