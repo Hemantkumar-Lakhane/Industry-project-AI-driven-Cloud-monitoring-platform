@@ -270,7 +270,7 @@ class SessionManager:
         """Get the current active session. Refreshes if new logs arrived on disk."""
         if self._session is None:
             self._init_baseline_session()
-        elif is_wazuh_available():
+        elif is_wazuh_available() and not getattr(self._session, "is_baseline", False):
             log_path = get_wazuh_log_path()
             if os.path.exists(log_path):
                 mtime = os.path.getmtime(log_path)
@@ -473,6 +473,7 @@ class SessionManager:
     def reset_to_baseline(self, n_normal: int = 60) -> ActiveTelemetrySession:
         """Reset session to clean baseline noise (0 attacks)."""
         session = ActiveTelemetrySession()
+        session.is_baseline = True
         session.data_source = "LIVE"
         session.cspm_source = "CLOUD_POLICY"
         session.ciem_source = "CLOUD_POLICY"

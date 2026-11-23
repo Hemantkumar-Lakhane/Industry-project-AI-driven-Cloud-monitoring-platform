@@ -413,7 +413,7 @@ def get_risk_trend_db(periods: int = 7):
         "SELECT timestamp, unified_score, level FROM risk_history ORDER BY timestamp DESC LIMIT ?", (periods,)
     ).fetchall()
     conn.close()
-    trend = [{"period": r["timestamp"][:10], "score": r["unified_score"], "level": r["level"]} for r in reversed(rows)]
+    trend = [{"period": str(r["timestamp"])[:10], "score": float(r["unified_score"]), "level": r["level"]} for r in reversed(rows)]
     return trend
 
 
@@ -471,7 +471,7 @@ def log_alert(alert_type: str, severity: str, message: str, email_sent: bool = F
     conn = get_conn()
     conn.execute(
         "INSERT INTO alert_log (timestamp, alert_type, severity, message, email_sent, recipient) VALUES (?,?,?,?,?,?)",
-        (datetime.now(timezone.utc).isoformat(), alert_type, severity, message, int(email_sent), recipient)
+        (datetime.now(timezone.utc).isoformat(), alert_type, severity, message, bool(email_sent), recipient)
     )
     conn.commit()
     conn.close()

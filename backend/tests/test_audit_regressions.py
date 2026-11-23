@@ -33,7 +33,7 @@ def test_get_risk_score_is_read_only(client, admin_headers):
 
     # Repeatedly poll the risk score endpoint 5 times
     for _ in range(5):
-        r = client.get("/api/risk/score")
+        r = client.get("/api/risk/score", headers=admin_headers)
         assert r.status_code == 200
         data = r.json()
         assert data["status"] == "success"

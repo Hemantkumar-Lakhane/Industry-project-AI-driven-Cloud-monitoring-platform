@@ -144,6 +144,8 @@ def _seed_defaults():
     _defaults = [
         {"username": "ramantivirus", "password": "admin123", "email": "platform@ramantivirus.com", "role": "admin", "full_name": "RAM Antivirus Platform Admin", "org_id": "org_master_admin"},
         {"username": "admin", "password": "admin123", "email": "admin@ramantivirus.com", "role": "admin", "full_name": "RAM Antivirus Admin", "org_id": "org_master_admin"},
+        {"username": "analyst1", "password": "analyst123", "email": "analyst1@ramantivirus.com", "role": "analyst", "full_name": "RAM Security Analyst", "org_id": "org_demo"},
+        {"username": "viewer1", "password": "viewer123", "email": "viewer1@ramantivirus.com", "role": "viewer", "full_name": "RAM Security Viewer", "org_id": "org_demo"},
         {"username": "demo",  "password": "demo123",  "email": "demo@ramantivirus.com",  "role": "analyst", "full_name": "Demo Simulation Lead", "org_id": "org_demo"},
     ]
     for u in _defaults:
