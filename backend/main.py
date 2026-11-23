@@ -278,6 +278,9 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost",
+    "http://127.0.0.1",
+    "https://d3sa9ma9swl1ef.cloudfront.net",
     "https://zrtjg51w-5173.inc1.devtunnels.ms",
 ]
 
@@ -290,7 +293,7 @@ if extra_origins:
 
 CORS_ORIGIN_REGEX = os.environ.get(
     "CORS_ORIGIN_REGEX",
-    r"^https://.*(\.devtunnels\.ms|\.vercel\.app)$"
+    r"^https://.*(\.cloudfront\.net|\.devtunnels\.ms|\.vercel\.app)$"
 )
 
 app.add_middleware(

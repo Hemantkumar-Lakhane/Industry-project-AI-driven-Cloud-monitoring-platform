@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  AlertCircle, CheckCircle, Database, Server, RefreshCw, X, Sliders, 
-  ShieldCheck, Cloud, Download, Key, ExternalLink, Activity, Play, Zap, Check, AlertTriangle, 
+import {
+  AlertCircle, CheckCircle, Database, Server, RefreshCw, X, Sliders,
+  ShieldCheck, Cloud, Download, Key, ExternalLink, Activity, Play, Zap, Check, AlertTriangle,
   ChevronDown, ChevronUp, Upload, FileText, HelpCircle, Loader2
 } from 'lucide-react';
 import { API_URL } from '../config';
@@ -15,7 +15,7 @@ const DataSourcesTab = ({ showToast }) => {
   const [testingConnection, setTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  
+
   // Progressive Multi-Step Scanning State
   const [isScanningProgress, setIsScanningProgress] = useState(false);
   const [activeScanStep, setActiveScanStep] = useState(0);
@@ -31,7 +31,7 @@ const DataSourcesTab = ({ showToast }) => {
   const [cloudProbe, setCloudProbe] = useState(null);
   const [cloudLoading, setCloudLoading] = useState(false);
   // Default to direct AWS credentials
-  const [authMode, setAuthMode] = useState('direct_keys'); 
+  const [authMode, setAuthMode] = useState('direct_keys');
   const [showGuide, setShowGuide] = useState(false);
   const [awsForm, setAwsForm] = useState({
     target_account_id: '',
@@ -56,7 +56,7 @@ const DataSourcesTab = ({ showToast }) => {
         const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
         let keyId = '';
         let secKey = '';
-        
+
         for (const line of lines) {
           const parts = line.split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
           for (let i = 0; i < parts.length; i++) {
@@ -68,7 +68,7 @@ const DataSourcesTab = ({ showToast }) => {
             }
           }
         }
-        
+
         if (!keyId && lines.length >= 2) {
           const vals = lines[1].split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
           if (vals[0] && vals[1]) {
@@ -273,6 +273,7 @@ const DataSourcesTab = ({ showToast }) => {
 
   const sources = [
     {
+      name: 'AWS Cloud & Workload Telemetry',
       name: 'AWS Cloud Infrastructure',
       type: 'Cloud Posture & Real-Time Audit (CSPM / CIEM)',
       status: cloudProbe?.status || 'NOT_CONNECTED',
@@ -370,13 +371,13 @@ const DataSourcesTab = ({ showToast }) => {
                     backgroundColor: s.badge === 'Live AWS'
                       ? 'rgba(56, 189, 248, 0.15)'
                       : s.badge === 'Not Connected'
-                      ? 'rgba(234, 179, 8, 0.1)'
-                      : 'var(--success-bg)',
+                        ? 'rgba(234, 179, 8, 0.1)'
+                        : 'var(--success-bg)',
                     color: s.badge === 'Live AWS'
                       ? '#38bdf8'
                       : s.badge === 'Not Connected'
-                      ? '#eab308'
-                      : 'var(--success-color)'
+                        ? '#eab308'
+                        : 'var(--success-color)'
                   }}>
                     {s.badge}
                   </span>
@@ -458,14 +459,14 @@ const DataSourcesTab = ({ showToast }) => {
                     </span>
                   </div>
                   <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--surface-muted)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div 
-                      style={{ 
-                        width: `${Math.min(activeScanStep * 20, 100)}%`, 
-                        height: '100%', 
-                        backgroundColor: activeScanStep >= 6 ? 'var(--success-color)' : '#38bdf8', 
+                    <div
+                      style={{
+                        width: `${Math.min(activeScanStep * 20, 100)}%`,
+                        height: '100%',
+                        backgroundColor: activeScanStep >= 6 ? 'var(--success-color)' : '#38bdf8',
                         borderRadius: '4px',
                         transition: 'width 0.35s ease'
-                      }} 
+                      }}
                     />
                   </div>
                 </div>
@@ -478,7 +479,7 @@ const DataSourcesTab = ({ showToast }) => {
                     const isCurrent = activeScanStep === stepNum;
 
                     return (
-                      <div 
+                      <div
                         key={idx}
                         style={{
                           display: 'flex',
@@ -502,10 +503,10 @@ const DataSourcesTab = ({ showToast }) => {
                         </div>
 
                         <div style={{ flex: 1 }}>
-                          <div style={{ 
-                            fontSize: '12.5px', 
-                            fontWeight: 600, 
-                            color: isDone ? 'var(--text-primary)' : (isCurrent ? '#38bdf8' : 'var(--text-tertiary)') 
+                          <div style={{
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            color: isDone ? 'var(--text-primary)' : (isCurrent ? '#38bdf8' : 'var(--text-tertiary)')
                           }}>
                             [Step {stepNum}/5] {step.title}
                           </div>
@@ -569,403 +570,403 @@ const DataSourcesTab = ({ showToast }) => {
               </div>
             ) : (
               <>
-            {/* STEP 1: 2 CONNECTION MODES (removed LocalStack - not relevant for company users) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '18px' }}>
+                {/* STEP 1: 2 CONNECTION MODES (removed LocalStack - not relevant for company users) */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '18px' }}>
 
-              {/* Option 1: Direct AWS Keys */}
-              <div 
-                onClick={() => setAuthMode('direct_keys')}
-                style={{
-                  border: authMode === 'direct_keys' ? '2px solid #38bdf8' : '1px solid var(--border-subtle)',
-                  backgroundColor: authMode === 'direct_keys' ? 'rgba(56, 189, 248, 0.08)' : 'var(--surface-muted)',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <Key size={18} style={{ color: authMode === 'direct_keys' ? '#38bdf8' : 'var(--text-secondary)' }} />
-                  <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--success-bg)', color: 'var(--success-color)' }}>
-                    STANDARD
-                  </span>
-                </div>
-                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>AWS Access Keys</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.3 }}>
-                  Upload CSV or paste IAM credentials.
-                </div>
-              </div>
-
-              {/* Option 2: Enterprise Role */}
-              <div 
-                onClick={() => setAuthMode('sts_assumerole')}
-                style={{
-                  border: authMode === 'sts_assumerole' ? '2px solid #38bdf8' : '1px solid var(--border-subtle)',
-                  backgroundColor: authMode === 'sts_assumerole' ? 'rgba(56, 189, 248, 0.08)' : 'var(--surface-muted)',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <ShieldCheck size={18} style={{ color: authMode === 'sts_assumerole' ? '#38bdf8' : 'var(--text-secondary)' }} />
-                  <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--surface-card)', color: 'var(--text-secondary)' }}>
-                    ENTERPRISE
-                  </span>
-                </div>
-                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>IAM Role (STS)</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.3 }}>
-                  Keyless cross-account role assumption.
-                </div>
-              </div>
-            </div>
-
-            {/* STEP 2: CREDENTIALS CONFIGURATION */}
-            <div style={{ backgroundColor: 'var(--surface-muted)', padding: '16px', borderRadius: '8px', marginBottom: '18px' }}>
-              {/* Option 1: LocalStack Simple View */}
-              {authMode === 'localstack' && (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <CheckCircle size={16} style={{ color: 'var(--success-color)' }} />
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      Cloud Security Sandbox Active
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 12px 0', lineHeight: 1.4 }}>
-                    RAM Antivirus connects to your local emulator on <code>http://localhost:4566</code> to audit local S3, EC2 security groups, and IAM policies.
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      LocalStack Endpoint URL
-                    </label>
-                    <input
-                      type="text"
-                      value={awsForm.localstack_endpoint}
-                      onChange={(e) => setAwsForm({ ...awsForm, localstack_endpoint: e.target.value })}
-                      className="figma-filter-select"
-                      style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Option 2: Direct AWS Access Keys */}
-              {authMode === 'direct_keys' && (
-                <div>
-                  {/* CSV FILE DROPZONE */}
-                  <div style={{
-                    border: '1.5px dashed #38bdf8',
-                    borderRadius: '8px',
-                    padding: '14px 16px',
-                    textAlign: 'center',
-                    backgroundColor: 'rgba(56, 189, 248, 0.05)',
-                    marginBottom: '14px',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    transition: 'all 0.2s ease'
-                  }}>
-                    <input
-                      type="file"
-                      accept=".csv,text/csv"
-                      onChange={handleCsvUpload}
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        opacity: 0,
-                        cursor: 'pointer'
-                      }}
-                      title="Upload AWS credentials.csv"
-                    />
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Upload size={17} style={{ color: '#38bdf8' }} />
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          Click to upload AWS credentials.csv
-                        </span>
-                      </div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                        Directly extracts your Access Key ID & Secret from the file downloaded in IAM
+                  {/* Option 1: Direct AWS Keys */}
+                  <div
+                    onClick={() => setAuthMode('direct_keys')}
+                    style={{
+                      border: authMode === 'direct_keys' ? '2px solid #38bdf8' : '1px solid var(--border-subtle)',
+                      backgroundColor: authMode === 'direct_keys' ? 'rgba(56, 189, 248, 0.08)' : 'var(--surface-muted)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <Key size={18} style={{ color: authMode === 'direct_keys' ? '#38bdf8' : 'var(--text-secondary)' }} />
+                      <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--success-bg)', color: 'var(--success-color)' }}>
+                        STANDARD
                       </span>
                     </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0 12px 0' }}>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
-                    <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Or enter credentials manually
-                    </span>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        AWS Access Key ID
-                      </label>
-                      <input
-                        type="text"
-                        value={awsForm.access_key_id}
-                        onChange={(e) => setAwsForm({ ...awsForm, access_key_id: e.target.value })}
-                        placeholder="AKIA..."
-                        className="figma-filter-select"
-                        style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        AWS Secret Access Key
-                      </label>
-                      <input
-                        type="password"
-                        value={awsForm.secret_access_key}
-                        onChange={(e) => setAwsForm({ ...awsForm, secret_access_key: e.target.value })}
-                        placeholder="••••••••••••••••••••••••••••••••"
-                        className="figma-filter-select"
-                        style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
-                      />
+                    <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>AWS Access Keys</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.3 }}>
+                      Upload CSV or paste IAM credentials.
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        AWS Region
-                      </label>
-                      <input
-                        type="text"
-                        value={awsForm.region}
-                        onChange={(e) => setAwsForm({ ...awsForm, region: e.target.value })}
-                        placeholder="ap-southeast-2"
-                        className="figma-filter-select"
-                        style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
-                      />
+                  {/* Option 2: Enterprise Role */}
+                  <div
+                    onClick={() => setAuthMode('sts_assumerole')}
+                    style={{
+                      border: authMode === 'sts_assumerole' ? '2px solid #38bdf8' : '1px solid var(--border-subtle)',
+                      backgroundColor: authMode === 'sts_assumerole' ? 'rgba(56, 189, 248, 0.08)' : 'var(--surface-muted)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <ShieldCheck size={18} style={{ color: authMode === 'sts_assumerole' ? '#38bdf8' : 'var(--text-secondary)' }} />
+                      <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--surface-card)', color: 'var(--text-secondary)' }}>
+                        ENTERPRISE
+                      </span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        Session Token (Optional / SSO)
-                      </label>
-                      <input
-                        type="password"
-                        value={awsForm.session_token}
-                        onChange={(e) => setAwsForm({ ...awsForm, session_token: e.target.value })}
-                        placeholder="Paste if using temporary / SSO credentials"
-                        className="figma-filter-select"
-                        style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
-                      />
+                    <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>IAM Role (STS)</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.3 }}>
+                      Keyless cross-account role assumption.
                     </div>
-                  </div>
-
-                  {/* QUICK HOW-TO GUIDE TOGGLE */}
-                  <div style={{ marginTop: '12px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowGuide(!showGuide)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-secondary)',
-                        fontSize: '11.5px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '2px 0'
-                      }}
-                    >
-                      <HelpCircle size={13} style={{ color: '#38bdf8' }} />
-                      <span>{showGuide ? 'Hide quick connection guide' : 'Need help? How to connect in 30 seconds'}</span>
-                    </button>
-                    {showGuide && (
-                      <div style={{
-                        marginTop: '8px',
-                        padding: '10px 14px',
-                        backgroundColor: 'var(--surface-card)',
-                        borderRadius: '6px',
-                        border: '1px solid var(--border-subtle)',
-                        fontSize: '11.5px',
-                        lineHeight: '1.6',
-                        color: 'var(--text-secondary)'
-                      }}>
-                        <ol style={{ margin: '0', paddingLeft: '16px' }}>
-                          <li>In your AWS Console, open <strong>IAM</strong> &rarr; <strong>Users</strong> &rarr; click on your user.</li>
-                          <li>Go to the <strong>Security credentials</strong> tab &rarr; click <strong>Create access key</strong>.</li>
-                          <li>Select <strong>Third-party service</strong> &rarr; click <strong>Next</strong> &rarr; click <strong>Download .csv file</strong>.</li>
-                          <li>Upload that downloaded <code>.csv</code> file above and click <strong>Connect Cloud</strong> below!</li>
-                        </ol>
-                      </div>
-                    )}
                   </div>
                 </div>
-              )}
 
-              {/* Option 3: Enterprise IAM Role */}
-              {authMode === 'sts_assumerole' && (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      Assumes a read-only IAM role in your AWS account using AWS STS.
-                    </span>
+                {/* STEP 2: CREDENTIALS CONFIGURATION */}
+                <div style={{ backgroundColor: 'var(--surface-muted)', padding: '16px', borderRadius: '8px', marginBottom: '18px' }}>
+                  {/* Option 1: LocalStack Simple View */}
+                  {authMode === 'localstack' && (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <CheckCircle size={16} style={{ color: 'var(--success-color)' }} />
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          Cloud Security Sandbox Active
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 12px 0', lineHeight: 1.4 }}>
+                        RAM Antivirus connects to your local emulator on <code>http://localhost:4566</code> to audit local S3, EC2 security groups, and IAM policies.
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                          LocalStack Endpoint URL
+                        </label>
+                        <input
+                          type="text"
+                          value={awsForm.localstack_endpoint}
+                          onChange={(e) => setAwsForm({ ...awsForm, localstack_endpoint: e.target.value })}
+                          className="figma-filter-select"
+                          style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Option 2: Direct AWS Access Keys */}
+                  {authMode === 'direct_keys' && (
+                    <div>
+                      {/* CSV FILE DROPZONE */}
+                      <div style={{
+                        border: '1.5px dashed #38bdf8',
+                        borderRadius: '8px',
+                        padding: '14px 16px',
+                        textAlign: 'center',
+                        backgroundColor: 'rgba(56, 189, 248, 0.05)',
+                        marginBottom: '14px',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'all 0.2s ease'
+                      }}>
+                        <input
+                          type="file"
+                          accept=".csv,text/csv"
+                          onChange={handleCsvUpload}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            opacity: 0,
+                            cursor: 'pointer'
+                          }}
+                          title="Upload AWS credentials.csv"
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Upload size={17} style={{ color: '#38bdf8' }} />
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                              Click to upload AWS credentials.csv
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                            Directly extracts your Access Key ID & Secret from the file downloaded in IAM
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0 12px 0' }}>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+                        <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Or enter credentials manually
+                        </span>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            AWS Access Key ID
+                          </label>
+                          <input
+                            type="text"
+                            value={awsForm.access_key_id}
+                            onChange={(e) => setAwsForm({ ...awsForm, access_key_id: e.target.value })}
+                            placeholder="AKIA..."
+                            className="figma-filter-select"
+                            style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            AWS Secret Access Key
+                          </label>
+                          <input
+                            type="password"
+                            value={awsForm.secret_access_key}
+                            onChange={(e) => setAwsForm({ ...awsForm, secret_access_key: e.target.value })}
+                            placeholder="••••••••••••••••••••••••••••••••"
+                            className="figma-filter-select"
+                            style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            AWS Region
+                          </label>
+                          <input
+                            type="text"
+                            value={awsForm.region}
+                            onChange={(e) => setAwsForm({ ...awsForm, region: e.target.value })}
+                            placeholder="ap-southeast-2"
+                            className="figma-filter-select"
+                            style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            Session Token (Optional / SSO)
+                          </label>
+                          <input
+                            type="password"
+                            value={awsForm.session_token}
+                            onChange={(e) => setAwsForm({ ...awsForm, session_token: e.target.value })}
+                            placeholder="Paste if using temporary / SSO credentials"
+                            className="figma-filter-select"
+                            style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* QUICK HOW-TO GUIDE TOGGLE */}
+                      <div style={{ marginTop: '12px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowGuide(!showGuide)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--text-secondary)',
+                            fontSize: '11.5px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '2px 0'
+                          }}
+                        >
+                          <HelpCircle size={13} style={{ color: '#38bdf8' }} />
+                          <span>{showGuide ? 'Hide quick connection guide' : 'Need help? How to connect in 30 seconds'}</span>
+                        </button>
+                        {showGuide && (
+                          <div style={{
+                            marginTop: '8px',
+                            padding: '10px 14px',
+                            backgroundColor: 'var(--surface-card)',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border-subtle)',
+                            fontSize: '11.5px',
+                            lineHeight: '1.6',
+                            color: 'var(--text-secondary)'
+                          }}>
+                            <ol style={{ margin: '0', paddingLeft: '16px' }}>
+                              <li>In your AWS Console, open <strong>IAM</strong> &rarr; <strong>Users</strong> &rarr; click on your user.</li>
+                              <li>Go to the <strong>Security credentials</strong> tab &rarr; click <strong>Create access key</strong>.</li>
+                              <li>Select <strong>Third-party service</strong> &rarr; click <strong>Next</strong> &rarr; click <strong>Download .csv file</strong>.</li>
+                              <li>Upload that downloaded <code>.csv</code> file above and click <strong>Connect Cloud</strong> below!</li>
+                            </ol>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Option 3: Enterprise IAM Role */}
+                  {authMode === 'sts_assumerole' && (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          Assumes a read-only IAM role in your AWS account using AWS STS.
+                        </span>
+                        <button
+                          className="figma-btn-secondary"
+                          onClick={handleDownloadCfnTemplate}
+                          style={{ fontSize: '11px', padding: '4px 8px', gap: '4px' }}
+                        >
+                          <Download size={12} />
+                          Download CloudFormation (.yaml)
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            Your AWS Account ID (12 digits)
+                          </label>
+                          <input
+                            type="text"
+                            value={awsForm.target_account_id}
+                            onChange={(e) => setAwsForm({ ...awsForm, target_account_id: e.target.value })}
+                            placeholder="123456789012"
+                            className="figma-filter-select"
+                            style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            Default Region
+                          </label>
+                          <input
+                            type="text"
+                            value={awsForm.region}
+                            onChange={(e) => setAwsForm({ ...awsForm, region: e.target.value })}
+                            placeholder="us-east-1"
+                            className="figma-filter-select"
+                            style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Toggle Advanced Role Parameters */}
+                      <div style={{ marginTop: '8px' }}>
+                        <button
+                          onClick={() => setShowAdvanced(!showAdvanced)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--text-tertiary)',
+                            fontSize: '11.5px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: 0
+                          }}
+                        >
+                          {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                          {showAdvanced ? 'Hide advanced role settings' : 'Show advanced role settings (pre-configured)'}
+                        </button>
+
+                        {showAdvanced && (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Role Name</label>
+                              <input
+                                type="text"
+                                value={awsForm.role_name}
+                                onChange={(e) => setAwsForm({ ...awsForm, role_name: e.target.value })}
+                                className="figma-filter-select"
+                                style={{ width: '100%', fontFamily: 'monospace', fontSize: '11.5px', backgroundColor: 'var(--surface-card)' }}
+                              />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>External ID</label>
+                              <input
+                                type="text"
+                                value={awsForm.external_id}
+                                onChange={(e) => setAwsForm({ ...awsForm, external_id: e.target.value })}
+                                className="figma-filter-select"
+                                style={{ width: '100%', fontFamily: 'monospace', fontSize: '11.5px', backgroundColor: 'var(--surface-card)' }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* LIVE FEEDBACK BOX */}
+                {testResult && (
+                  <div style={{
+                    padding: '12px 14px',
+                    backgroundColor: testResult.type === 'success' ? 'rgba(46, 160, 67, 0.1)' : 'rgba(234, 179, 8, 0.1)',
+                    border: `1px solid ${testResult.type === 'success' ? 'rgba(46, 160, 67, 0.3)' : 'rgba(234, 179, 8, 0.3)'}`,
+                    borderRadius: '6px',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px'
+                  }}>
+                    {testResult.type === 'success' ? (
+                      <CheckCircle size={16} style={{ color: 'var(--success-color)', flexShrink: 0, marginTop: '2px' }} />
+                    ) : (
+                      <AlertTriangle size={16} style={{ color: '#eab308', flexShrink: 0, marginTop: '2px' }} />
+                    )}
+                    <div style={{ fontSize: '12.5px', color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                      {testResult.text}
+                    </div>
+                  </div>
+                )}
+
+                {/* QUICK TEST TOOLS ACCORDION */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  backgroundColor: 'var(--surface-muted)',
+                  borderRadius: '6px',
+                  marginBottom: '18px'
+                }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    Verification tools:
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       className="figma-btn-secondary"
-                      onClick={handleDownloadCfnTemplate}
-                      style={{ fontSize: '11px', padding: '4px 8px', gap: '4px' }}
+                      onClick={handleRunLiveCspmScan}
+                      disabled={scanningCloud}
+                      style={{ fontSize: '11px', padding: '4px 10px' }}
                     >
-                      <Download size={12} />
-                      Download CloudFormation (.yaml)
+                      <Activity size={12} className={scanningCloud ? 'animate-spin' : ''} />
+                      {scanningCloud ? 'Auditing...' : 'Run Live Posture Audit'}
                     </button>
                   </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        Your AWS Account ID (12 digits)
-                      </label>
-                      <input
-                        type="text"
-                        value={awsForm.target_account_id}
-                        onChange={(e) => setAwsForm({ ...awsForm, target_account_id: e.target.value })}
-                        placeholder="123456789012"
-                        className="figma-filter-select"
-                        style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        Default Region
-                      </label>
-                      <input
-                        type="text"
-                        value={awsForm.region}
-                        onChange={(e) => setAwsForm({ ...awsForm, region: e.target.value })}
-                        placeholder="us-east-1"
-                        className="figma-filter-select"
-                        style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'var(--surface-card)' }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Toggle Advanced Role Parameters */}
-                  <div style={{ marginTop: '8px' }}>
-                    <button
-                      onClick={() => setShowAdvanced(!showAdvanced)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-tertiary)',
-                        fontSize: '11.5px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: 0
-                      }}
-                    >
-                      {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                      {showAdvanced ? 'Hide advanced role settings' : 'Show advanced role settings (pre-configured)'}
-                    </button>
-
-                    {showAdvanced && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Role Name</label>
-                          <input
-                            type="text"
-                            value={awsForm.role_name}
-                            onChange={(e) => setAwsForm({ ...awsForm, role_name: e.target.value })}
-                            className="figma-filter-select"
-                            style={{ width: '100%', fontFamily: 'monospace', fontSize: '11.5px', backgroundColor: 'var(--surface-card)' }}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>External ID</label>
-                          <input
-                            type="text"
-                            value={awsForm.external_id}
-                            onChange={(e) => setAwsForm({ ...awsForm, external_id: e.target.value })}
-                            className="figma-filter-select"
-                            style={{ width: '100%', fontFamily: 'monospace', fontSize: '11.5px', backgroundColor: 'var(--surface-card)' }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* LIVE FEEDBACK BOX */}
-            {testResult && (
-              <div style={{
-                padding: '12px 14px',
-                backgroundColor: testResult.type === 'success' ? 'rgba(46, 160, 67, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-                border: `1px solid ${testResult.type === 'success' ? 'rgba(46, 160, 67, 0.3)' : 'rgba(234, 179, 8, 0.3)'}`,
-                borderRadius: '6px',
-                marginBottom: '16px',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px'
-              }}>
-                {testResult.type === 'success' ? (
-                  <CheckCircle size={16} style={{ color: 'var(--success-color)', flexShrink: 0, marginTop: '2px' }} />
-                ) : (
-                  <AlertTriangle size={16} style={{ color: '#eab308', flexShrink: 0, marginTop: '2px' }} />
-                )}
-                <div style={{ fontSize: '12.5px', color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                  {testResult.text}
+                {/* MODAL FOOTER */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
+                  <button
+                    className="figma-btn-secondary"
+                    onClick={() => setIsAwsModalOpen(false)}
+                    style={{ fontSize: '13px', padding: '7px 16px' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="figma-btn-primary"
+                    onClick={handleConnectCloud}
+                    disabled={testingConnection}
+                    style={{ fontSize: '13px', padding: '7px 20px', gap: '6px' }}
+                  >
+                    <RefreshCw size={13} className={testingConnection ? 'animate-spin' : ''} />
+                    {testingConnection ? 'Connecting...' : 'Connect Cloud'}
+                  </button>
                 </div>
-              </div>
-            )}
-
-            {/* QUICK TEST TOOLS ACCORDION */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '10px 12px',
-              backgroundColor: 'var(--surface-muted)',
-              borderRadius: '6px',
-              marginBottom: '18px'
-            }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Verification tools:
-              </span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  className="figma-btn-secondary"
-                  onClick={handleRunLiveCspmScan}
-                  disabled={scanningCloud}
-                  style={{ fontSize: '11px', padding: '4px 10px' }}
-                >
-                  <Activity size={12} className={scanningCloud ? 'animate-spin' : ''} />
-                  {scanningCloud ? 'Auditing...' : 'Run Live Posture Audit'}
-                </button>
-              </div>
-            </div>
-
-            {/* MODAL FOOTER */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
-              <button
-                className="figma-btn-secondary"
-                onClick={() => setIsAwsModalOpen(false)}
-                style={{ fontSize: '13px', padding: '7px 16px' }}
-              >
-                Cancel
-              </button>
-              <button
-                className="figma-btn-primary"
-                onClick={handleConnectCloud}
-                disabled={testingConnection}
-                style={{ fontSize: '13px', padding: '7px 20px', gap: '6px' }}
-              >
-                <RefreshCw size={13} className={testingConnection ? 'animate-spin' : ''} />
-                {testingConnection ? 'Connecting...' : 'Connect Cloud'}
-              </button>
-            </div>
-            </>
+              </>
             )}
           </div>
         </div>
