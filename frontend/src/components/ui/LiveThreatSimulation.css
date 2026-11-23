@@ -1,0 +1,235 @@
+.threat-sim-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.threat-sim-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.threat-sim-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.6);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.threat-sim-tab-btn:hover {
+  background: rgba(30, 41, 59, 0.8);
+  color: #f8fafc;
+  border-color: rgba(249, 115, 22, 0.4);
+}
+
+.threat-sim-tab-btn.active {
+  background: rgba(249, 115, 22, 0.12);
+  color: #fb923c;
+  border-color: #f97316;
+  box-shadow: 0 0 16px rgba(249, 115, 22, 0.2);
+}
+
+.threat-sim-panel {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 20px;
+  background: rgba(11, 15, 25, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 24px;
+}
+
+@media (max-width: 900px) {
+  .threat-sim-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+.threat-sim-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.threat-sim-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.threat-mitre-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+}
+
+.threat-sim-desc {
+  color: #cbd5e1;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.threat-sim-attributes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.threat-attr-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.threat-attr-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.threat-attr-val {
+  font-size: 13px;
+  color: #e2e8f0;
+  font-family: ui-monospace, monospace;
+  font-weight: 500;
+}
+
+.threat-sim-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.threat-sim-run-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  background: linear-gradient(135deg, #ea580c, #f97316);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13.5px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+}
+
+.threat-sim-run-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f97316, #fb923c);
+  box-shadow: 0 6px 20px rgba(234, 88, 12, 0.5);
+  transform: translateY(-1px);
+}
+
+.threat-sim-run-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.threat-sim-output-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(3, 7, 18, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 18px;
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.threat-sim-output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 14px;
+}
+
+.terminal-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.terminal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.terminal-dot.red { background: #ef4444; }
+.terminal-dot.yellow { background: #eab308; }
+.terminal-dot.green { background: #22c55e; }
+
+.threat-live-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.feed-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #94a3b8;
+  animation: fadeIn 0.3s ease;
+}
+
+.feed-step.success {
+  color: #34d399;
+}
+
+.feed-step.alert {
+  color: #fb923c;
+}
+
+.feed-step-badge {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.feed-step.success .feed-step-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.feed-step.alert .feed-step-badge {
+  background: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

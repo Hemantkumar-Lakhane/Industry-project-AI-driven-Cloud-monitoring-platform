@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import logoUrl from './assets/LOGO.png';
 import LoginPage from './components/LoginPage';
+import LandingPage from './components/LandingPage';
 import OverviewTab from './components/OverviewTab';
 import AlertsIncidentsTab from './components/AlertsIncidentsTab';
 import RiskScoreTab from './components/RiskScoreTab';
@@ -35,7 +36,7 @@ import UserManagementTab from './components/UserManagementTab';
 import DataSourcesTab from './components/DataSourcesTab';
 import WorkspaceSettingsTab from './components/WorkspaceSettingsTab';
 import { Toast, ErrorBoundary } from './components/SharedComponents';
-import { API_URL, WS_URL } from './config';
+import { API_URL, WS_URL, WS_SUPPORTED } from './config';
 import './index.css';
 
 // Centralized Axios interceptor attaching Bearer token for all authenticated requests
@@ -73,6 +74,7 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showLanding, setShowLanding] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [data, setData] = useState({ summary: null, events: [], cspm: [], ciem: [] });
   const [loading, setLoading] = useState(true);
@@ -300,17 +302,17 @@ const App = () => {
     if (!user) return;
     fetchDashboardData(false);
 
-    // Auto-refresh every 5 seconds as fallback / baseline sync
+    // Auto-refresh every 30 seconds for live posture synchronization
     const interval = setInterval(() => {
       fetchDashboardData(true);
-    }, 5000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [user]);
 
-  // WebSocket Live Streaming Integration (TNY-05)
+  // WebSocket Live Streaming Integration (TNY-05) - strictly for local/supported environments
   useEffect(() => {
-    if (!user) return;
+    if (!user || !WS_SUPPORTED) return;
     let ws = null;
     let reconnectTimer = null;
     let isCancelled = false;
@@ -514,7 +516,54 @@ const App = () => {
     }))
   ];
 
-  if (!user) return <LoginPage onLogin={handleLogin} />;
+  if (!user || showLanding) {
+    return (
+      <div style={{ position: 'relative' }}>
+        {user && (
+          <div
+            style={{
+              position: 'fixed',
+              top: '12px',
+              right: '20px',
+              zIndex: 99999,
+              background: '#0f172a',
+              border: '1px solid #f97316',
+              borderRadius: '8px',
+              padding: '6px 14px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            <span style={{ fontSize: '12px', color: '#cbd5e1' }}>Previewing Landing Page as @{user.username}</span>
+            <button
+              type="button"
+              onClick={() => setShowLanding(false)}
+              style={{
+                background: '#f97316',
+                border: 'none',
+                borderRadius: '6px',
+                color: '#fff',
+                fontSize: '12px',
+                fontWeight: 600,
+                padding: '4px 10px',
+                cursor: 'pointer'
+              }}
+            >
+              Back to Console
+            </button>
+          </div>
+        )}
+        <LandingPage
+          onLogin={(userData, tokenData) => {
+            setShowLanding(false);
+            handleLogin(userData, tokenData);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={`figma-app-container ${theme === 'dark' ? 'theme-dark' : ''}`}>
@@ -738,6 +787,18 @@ const App = () => {
                 <Moon size={15} className="theme-switcher-icon" />
               </button>
             </div>
+
+            {/* Public Landing Page Switcher */}
+            <button
+              type="button"
+              className="figma-btn-secondary"
+              style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 500 }}
+              onClick={() => setShowLanding(true)}
+              title="View Public Landing Page"
+            >
+              <Eye size={13} />
+              <span>Public Site</span>
+            </button>
 
             <button
               className="figma-btn-secondary"
