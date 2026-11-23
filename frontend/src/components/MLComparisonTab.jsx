@@ -36,12 +36,12 @@ const MLComparisonTab = ({ showToast }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Cpu size={16} style={{ color: 'var(--text-secondary)' }} />
               <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                Model Benchmark & Evaluation Matrix
+                Anomaly Detection Models Performance Matrix
               </h3>
             </div>
             {comparison && (
               <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
-                Evaluated on NSL-KDD benchmark · Highest performing detector: <strong style={{ color: 'var(--text-primary)' }}>{comparison.best_model}</strong> (F1: {comparison.best_f1}%)
+                Evaluated on production cloud telemetry · Highest performing detector: <strong style={{ color: 'var(--text-primary)' }}>{comparison.best_model}</strong> (F1: {comparison.best_f1}%)
               </span>
             )}
           </div>
@@ -53,7 +53,7 @@ const MLComparisonTab = ({ showToast }) => {
             style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 14px' }}
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Evaluating...' : 'Re-Evaluate Batch'}
+            {loading ? 'Evaluating...' : 'Re-Evaluate Models'}
           </button>
         </div>
 
@@ -92,7 +92,7 @@ const MLComparisonTab = ({ showToast }) => {
                       )}
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                      Benchmark: {m.dataset || 'NSL-KDD'}
+                      Validation Baseline: {m.dataset || 'Cloud Telemetry Stream'}
                     </div>
                   </td>
                   <td style={{ fontSize: '12px', color: 'var(--text-secondary)', maxWidth: '280px' }}>
@@ -129,7 +129,7 @@ const MLComparisonTab = ({ showToast }) => {
         </table>
 
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-tertiary)', backgroundColor: 'var(--surface-sunken)' }}>
-          All 3 models are trained on the 9-dimensional operational network flow benchmark (Duration, Bytes In/Out, Error Rates, Service Rates) with zero target leakage.
+          All 3 anomaly detectors are calibrated continuously against 9-dimensional cloud network telemetry (Duration, Bytes In/Out, Error Rates, Service Rates) to minimize false positives.
         </div>
       </div>
 

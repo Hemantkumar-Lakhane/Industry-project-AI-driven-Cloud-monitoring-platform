@@ -269,7 +269,7 @@ const AlertsIncidentsTab = ({
         </div>
 
         <div style="margin-bottom: 14px;">
-          <h3 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">Correlated Attack Campaigns & Plain-English Root Cause</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>Correlated Attack Campaigns & Automated Root Cause Analysis</h3>
           <p style="font-size: 11.5px; color: #64748b; margin: 0;">Multi-stage attack chains identified through cross-telemetry entity clustering (Identity, IP, Resource).</p>
         </div>
 
@@ -402,7 +402,7 @@ const AlertsIncidentsTab = ({
     return {
       id: findingId,
       title: f.title || 'Security Finding',
-      fixture: `${detectorName} detector`,
+      detector: `${detectorName} engine`,
       severity: (f.severity || 'high').toLowerCase(),
       resource: `${f.affected_principal || f.affected_resource || 'cloud-resource'} ↗`,
       principal: f.affected_principal || f.user || 'svc-worker',
@@ -1069,7 +1069,7 @@ const AlertsIncidentsTab = ({
                           {item.title}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                          <span style={{ fontFamily: 'monospace' }}>{item.id}</span> · {item.source} · {item.fixture}
+                          <span style={{ fontFamily: 'monospace' }}>{item.id}</span> · {item.source} · {item.detector}
                         </div>
                       </td>
                       <td style={{ color: 'var(--text-secondary)' }}>
@@ -1524,7 +1524,7 @@ const AlertsIncidentsTab = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div className="figma-card" style={{ padding: '16px' }}>
                   <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                    Adversary Intent & Behavioral Hypothesis
+                    Adversary Intent & Behavioral Threat Assessment
                   </h4>
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
                     {selectedFinding.hypothesis}

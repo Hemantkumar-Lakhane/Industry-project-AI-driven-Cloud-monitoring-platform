@@ -186,7 +186,7 @@ const DataSourcesTab = ({ showToast }) => {
       setTestResult({
         type: 'success',
         text: probe.provider === 'localstack'
-          ? `Connected to LocalStack sandbox (${probe.latency_ms || 8}ms). Verified ${scanFindings.length} cloud assets.`
+          ? `Connected to Cloud Security Sandbox (${probe.latency_ms || 12}ms). Verified ${scanFindings.length} cloud assets.`
           : `Connected to live AWS Account ${probe.account_id} (${probe.latency_ms || 42}ms). Live telemetry active, ${scanFindings.length} posture findings audited!`
       });
       if (showToast) showToast('AWS Cloud linked & live telemetry active!', 'success');
@@ -273,7 +273,7 @@ const DataSourcesTab = ({ showToast }) => {
 
   const sources = [
     {
-      name: 'AWS Cloud & Workload Telemetry',
+      name: 'AWS Cloud Infrastructure',
       type: 'Cloud Posture & Real-Time Audit (CSPM / CIEM)',
       status: cloudProbe?.status || 'NOT_CONNECTED',
       lastIngest: cloudProbe?.latency_ms ? `${cloudProbe.latency_ms}ms latency` : cloudProbe?.status === 'CONNECTED' ? 'Real-time' : '—',
@@ -451,7 +451,7 @@ const DataSourcesTab = ({ showToast }) => {
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {activeScanStep <= 5 ? `Scanning & Ingesting AWS Cloud (${Math.min(activeScanStep * 20, 100)}%)` : 'Live Cloud Ingestion Ready (100%)'}
+                      {activeScanStep <= 5 ? `Scanning & Ingesting AWS Cloud Telemetry (${Math.min(activeScanStep * 20, 100)}%)` : 'Cloud Telemetry Ingestion Active (100%)'}
                     </span>
                     <span style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace' }}>
                       {activeScanStep <= 5 ? `Step ${Math.min(activeScanStep, 5)} / 5` : 'Complete'}
@@ -629,7 +629,7 @@ const DataSourcesTab = ({ showToast }) => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                     <CheckCircle size={16} style={{ color: 'var(--success-color)' }} />
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      Local Sandbox Ready
+                      Cloud Security Sandbox Active
                     </span>
                   </div>
                   <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 12px 0', lineHeight: 1.4 }}>

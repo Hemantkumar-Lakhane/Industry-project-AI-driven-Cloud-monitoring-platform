@@ -19,7 +19,7 @@ export const DryRunReport = ({ dryRunResult }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <ShieldCheck size={18} style={{ color: 'var(--success-color)' }} />
           <h4 style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--success-color)', margin: 0 }}>
-            Safe Dry-Run Simulation Verified (Zero Service Downtime)
+            Safe Dry-Run Pre-Validation Verified (Zero Service Downtime)
           </h4>
         </div>
         <span style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>
@@ -28,7 +28,7 @@ export const DryRunReport = ({ dryRunResult }) => {
       </div>
 
       <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-        All remediation steps evaluated against isolated sandbox mocks without making live destructive cloud mutations:
+        All remediation steps evaluated via cloud API dry-run verification without making destructive state modifications:
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

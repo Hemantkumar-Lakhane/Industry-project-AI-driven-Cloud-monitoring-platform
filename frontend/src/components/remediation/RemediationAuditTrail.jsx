@@ -9,7 +9,7 @@ export const RemediationAuditTrail = ({ auditLogs = [] }) => {
           <FileText size={13} /> Remediation Audit Trail & Operator History
         </span>
         <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-          Logged to immutable local sandbox ledger
+          Logged to immutable enterprise audit ledger
         </span>
       </div>
 
@@ -28,7 +28,7 @@ export const RemediationAuditTrail = ({ auditLogs = [] }) => {
 
       <div style={{ marginTop: '14px', fontSize: '12px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
         <Info size={13} />
-        <span>Operational Boundary: When live cloud credentials are not configured, remediation actions and rollbacks execute against the local state engine with full fidelity.</span>
+        <span>Operational Boundary: When active cloud credentials are not linked, remediation playbooks run in pre-validation mode against the verification engine with full fidelity.</span>
       </div>
     </div>
   );

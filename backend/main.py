@@ -465,11 +465,11 @@ def _get_events(normal: int = 80, attacks: int = 15, org_id: Optional[str] = Non
             logs = read_wazuh_logs(max_events=normal + attacks)
             if logs:
                 return logs
-            from simulator.wazuh_simulator import simulate_session
-            return simulate_session(n_normal=normal, n_attacks=attacks)
+            from simulator.attack_simulator import run_full_simulation
+            return run_full_simulation(normal_count=normal, attack_count=attacks)
         except Exception:
-            from simulator.wazuh_simulator import simulate_session
-            return simulate_session(n_normal=normal, n_attacks=attacks)
+            from simulator.attack_simulator import run_full_simulation
+            return run_full_simulation(normal_count=normal, attack_count=attacks)
 
     try:
         from engines.cloud_connector import probe_cloud_connectivity, fetch_live_cloudtrail_events
@@ -1266,9 +1266,9 @@ def get_dashboard_summary(
 
     # Dedicated Demo Account handler for simulated Wazuh showcase
     if org_id == "org_demo":
-        from simulator.wazuh_simulator import simulate_session
+        from simulator.attack_simulator import run_full_simulation
         from engines.cspm_engine import run_cspm_scan
-        sim_events = simulate_session(n_normal=80, n_attacks=20)
+        sim_events = run_full_simulation(normal_count=80, attack_count=20)
         sim_cspm = run_cspm_scan(sim_events)
         crit_count = sum(1 for f in sim_cspm if str(f.get("severity", "")).lower() == "critical")
         high_count = sum(1 for f in sim_cspm if str(f.get("severity", "")).lower() == "high")
@@ -1818,35 +1818,6 @@ def get_detected_findings(
     org_id = user.get("org_id") if user else None
 
     from engines.cloud_connector import probe_cloud_connectivity, run_production_cspm_scan, run_production_ciem_scan
-    
-    if org_id == "org_demo":
-        from simulator.wazuh_simulator import simulate_session
-        from engines.cspm_engine import run_cspm_scan
-        sim_events = simulate_session(n_normal=80, n_attacks=20)
-        sim_cspm = run_cspm_scan(sim_events)
-        now_ts = datetime.now(timezone.utc).isoformat()
-        demo_findings = []
-        for f in sim_cspm:
-            demo_findings.append({
-                "finding_id": f.get("scan_id") or f"CSPM-{f.get('vulnerability_id')}",
-                "timestamp": now_ts,
-                "attack_category": "Cloud Misconfiguration (CSPM)",
-                "title": f.get("title"),
-                "description": f.get("description"),
-                "severity": f.get("severity", "high"),
-                "status": f.get("status", "open"),
-                "affected_resource": f.get("resource"),
-                "affected_principal": "arn:aws:iam::123456789012:root",
-                "data_source": "DEMO_SIMULATION",
-                "confidence": 0.95
-            })
-        return {
-            "status": "success",
-            "count": len(demo_findings),
-            "data": demo_findings,
-            "source": "DEMO_SIMULATION"
-        }
-
     probe = probe_cloud_connectivity(org_id=org_id)
     if probe.get("status") != "CONNECTED":
         return {

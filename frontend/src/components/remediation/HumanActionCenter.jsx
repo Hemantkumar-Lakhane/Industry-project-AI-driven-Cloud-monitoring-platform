@@ -38,10 +38,10 @@ export const HumanActionCenter = ({
             className="figma-btn-secondary"
             onClick={onDryRun}
             disabled={executing}
-            title="Simulate step-by-step remediation safely in sandbox with zero downtime"
+            title="Pre-validate remediation steps safely with zero cloud downtime"
           >
             <Search size={13} />
-            {executing ? 'Simulating...' : 'Test Fix (Dry Run)'}
+            {executing ? 'Validating...' : 'Validate Fix (Dry Run)'}
           </button>
 
           {(currentExecId || isHealed) && (

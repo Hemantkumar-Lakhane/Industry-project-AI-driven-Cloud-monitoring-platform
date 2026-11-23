@@ -33,7 +33,7 @@ const WorkspaceSettingsTab = ({ user, theme, onToggleTheme, showToast }) => {
                 {user?.company_name || 'Enterprise Workspace'}
               </h3>
               <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', margin: 0 }}>
-                Organization Tenant ID: <code style={{ color: 'var(--text-primary)' }}>{user?.org_id || 'org_master_admin'}</code> · External ID: <code style={{ color: 'var(--text-primary)' }}>{user?.external_id || 'RAM-ENTERPRISE'}</code>
+                Organization Tenant ID: <code style={{ color: 'var(--text-primary)' }}>{user?.org_id || 'org_enterprise'}</code> · External ID: <code style={{ color: 'var(--text-primary)' }}>{user?.external_id || 'RAM-ENTERPRISE'}</code>
               </p>
             </div>
           </div>
@@ -81,7 +81,7 @@ const WorkspaceSettingsTab = ({ user, theme, onToggleTheme, showToast }) => {
               Threat alert threshold
             </label>
             <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'block', marginBottom: '8px' }}>
-              Minimum anomaly confidence score to trigger high-severity alerts (current: {failThreshold})
+              Minimum anomalous event count threshold to trigger high-severity alerts (current: {failThreshold})
             </span>
             <input
               type="range"

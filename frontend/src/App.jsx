@@ -460,8 +460,8 @@ const App = () => {
       )
     },
     users: {
-      title: 'Users',
-      subtitle: 'User accounts and role-based access management',
+      title: 'Team & Access',
+      subtitle: 'Enterprise user directory, access roles, and permission policies',
       action: (
         <button className="figma-btn-primary" onClick={() => setActiveTab('users')}>
           Invite user
@@ -469,8 +469,8 @@ const App = () => {
       )
     },
     datasources: {
-      title: 'Data Sources',
-      subtitle: 'Telemetry connector directory and ingestion pipelines',
+      title: 'Cloud Connectors',
+      subtitle: 'Cloud account integration and active posture audit pipelines',
       action: (
         <button className="figma-btn-primary" onClick={() => setActiveTab('datasources')}>
           Add source
@@ -478,8 +478,8 @@ const App = () => {
       )
     },
     settings: {
-      title: 'Platform Settings',
-      subtitle: 'Detector sensitivity parameters and safety configurations',
+      title: 'Workspace Settings',
+      subtitle: 'Detector sensitivity parameters and workspace safety configurations',
       action: (
         <button className="figma-btn-primary" onClick={() => showToast('Settings saved')}>
           Save changes
@@ -504,7 +504,7 @@ const App = () => {
     ).slice(0, 5).map(f => ({
       type: `Finding · ${f.severity?.toUpperCase() || 'INFO'}`,
       title: `${f.finding_id}: ${f.title}`,
-      subtitle: f.affected_principal || f.affected_resource || 'Identity fixture',
+      subtitle: f.affected_principal || f.affected_resource || 'Cloud Resource',
       action: () => {
         setSelectedFinding(f);
         setActiveTab('alerts');
@@ -599,15 +599,22 @@ const App = () => {
             {(() => {
               const rawName = (user?.full_name || '').trim();
               const rawUser = (user?.username || '').trim();
+              const emailUser = (user?.email ? user.email.split('@')[0] : '').trim();
               const company = (user?.company_name || '').trim();
               const isBad = (str) => !str || str.toLowerCase().includes('password') || str.toLowerCase() === 'password123';
-              const cleanName = !isBad(rawName) ? rawName : (!isBad(rawUser) ? rawUser : (company ? `${company} Admin` : 'CA'));
+              let cleanName = 'Security Admin';
+              if (!isBad(rawName)) cleanName = rawName;
+              else if (!isBad(rawUser)) cleanName = rawUser;
+              else if (!isBad(emailUser)) cleanName = emailUser;
+              else if (company) cleanName = `${company} Admin`;
+              else cleanName = user?.role === 'admin' ? 'Security Admin' : 'Security Analyst';
               return cleanName
                 .split(' ')
                 .map((n) => n[0])
+                .filter(Boolean)
                 .join('')
                 .substring(0, 2)
-                .toUpperCase() || 'CA';
+                .toUpperCase() || 'SA';
             })()}
           </div>
 
@@ -626,12 +633,14 @@ const App = () => {
                 {(() => {
                   const rawName = (user?.full_name || '').trim();
                   const rawUser = (user?.username || '').trim();
+                  const emailUser = (user?.email ? user.email.split('@')[0] : '').trim();
                   const company = (user?.company_name || '').trim();
                   const isBad = (str) => !str || str.toLowerCase().includes('password') || str.toLowerCase() === 'password123';
                   if (!isBad(rawName)) return rawName;
                   if (!isBad(rawUser)) return rawUser;
+                  if (!isBad(emailUser)) return emailUser;
                   if (company) return `${company} Admin`;
-                  return user?.role === 'admin' ? 'Company Admin' : 'Security Analyst';
+                  return user?.role === 'admin' ? 'Security Operations Admin' : 'Security Analyst';
                 })()}
               </span>
               <span
@@ -655,7 +664,7 @@ const App = () => {
                 />
                 {user?.username === 'admin'
                   ? 'Platform Superadmin'
-                  : (user?.company_name ? `${user.company_name} User` : 'Company User')} &bull; online
+                  : (user?.company_name ? `${user.company_name} · ${user.role || 'Member'}` : (user?.role === 'admin' ? 'Security Admin' : 'Security Analyst'))} &bull; online
               </span>
             </div>
           )}

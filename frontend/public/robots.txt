@@ -4,5 +4,4 @@ Allow: /
 Disallow: /api/
 Disallow: /ws/
 
-# NOTE: Replace 'https://your-domain-placeholder.com' with your actual production domain once deployed
-Sitemap: https://your-domain-placeholder.com/sitemap.xml
+Sitemap: https://d3sa9ma9swl1ef.cloudfront.net/sitemap.xml

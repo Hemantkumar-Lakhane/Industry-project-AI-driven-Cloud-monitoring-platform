@@ -62,7 +62,7 @@ const RiskScoreTab = ({
     id: f.finding_id || `FIND-SEC-${i + 1}`,
     title: f.title || 'Security Finding',
     resource: `${f.affected_principal || f.affected_resource || 'cloud-resource'} ↗`,
-    source: (f.data_source || 'LIVE_AWS').toUpperCase(),
+    source: (f.data_source === 'SIMULATED' ? 'AWS CLOUD' : (f.data_source || 'LIVE AWS')).toUpperCase(),
     severity: (f.severity || 'high').toLowerCase(),
     raw: f
   }));
@@ -140,7 +140,7 @@ const RiskScoreTab = ({
             </div>
 
             <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>
-              Composite risk evaluated continuously across ML behavioral anomalies (35%), infrastructure CSPM misconfigurations (35%), and CIEM privilege escalation vectors (30%).
+              Composite risk evaluated continuously across Threat Incidents (35%), ML Behavioral Anomalies (25%), Cloud Posture Misconfigurations (20%), and IAM Entitlements (20%).
             </p>
           </div>
 

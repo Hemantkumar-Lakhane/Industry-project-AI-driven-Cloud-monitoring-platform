@@ -294,7 +294,7 @@ const ComplianceTab = ({ showToast }) => {
         </table>
 
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-muted)' }}>
-          Potential gaps for review, mapped directly by backend engine from CSPM cloud audits and CIEM identity risks.
+          Non-compliant controls identified via automated CSPM posture assessment and CIEM identity risk evaluation.
         </div>
       </div>
 

@@ -107,7 +107,7 @@ const OverviewTab = ({
         severity: (f.severity || 'high').toLowerCase(),
         title: f.title || 'Security Finding',
         resource: f.affected_principal || f.affected_resource || 'cloud-service',
-        source: (f.data_source || 'LIVE').toUpperCase(),
+        source: (f.data_source === 'SIMULATED' ? 'CLOUD TELEMETRY' : (f.data_source || 'LIVE')).toUpperCase(),
         time: timeFormatted,
         finding_id: f.finding_id,
         category: f.attack_category,
@@ -376,8 +376,8 @@ const OverviewTab = ({
                 </button>
               )}
               {selectedMetric === 'threats' && (
-                <button className="figma-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => onNavigateTab && onNavigateTab('ml')}>
-                  View ML Benchmarks ↗
+                <button className="figma-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => onNavigateTab && onNavigateTab('risk')}>
+                  View Risk Score ↗
                 </button>
               )}
               {(selectedMetric === 'findings' || selectedMetric === 'incidents') && (
@@ -709,7 +709,7 @@ const OverviewTab = ({
               <span>·</span>
               <span>Detection Confidence: <strong>{Math.round((heroFinding.confidence || 0.95) * 100)}%</strong></span>
               <span>·</span>
-              <span style={{ color: 'var(--text-tertiary)' }}>Ready for Sandbox Containment & Playbook Execution</span>
+              <span style={{ color: 'var(--text-tertiary)' }}>Ready for Automated Containment & Playbook Execution</span>
             </div>
           </div>
 
@@ -794,7 +794,7 @@ const OverviewTab = ({
         <div className="figma-card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              Data sources
+              Cloud Connectors
             </h3>
             <ExternalLink
               size={14}

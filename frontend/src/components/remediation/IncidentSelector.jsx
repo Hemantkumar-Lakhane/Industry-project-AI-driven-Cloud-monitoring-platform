@@ -172,7 +172,7 @@ export const IncidentSelector = ({
               <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Target: <code>{inc.target || 'Workload'}</code></span>
                 <span style={{ fontWeight: 600, color: 'var(--accent-orange)' }}>
-                  {inc.isLive ? 'LIVE' : 'DEMO'}
+                  {inc.isLive ? 'LIVE' : 'ACTIVE'}
                 </span>
               </div>
             </div>

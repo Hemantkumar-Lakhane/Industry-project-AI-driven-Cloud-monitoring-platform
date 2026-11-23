@@ -363,24 +363,7 @@ const LoginPage = ({ onLogin }) => {
               </button>
             )}
 
-            {/* AWS Cloud & IAM Compatibility Chip */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              padding: '6px 10px',
-              borderRadius: '6px',
-              backgroundColor: 'rgba(255, 153, 0, 0.08)',
-              border: '1px solid rgba(255, 153, 0, 0.22)',
-              color: '#d97706',
-              fontSize: '11.5px',
-              fontWeight: 500,
-              marginTop: '4px'
-            }}>
-              <span style={{ fontWeight: 700, letterSpacing: '0.5px' }}>AWS</span>
-              <span>Cloud & Workload Telemetry Ready</span>
-            </div>
+
           </div>
 
           <div className="toggle-mode">
@@ -416,7 +399,7 @@ const LoginPage = ({ onLogin }) => {
             }}
           >
             <ShieldCheck size={13} style={{ color: 'var(--brand-primary, #6366f1)' }} />
-            <span>{showDemoLogins ? 'Hide quick access accounts' : 'Quick Test Accounts (Admin & Demo)'}</span>
+            <span>{showDemoLogins ? 'Hide quick access accounts' : 'Quick Access Profiles (Admin & Demo)'}</span>
             {showDemoLogins ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
 
@@ -433,8 +416,8 @@ const LoginPage = ({ onLogin }) => {
                   {activeDemo === 'admin' ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
                 </div>
                 <div className="demo-role-info" style={{ textAlign: 'left' }}>
-                  <span className="demo-role-name" style={{ fontWeight: 600 }}>Master Admin</span>
-                  <span className="demo-role-sub" style={{ fontSize: '10.5px' }}>admin / admin123 (Live Cloud)</span>
+                  <span className="demo-role-name" style={{ fontWeight: 600 }}>Platform Admin</span>
+                  <span className="demo-role-sub" style={{ fontSize: '10.5px' }}>admin / admin123 (Full Security Ops)</span>
                 </div>
               </button>
 
@@ -449,8 +432,8 @@ const LoginPage = ({ onLogin }) => {
                   {activeDemo === 'demo' ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
                 </div>
                 <div className="demo-role-info" style={{ textAlign: 'left' }}>
-                  <span className="demo-role-name" style={{ fontWeight: 600 }}>Demo Showcase</span>
-                  <span className="demo-role-sub" style={{ fontSize: '10.5px' }}>demo / demo123 (Wazuh Logs)</span>
+                  <span className="demo-role-name" style={{ fontWeight: 600 }}>Demo Analyst</span>
+                  <span className="demo-role-sub" style={{ fontSize: '10.5px' }}>demo / demo123 (Interactive Telemetry)</span>
                 </div>
               </button>
             </div>

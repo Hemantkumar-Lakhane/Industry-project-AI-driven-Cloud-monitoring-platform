@@ -11,7 +11,7 @@ export const BrandMark = ({ size = 44, compact = false }) => (
   <div className="brand-mark" style={{ width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
     <img
       src={logoUrl}
-      alt={compact ? 'Ram Antivirus logo' : 'Ram Antivirus'}
+      alt={compact ? 'RAM Antivirus logo' : 'RAM Antivirus'}
       style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
     />
   </div>

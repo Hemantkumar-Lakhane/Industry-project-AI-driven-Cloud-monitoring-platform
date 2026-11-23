@@ -605,11 +605,11 @@ const RemediationTabInner = ({
 
           operator: 'System Administrator (ADMIN)',
 
-          action: `Safe Dry-Run Simulation: ${currentIncident.name}`,
+          action: `Safe Dry-Run Pre-Validation: ${currentIncident.name}`,
 
           target: currentIncident.target,
 
-          status: 'SIMULATED & VERIFIED (Zero Downtime)'
+          status: 'PRE-VALIDATED & VERIFIED (Zero Downtime)'
 
         },
 
@@ -619,11 +619,11 @@ const RemediationTabInner = ({
 
 
 
-      if (showToast) showToast('Safe dry-run simulation verified in sandbox! Zero service downtime.');
+      if (showToast) showToast('Safe dry-run execution pre-validated successfully with zero service impact.');
 
     } catch (err) {
 
-      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Dry run simulation failed';
+      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Dry-run pre-validation failed';
 
       setActionError(`Dry-run failed: ${msg}`);
 

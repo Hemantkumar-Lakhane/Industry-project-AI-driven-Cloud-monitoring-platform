@@ -16,7 +16,7 @@ const UserManagementTab = ({ token, showToast }) => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteName, setInviteName] = useState('');
   const [inviteRole, setInviteRole] = useState('analyst');
-  const [invitePassword, setInvitePassword] = useState('SecurePass123!');
+  const [invitePassword, setInvitePassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -58,11 +58,12 @@ const UserManagementTab = ({ token, showToast }) => {
     const generatedUsername = (inviteEmail.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9_]/g, '_');
     
     try {
+      const tempPassword = invitePassword.trim() || ('RAM-' + Math.random().toString(36).slice(-8) + '!');
       await axios.post(
         `${API_URL}/auth/register`,
         {
           username: generatedUsername,
-          password: invitePassword || 'SecurePass123!',
+          password: tempPassword,
           email: inviteEmail,
           role: inviteRole,
           full_name: inviteName || generatedUsername
@@ -71,12 +72,12 @@ const UserManagementTab = ({ token, showToast }) => {
       );
 
       if (showToast) {
-        showToast(`User @${generatedUsername} (${inviteRole}) registered! Temp password: ${invitePassword || 'SecurePass123!'}`);
+        showToast(`User @${generatedUsername} (${inviteRole}) registered! Temporary password: ${tempPassword}`);
       }
 
       setInviteEmail('');
       setInviteName('');
-      setInvitePassword('SecurePass123!');
+      setInvitePassword('');
       await fetchUsers();
     } catch (err) {
       const detail = err.response?.data?.detail || err.message || 'Registration failed';
@@ -110,7 +111,7 @@ const UserManagementTab = ({ token, showToast }) => {
 
   const permissionsMatrix = [
     { perm: 'View findings & evidence', admin: 'Full View', analyst: 'Full View', viewer: 'Read Only' },
-    { perm: 'Run attack simulation suite', admin: 'Execute', analyst: 'Execute', viewer: 'Restricted' },
+    { perm: 'Execute adversary threat simulations', admin: 'Execute', analyst: 'Execute', viewer: 'Restricted' },
     { perm: 'Approve & apply remediation', admin: 'Approve & Execute', analyst: 'Dry-Run Only', viewer: 'Restricted' },
     { perm: 'Directory & RBAC management', admin: 'Full Control', analyst: 'Restricted', viewer: 'Restricted' }
   ];

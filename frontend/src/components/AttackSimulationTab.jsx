@@ -89,21 +89,21 @@ const AttackSimulationTab = ({ showToast, onNavigateTab }) => {
       title: 'Privilege Escalation',
       desc: 'A user escalates privileges through IAM policy manipulation.',
       icon: ArrowUpRight,
-      target: 'demo-build-role · STS AssumeRole'
+      target: 'ci-cd-build-role · STS AssumeRole'
     },
     {
       id: 'data_exfiltration',
       title: 'Data Exfiltration',
       desc: 'Large outbound transfers to an external destination.',
       icon: Upload,
-      target: 'demo-worker-02 · S3 / egress'
+      target: 'prod-worker-node-02 · S3 / egress'
     },
     {
       id: 'abnormal_access',
       title: 'Abnormal Access',
       desc: 'Unusual geo-location access followed by suspicious cloud activity.',
       icon: Globe,
-      target: 'demo-analyst · Geo anomaly'
+      target: 'ops-analyst-session · Geo anomaly'
     }
   ];
 
@@ -441,7 +441,7 @@ const AttackSimulationTab = ({ showToast, onNavigateTab }) => {
                 Run an attack scenario to verify detection
               </h4>
               <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', maxWidth: '300px', margin: 0, lineHeight: 1.5 }}>
-                Click [Simulate] on any attack scenario on the left to test ML anomaly models and trigger autonomous response playbooks.
+                Select [Simulate] on any attack scenario to evaluate detection engines and trigger autonomous response playbooks.
               </p>
             </div>
           )}
@@ -459,7 +459,7 @@ const AttackSimulationTab = ({ showToast, onNavigateTab }) => {
             }}>
               <Activity size={32} className="animate-spin" style={{ color: 'var(--accent-orange)', marginBottom: '16px' }} />
               <h4 style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                Simulating {activeScenarioKey ? formatLabel(activeScenarioKey) : 'Adversary'} & Evaluating ML...
+                Executing {activeScenarioKey ? formatLabel(activeScenarioKey) : 'Adversary'} Scenario & Running Detection Models...
               </h4>
               <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
                 Feeding telemetry into Isolation Forest, KNN, and HBOS anomaly models
@@ -593,7 +593,7 @@ const AttackSimulationTab = ({ showToast, onNavigateTab }) => {
                   flexWrap: 'wrap'
                 }}>
                   <span style={{ fontSize: '12px', color: '#8b949e' }}>
-                    Incident signature active. Containment playbook ready in console.
+                    Incident signature confirmed. Containment playbook available for automated execution.
                   </span>
                   <button
                     onClick={() => onNavigateTab && onNavigateTab('remediation')}
