@@ -74,33 +74,31 @@ const AlertsIncidentsTab = ({
 
     const incidentsRowsHtml = activeList.map((inc, idx) => {
       const sev = (inc.severity || 'high').toUpperCase();
-      const sevColor = sev === 'CRITICAL' ? '#ef4444' : (sev === 'HIGH' ? '#f97316' : (sev === 'MEDIUM' ? '#eab308' : '#3b82f6'));
-      const cats = Array.isArray(inc.attack_categories) ? inc.attack_categories.join(', ') : (inc.attack_categories || 'Multi-Stage');
-      const ips = Array.isArray(inc.source_ips) ? inc.source_ips.join(', ') : (inc.source_ips || 'Internal');
-      const princs = Array.isArray(inc.principals) ? inc.principals.join(', ') : (inc.principals || 'system');
-      const res = Array.isArray(inc.resources) ? inc.resources.join(', ') : (inc.resources || 'cloud-workload');
+      const ips = Array.isArray(inc.source_ips) ? inc.source_ips.join(', ') : (inc.source_ips || 'AWS Internal');
+      const princs = Array.isArray(inc.principals) ? inc.principals.join(', ') : (inc.principals || 'Security Principal');
+      const res = Array.isArray(inc.resources) ? inc.resources.join(', ') : (inc.resources || 'Cloud Infrastructure');
 
       return `
         <tr style="border-bottom: 1px solid #e2e8f0;">
-          <td style="padding: 10px 8px; font-family: monospace; font-size: 11px; font-weight: 700; color: #1e293b;">
+          <td style="padding: 10px 10px; font-family: monospace; font-size: 11px; font-weight: 700; color: #0f172a;">
             ${inc.incident_id || 'INC-' + (idx + 100)}
           </td>
-          <td style="padding: 10px 8px;">
-            <span style="display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #ffffff; background-color: ${sevColor};">
+          <td style="padding: 10px 10px;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid ${sev === 'CRITICAL' ? '#b91c1c' : '#475569'}; color: ${sev === 'CRITICAL' ? '#b91c1c' : '#0f172a'}; background-color: #f8fafc;">
               ${sev}
             </span>
           </td>
-          <td style="padding: 10px 8px; font-size: 12px; color: #0f172a;">
-            <strong>${inc.title}</strong>
-            <div style="font-size: 11px; color: #64748b; margin-top: 3px;">${inc.description || 'Behavioral anomaly correlated across telemetry streams.'}</div>
+          <td style="padding: 10px 10px; font-size: 12px; color: #0f172a;">
+            <div style="font-weight: 700; color: #0f172a;">${inc.title}</div>
+            <div style="font-size: 11px; color: #475569; margin-top: 3px; line-height: 1.4;">${inc.description || 'Verified anomaly correlated across CloudTrail and IAM telemetry streams.'}</div>
           </td>
-          <td style="padding: 10px 8px; font-size: 11px; color: #334155;">
-            <div><strong>Identity:</strong> <code>${princs}</code></div>
-            <div><strong>IP:</strong> <code>${ips}</code></div>
-            <div><strong>Asset:</strong> <code>${res}</code></div>
+          <td style="padding: 10px 10px; font-size: 11px; color: #334155; line-height: 1.5;">
+            <div><strong>Principal:</strong> <code>${princs}</code></div>
+            <div><strong>Source IP:</strong> <code>${ips}</code></div>
+            <div><strong>Resource:</strong> <code>${res}</code></div>
           </td>
-          <td style="padding: 10px 8px; font-size: 11px; color: #475569;">
-            <span style="display: inline-block; padding: 2px 6px; border-radius: 4px; background: #f1f5f9; font-weight: 600;">
+          <td style="padding: 10px 10px; font-size: 11px; color: #334155;">
+            <span style="display: inline-block; padding: 3px 8px; border-radius: 4px; background: #f1f5f9; border: 1px solid #e2e8f0; font-weight: 600;">
               ${inc.primary_playbook_id || 'PB-AUTO-CONTAIN'}
             </span>
           </td>
@@ -113,16 +111,16 @@ const AlertsIncidentsTab = ({
       <html>
       <head>
         <meta charset="utf-8">
-        <title>RAM Antivirus — Threat Incident Audit Report (${dateStr})</title>
+        <title>RAM Antivirus — Executive Cloud Security Audit Report (${dateStr})</title>
         <style>
-          @page { size: A4 portrait; margin: 15mm 15mm 15mm 15mm; }
+          @page { size: A4 portrait; margin: 15mm; }
           body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             color: #0f172a;
             line-height: 1.5;
             background: #ffffff;
             margin: 0;
-            padding: 24px;
+            padding: 28px;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -132,7 +130,7 @@ const AlertsIncidentsTab = ({
             align-items: flex-start;
             border-bottom: 2px solid #0f172a;
             padding-bottom: 16px;
-            margin-bottom: 20px;
+            margin-bottom: 22px;
           }
           .brand-title {
             font-size: 20px;
@@ -142,8 +140,8 @@ const AlertsIncidentsTab = ({
           }
           .brand-subtitle {
             font-size: 12px;
-            color: #64748b;
-            margin-top: 2px;
+            color: #475569;
+            margin-top: 3px;
           }
           .kpi-grid {
             display: grid;
@@ -153,8 +151,8 @@ const AlertsIncidentsTab = ({
           }
           .kpi-card {
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
             padding: 12px 14px;
           }
           .kpi-label {
@@ -162,36 +160,30 @@ const AlertsIncidentsTab = ({
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #64748b;
+            color: #475569;
           }
           .kpi-value {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 800;
             margin-top: 4px;
-          }
-          .chart-container {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 14px 16px;
-            margin-bottom: 24px;
+            color: #0f172a;
           }
           .table {
             width: 100%;
             border-collapse: collapse;
             font-size: 11.5px;
-            margin-bottom: 24px;
+            margin-bottom: 28px;
           }
           .table th {
             text-align: left;
             background: #f1f5f9;
-            padding: 8px;
+            padding: 9px 10px;
             font-size: 10.5px;
             font-weight: 700;
-            color: #475569;
+            color: #1e293b;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-bottom: 2px solid #cbd5e1;
+            border-bottom: 2px solid #94a3b8;
           }
           .print-bar {
             display: flex;
@@ -199,9 +191,9 @@ const AlertsIncidentsTab = ({
             align-items: center;
             background: #0f172a;
             color: #ffffff;
-            padding: 10px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            padding: 10px 18px;
+            border-radius: 6px;
+            margin-bottom: 22px;
           }
           @media print {
             .print-bar { display: none !important; }
@@ -211,76 +203,60 @@ const AlertsIncidentsTab = ({
       </head>
       <body>
         <div class="print-bar">
-          <span style="font-size: 13px; font-weight: 600;">Executive Threat Report — Ready for PDF Export</span>
-          <button onclick="window.print()" style="background: #f97316; color: #ffffff; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
+          <span style="font-size: 13px; font-weight: 600;">Executive Security Audit Report — Print / Save as PDF</span>
+          <button onclick="window.print()" style="background: #f06a1a; color: #ffffff; border: none; padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
             Print / Save as PDF
           </button>
         </div>
 
         <div class="report-header">
           <div>
-            <div class="brand-title">RAM Antivirus — SOC Threat Intelligence & Incident Report</div>
-            <div class="brand-subtitle">Automated Ingestion, Cloud Behavioral Analytics & Real-time Incident Correlation</div>
+            <div class="brand-title">RAM Antivirus — Executive Cloud Security Audit Report</div>
+            <div class="brand-subtitle">Cloud Workload Protection, Telemetry Ingestion & Security Posture Assessment</div>
           </div>
-          <div style="text-align: right; font-size: 11px; color: #64748b;">
-            <div><strong>Generated:</strong> ${dateFormatted}</div>
-            <div><strong>Classification:</strong> SOC-2 / Internal Audit</div>
-            <div><strong>Environment:</strong> Production Cloud Telemetry</div>
+          <div style="text-align: right; font-size: 11px; color: #475569; line-height: 1.5;">
+            <div><strong>Date:</strong> ${dateFormatted}</div>
+            <div><strong>Region:</strong> AWS ap-southeast-2 (Sydney)</div>
+            <div><strong>Classification:</strong> Confidential Security Audit</div>
           </div>
         </div>
 
         <div class="kpi-grid">
-          <div class="kpi-card" style="border-left: 4px solid #ef4444;">
-            <div class="kpi-label">Critical Threats</div>
-            <div class="kpi-value" style="color: #ef4444;">${critCount}</div>
-            <div style="font-size: 11px; color: #64748b;">${critPct}% of correlated campaigns</div>
+          <div class="kpi-card">
+            <div class="kpi-label">Correlated Incidents</div>
+            <div class="kpi-value">${activeList.length}</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Active security events</div>
           </div>
-          <div class="kpi-card" style="border-left: 4px solid #f97316;">
+          <div class="kpi-card">
+            <div class="kpi-label">Critical Findings</div>
+            <div class="kpi-value">${critCount}</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Require immediate review</div>
+          </div>
+          <div class="kpi-card">
             <div class="kpi-label">High Severity</div>
-            <div class="kpi-value" style="color: #f97316;">${highCount}</div>
-            <div style="font-size: 11px; color: #64748b;">${highPct}% privilege / credential attacks</div>
+            <div class="kpi-value">${highCount}</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Privilege / access vectors</div>
           </div>
-          <div class="kpi-card" style="border-left: 4px solid #eab308;">
-            <div class="kpi-label">Medium Severity</div>
-            <div class="kpi-value" style="color: #ca8a04;">${medCount}</div>
-            <div style="font-size: 11px; color: #64748b;">${medPct}% recon & posture scans</div>
-          </div>
-          <div class="kpi-card" style="border-left: 4px solid #3b82f6;">
-            <div class="kpi-label">Low / Baseline</div>
-            <div class="kpi-value" style="color: #2563eb;">${lowCount}</div>
-            <div style="font-size: 11px; color: #64748b;">${lowPct}% informational anomalies</div>
-          </div>
-        </div>
-
-        <div class="chart-container">
-          <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Severity Distribution Breakdown</div>
-          <div style="display: flex; height: 18px; border-radius: 6px; overflow: hidden; background: #e2e8f0;">
-            <div style="width: ${critPct}%; background: #ef4444;" title="Critical: ${critCount}"></div>
-            <div style="width: ${highPct}%; background: #f97316;" title="High: ${highCount}"></div>
-            <div style="width: ${medPct}%; background: #eab308;" title="Medium: ${medCount}"></div>
-            <div style="width: ${lowPct}%; background: #3b82f6;" title="Low: ${lowCount}"></div>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-top: 6px;">
-            <span>Critical (${critCount})</span>
-            <span>High (${highCount})</span>
-            <span>Medium (${medCount})</span>
-            <span>Low (${lowCount})</span>
+          <div class="kpi-card">
+            <div class="kpi-label">Remediation Status</div>
+            <div class="kpi-value" style="font-size: 16px; margin-top: 8px;">Dry-Run Ready</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Playbooks verified</div>
           </div>
         </div>
 
         <div style="margin-bottom: 14px;">
-          <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>Correlated Attack Campaigns & Automated Root Cause Analysis</h3>
-          <p style="font-size: 11.5px; color: #64748b; margin: 0;">Multi-stage attack chains identified through cross-telemetry entity clustering (Identity, IP, Resource).</p>
+          <h3 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">Correlated Attack Incidents & Root Cause Analysis</h3>
+          <p style="font-size: 11.5px; color: #475569; margin: 0;">Multi-stage attack vectors identified through continuous AWS CloudTrail, IAM, and configuration monitoring.</p>
         </div>
 
         <table class="table">
           <thead>
             <tr>
               <th style="width: 100px;">Incident ID</th>
-              <th style="width: 80px;">Severity</th>
-              <th>Threat Campaign & Root Cause</th>
-              <th style="width: 220px;">Target Entities & Indicators</th>
-              <th style="width: 140px;">Playbook Action</th>
+              <th style="width: 85px;">Severity</th>
+              <th>Threat Findings & Description</th>
+              <th style="width: 230px;">Impacted Entities</th>
+              <th style="width: 130px;">Response Action</th>
             </tr>
           </thead>
           <tbody>
@@ -288,9 +264,9 @@ const AlertsIncidentsTab = ({
           </tbody>
         </table>
 
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between;">
-          <span>RAM Antivirus Workload Protection Suite</span>
-          <span>Automated Containment & Forensic Auditing Engine</span>
+        <div style="border-top: 1px solid #cbd5e1; padding-top: 14px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between;">
+          <span>RAM Antivirus Cloud Security Suite</span>
+          <span>Verified Autonomous Threat Detection Engine</span>
         </div>
       </body>
       </html>

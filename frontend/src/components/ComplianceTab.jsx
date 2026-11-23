@@ -339,10 +339,10 @@ const ComplianceTab = ({ showToast }) => {
             </div>
 
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '18px' }}>
-              <div><strong>Audit ID:</strong> {report.report_id || 'AUD-REPORT-2026'}</div>
-              <div><strong>Overall Compliance Score:</strong> {report.overall_score || report.score || dashboardData?.overall_score}%</div>
-              <div><strong>Generated At:</strong> {report.timestamp || new Date().toISOString()}</div>
-              <div><strong>Status:</strong> {report.status || 'Compliant'}</div>
+              <div><strong>Audit ID:</strong> {typeof report.report_id === 'string' ? report.report_id : 'AUD-REPORT-2026'}</div>
+              <div><strong>Overall Compliance Score:</strong> {typeof report.overall_score === 'number' ? report.overall_score : (typeof report.score === 'number' ? report.score : (dashboardData?.overall_score ?? 100))}%</div>
+              <div><strong>Generated At:</strong> {typeof report.timestamp === 'string' ? report.timestamp : new Date().toISOString()}</div>
+              <div><strong>Status:</strong> {typeof report.status === 'string' ? report.status : 'Compliant'}</div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>

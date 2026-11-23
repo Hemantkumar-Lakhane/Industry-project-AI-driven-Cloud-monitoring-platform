@@ -158,6 +158,8 @@ const RemediationTabInner = ({
 
   const [dryRunResults, setDryRunResults] = useState({});
 
+  const [remediationSubTab, setRemediationSubTab] = useState('containment'); // 'containment' | 'posture' | 'audit'
+
   const [granularState, setGranularState] = useState({});
 
   const [healedConfigs, setHealedConfigs] = useState(new Set());
@@ -1035,163 +1037,158 @@ const RemediationTabInner = ({
 
 
 
-      {/* 2. INCIDENT SELECTOR & WORKBENCH OR CLEAN ZERO STATE */}
-      {displayIncidents.length === 0 ? (
-        <div className="figma-card" style={{ padding: '48px 24px', textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <ShieldCheck size={28} style={{ color: 'var(--text-tertiary)' }} />
-          </div>
-          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-            No Active Security Incidents Detected
-          </h3>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '520px', margin: '0 auto 20px', lineHeight: 1.6 }}>
-            Your cloud environment has zero active uncontained incidents. Connect your cloud in Cloud Connectors to run autonomous remediation playbooks.
-          </p>
-        </div>
-      ) : (
+      {/* 2. SUB-NAVIGATION PILL TABS */}
+      <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '22px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setRemediationSubTab('containment')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: remediationSubTab === 'containment' ? '2px solid var(--accent-orange)' : '2px solid transparent',
+            padding: '10px 4px',
+            fontSize: '13.5px',
+            fontWeight: remediationSubTab === 'containment' ? 600 : 500,
+            color: remediationSubTab === 'containment' ? 'var(--accent-orange)' : 'var(--text-secondary)',
+            cursor: 'pointer',
+            marginBottom: '-1px'
+          }}
+        >
+          Incident Containment & Playbooks ({displayIncidents.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setRemediationSubTab('posture')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: remediationSubTab === 'posture' ? '2px solid var(--accent-orange)' : '2px solid transparent',
+            padding: '10px 4px',
+            fontSize: '13.5px',
+            fontWeight: remediationSubTab === 'posture' ? 600 : 500,
+            color: remediationSubTab === 'posture' ? 'var(--accent-orange)' : 'var(--text-secondary)',
+            cursor: 'pointer',
+            marginBottom: '-1px'
+          }}
+        >
+          Cloud Posture & Identity Fixes ({realCspm.length + realCiem.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setRemediationSubTab('audit')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: remediationSubTab === 'audit' ? '2px solid var(--accent-orange)' : '2px solid transparent',
+            padding: '10px 4px',
+            fontSize: '13.5px',
+            fontWeight: remediationSubTab === 'audit' ? 600 : 500,
+            color: remediationSubTab === 'audit' ? 'var(--accent-orange)' : 'var(--text-secondary)',
+            cursor: 'pointer',
+            marginBottom: '-1px'
+          }}
+        >
+          Remediation Audit Ledger ({humanAuditTrail.length})
+        </button>
+      </div>
+
+      {/* VIEW 1: INCIDENT WORKBENCH */}
+      {remediationSubTab === 'containment' && (
         <>
-{/* 2. INCIDENT SELECTOR CAROUSEL (CLEANLY CONSTRAINED HORIZONTAL SCROLL) */}
-
-      <IncidentSelector
-
-        incidents={displayIncidents}
-
-        selectedIncidentId={currentIncident?.id}
-
-        onSelectIncident={(id) => setSelectedIncidentId(id)}
-
-        healedIncidents={healedIncidents}
-
-      />
-
-
-
-      {/* 3. MAIN INCIDENT WORKBENCH */}
-
-      {currentIncident && (
-
-        <div className="figma-card" style={{ padding: '22px 24px', marginBottom: '24px', boxSizing: 'border-box' }}>
-
-          {/* Header Row */}
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-
-            <div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-
-                <span className={`figma-dot-badge ${currentIncident.severity}`}>
-
-                  {currentIncident.severity.toUpperCase()} SEVERITY
-
-                </span>
-
-                <h2 style={{ fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-
-                  {currentIncident.name}
-
-                </h2>
-
-                {currentIncident.isLive && (
-
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: 'rgba(235, 107, 39, 0.15)', color: 'var(--accent-orange)' }}>
-
-                    LIVE CORRELATION
-
-                  </span>
-
-                )}
-
+          {displayIncidents.length === 0 ? (
+            <div className="figma-card" style={{ padding: '48px 24px', textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <ShieldCheck size={28} style={{ color: 'var(--text-tertiary)' }} />
               </div>
-
-              <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '6px' }}>
-
-                Incident ID: <code>{currentIncident.id}</code> &bull; Detected: {currentIncident.time}
-
-              </div>
-
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                No Active Security Incidents Detected
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '520px', margin: '0 auto 20px', lineHeight: 1.6 }}>
+                Your cloud environment has zero active uncontained incidents. Connect your cloud in Cloud Connectors to run autonomous remediation playbooks.
+              </p>
             </div>
+          ) : (
+            <>
+              {/* Incident Selector Carousel */}
+              <IncidentSelector
+                incidents={displayIncidents}
+                selectedIncidentId={currentIncident?.id}
+                onSelectIncident={(id) => setSelectedIncidentId(id)}
+                healedIncidents={healedIncidents}
+              />
 
-          </div>
+              {currentIncident && (
+                <div className="figma-card" style={{ padding: '22px 24px', marginBottom: '24px', boxSizing: 'border-box' }}>
+                  {/* Header Row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span className={`figma-dot-badge ${currentIncident.severity}`}>
+                          {currentIncident.severity.toUpperCase()} SEVERITY
+                        </span>
+                        <h2 style={{ fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                          {currentIncident.name}
+                        </h2>
+                        {currentIncident.isLive && (
+                          <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: 'rgba(235, 107, 39, 0.15)', color: 'var(--accent-orange)' }}>
+                            LIVE CORRELATION
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '6px' }}>
+                        Incident ID: <code>{currentIncident.id}</code> &bull; Detected: {currentIncident.time}
+                      </div>
+                    </div>
+                  </div>
 
+                  {/* Forensics Attribution Bar */}
+                  <ForensicsBanner incident={currentIncident} explainable={explainable} />
 
+                  {/* 3 Structured Plain-English Cards: What is Attack -> Root Cause -> Playbook */}
+                  <ExplainableCards explainable={explainable} />
 
-          {/* Forensics Attribution Bar */}
+                  {/* Human-in-the-Loop Actions & Workflow Triggers */}
+                  <HumanActionCenter
+                    explainable={explainable}
+                    isHealed={isHealed}
+                    currentExecId={currentExecId}
+                    executing={executing}
+                    onDryRun={handleDryRun}
+                    onAutoRemediate={handleAutoRemediate}
+                    onRollback={handleRollback}
+                    onExecuteGranularAction={handleExecuteGranularAction}
+                    granularState={granularState}
+                  />
 
-          <ForensicsBanner incident={currentIncident} explainable={explainable} />
-
-
-
-          {/* 3 Structured Plain-English Cards: What is Attack -> Root Cause -> Playbook */}
-
-          <ExplainableCards explainable={explainable} />
-
-
-
-          {/* Human-in-the-Loop Actions & Workflow Triggers */}
-
-          <HumanActionCenter
-
-            explainable={explainable}
-
-            isHealed={isHealed}
-
-            currentExecId={currentExecId}
-
-            executing={executing}
-
-            onDryRun={handleDryRun}
-
-            onAutoRemediate={handleAutoRemediate}
-
-            onRollback={handleRollback}
-
-            onExecuteGranularAction={handleExecuteGranularAction}
-
-            granularState={granularState}
-
-          />
-
-
-
-          {/* Dry-Run Sandbox Report (Only shown after safe simulation) */}
-
-          {dryRunResults[currentIncident.id] && (
-
-            <DryRunReport dryRunResult={dryRunResults[currentIncident.id]} />
-
+                  {/* Dry-Run Sandbox Report (Only shown after safe simulation) */}
+                  {dryRunResults[currentIncident.id] && (
+                    <DryRunReport dryRunResult={dryRunResults[currentIncident.id]} />
+                  )}
+                </div>
+              )}
+            </>
           )}
+        </>
+      )}
 
+      {/* VIEW 2: CLOUD CONFIGURATION & IDENTITY AUTO-FIXES (CSPM & CIEM) */}
+      {remediationSubTab === 'posture' && (
+        <ConfigFixesSection
+          cspmFindings={realCspm}
+          ciemFindings={realCiem}
+          healedConfigs={healedConfigs}
+          revokedEntities={revokedEntities}
+          onAutoFixConfig={autoFixConfig}
+          onRevokeAccess={revokeAccess}
+        />
+      )}
 
-
-          {/* Immutable Audit Trail Ledger */}
-
+      {/* VIEW 3: REMEDIATION AUDIT TRAIL LEDGER */}
+      {remediationSubTab === 'audit' && (
+        <div className="figma-card" style={{ padding: '22px 24px' }}>
           <RemediationAuditTrail auditLogs={humanAuditTrail} />
-
         </div>
-
       )}
-
-
-
-              </>
-      )}
-
-{/* 4. CLOUD CONFIGURATION & IDENTITY AUTO-FIXES (CSPM & CIEM) */}
-
-      <ConfigFixesSection
-        cspmFindings={realCspm}
-        ciemFindings={realCiem}
-
-        healedConfigs={healedConfigs}
-
-        revokedEntities={revokedEntities}
-
-        onAutoFixConfig={autoFixConfig}
-
-        onRevokeAccess={revokeAccess}
-
-      />
 
     </div>
 

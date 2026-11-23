@@ -57,6 +57,19 @@ const RiskScoreTab = ({
     ? risk.trend
     : (isEvaluated ? [{ period: liveTime ? liveTime.dayMonth : 'Today', score: unifiedScore }] : []);
 
+  const trendText = React.useMemo(() => {
+    if (typeof risk?.trend === 'string') return risk.trend;
+    if (Array.isArray(risk?.trend) && risk.trend.length > 0) {
+      const latest = Number(risk.trend[risk.trend.length - 1]?.score ?? unifiedScore);
+      const previous = risk.trend.length > 1 ? Number(risk.trend[risk.trend.length - 2]?.score ?? latest) : latest;
+      const diff = latest - previous;
+      if (diff > 0) return `+${diff.toFixed(1)}%`;
+      if (diff < 0) return `${diff.toFixed(1)}%`;
+      return '0.0% (Stable)';
+    }
+    return '0.0% (Baseline)';
+  }, [risk?.trend, unifiedScore]);
+
   // Actionable risk drivers mapped directly to real active findings
   const realDrivers = findings.slice(0, 4).map((f, i) => ({
     id: f.finding_id || `FIND-SEC-${i + 1}`,
@@ -136,7 +149,7 @@ const RiskScoreTab = ({
             </div>
 
             <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '14px' }}>
-              Trend <span style={{ color: isEvaluated ? 'var(--sev-high)' : 'var(--text-tertiary)', fontWeight: 600 }}>{risk?.trend || '0.0%'}</span> vs baseline · Last evaluation <strong>{isEvaluated && liveTime ? liveTime.timeStr + ' UTC' : 'Not Evaluated'}</strong>
+              Trend <span style={{ color: isEvaluated ? 'var(--sev-high)' : 'var(--text-tertiary)', fontWeight: 600 }}>{trendText}</span> vs baseline · Last evaluation <strong>{isEvaluated && liveTime ? liveTime.timeStr + ' UTC' : 'Not Evaluated'}</strong>
             </div>
 
             <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>

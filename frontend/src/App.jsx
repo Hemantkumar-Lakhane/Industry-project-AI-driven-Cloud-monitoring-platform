@@ -803,18 +803,6 @@ const App = () => {
               </button>
             </div>
 
-            {/* Public Landing Page Switcher */}
-            <button
-              type="button"
-              className="figma-btn-secondary"
-              style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 500 }}
-              onClick={() => setShowLanding(true)}
-              title="View Public Landing Page"
-            >
-              <Eye size={13} />
-              <span>Public Site</span>
-            </button>
-
             <button
               className="figma-btn-secondary"
               style={{ padding: '6px 10px' }}
@@ -843,7 +831,7 @@ const App = () => {
           </div>
 
           {/* PAGE ROUTING (ALL 10 FIGMA MODULES) */}
-          <ErrorBoundary>
+          <ErrorBoundary key={activeTab}>
           {activeTab === 'overview' && (
             <OverviewTab
               data={data}
