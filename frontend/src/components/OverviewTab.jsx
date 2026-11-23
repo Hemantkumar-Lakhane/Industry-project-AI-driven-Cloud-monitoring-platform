@@ -1077,18 +1077,22 @@ const OverviewTab = ({
               
               if (fCat === cKey || fCat.includes(cKey) || cKey.includes(fCat)) return true;
               if (fCat.includes(cName) || cName.includes(fCat)) return true;
+              if (cat.key === 'brute_force' && (fId.includes('BRUT') || fCat.includes('brute') || title.includes('brute') || title.includes('credential') || title.includes('authentication failure') || desc.includes('authentication failure') || desc.includes('brute-force'))) return true;
+              if (cat.key === 'data_exfiltration' && (fId.includes('EXFIL') || fCat.includes('exfil') || title.includes('exfiltration') || title.includes('egress'))) return true;
+              if (cat.key === 'iam_privilege_escalation' && (fId.startsWith('CIEM') || fId.includes('IAM') || fCat.includes('ciem') || fCat.includes('iam') || title.includes('privilege') || title.includes('attachuserpolicy') || title.includes('multi-factor') || title.includes('mfa') || title.includes('root account') || title.includes('policy') || title.includes('role') || title.includes('entitlement'))) return true;
+              if (cat.key === 'malware_ransomware' && (fId.includes('RW') || fCat.includes('ransom') || fCat.includes('malware') || title.includes('ransomware') || title.includes('encryption'))) return true;
+              if (cat.key === 'network_scanning' && (fId.includes('NS') || fId.includes('SCAN') || fId.includes('RECON') || fCat.includes('scan') || title.includes('scan') || title.includes('reconnaissance'))) return true;
+              if (cat.key === 'database_attacks' && (fId.includes('DB') || title.includes('database') || title.includes('5432') || title.includes('3306') || title.includes('rds'))) return true;
               if (cat.key === 'cloud_misconfiguration' && (fId.startsWith('CSPM') || fCat.includes('cspm') || fCat.includes('misconfig') || title.includes('publicly accessible') || title.includes('unencrypted') || title.includes('open to internet') || desc.includes('public access') || title.includes('s3 bucket'))) return true;
-              if (cat.key === 'iam_privilege_escalation' && (fId.startsWith('CIEM') || fCat.includes('ciem') || fCat.includes('iam') || title.includes('multi-factor') || title.includes('mfa') || title.includes('root account') || title.includes('policy') || title.includes('role') || title.includes('entitlement'))) return true;
-              if (cat.key === 'database_attacks' && (title.includes('database') || title.includes('5432') || title.includes('3306') || title.includes('rds'))) return true;
               if (cat.key === 'defense_tampering' && (title.includes('cloudtrail') || title.includes('stoplogging') || title.includes('logging'))) return true;
+              if (cat.key === 'suspicious_api_activity' && (fId.includes('API') || title.includes('anomalous') || title.includes('burst') || fCat.includes('suspicious'))) return true;
+              if (cat.key === 'cryptomining' && (fId.includes('MIN') || fCat.includes('crypto') || fCat.includes('mining') || title.includes('mining'))) return true;
               return false;
             }).length;
 
             return (
               <div
                 key={cat.key}
-                onClick={() => onNavigateTab && onNavigateTab('alerts', cat.key)}
-                className="group cursor-pointer"
                 style={{
                   padding: '13px 15px',
                   borderRadius: '8px',
@@ -1098,9 +1102,8 @@ const OverviewTab = ({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '8px',
-                  transition: 'all 0.15s ease'
+                  cursor: 'default'
                 }}
-                title={`Filter ${cat.name} in Alerts & Incidents`}
               >
                 {/* Top header row: tactic & engine ID */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1182,9 +1185,26 @@ const OverviewTab = ({
                       Baseline Clean · {totalEventVolume || 50} verified
                     </span>
                   )}
-                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab && onNavigateTab('alerts', cat.key)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontSize: '11.5px',
+                      color: 'var(--accent-orange)',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      cursor: 'pointer'
+                    }}
+                    title={`Inspect ${cat.name} in Alerts & Incidents`}
+                  >
                     Inspect →
-                  </span>
+                  </button>
                 </div>
               </div>
             );

@@ -404,6 +404,70 @@ const AlertsIncidentsTab = ({
     setFindingPage(1);
   }, [searchTerm, severityFilter, statusFilter, categoryFilter, sourceFilter]);
 
+  const matchesCategoryFilter = (catKey, categoryList, title = '', desc = '', id = '') => {
+    if (!catKey || catKey === 'All') return true;
+    const targetSlug = catKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const combined = [
+      ...(Array.isArray(categoryList) ? categoryList : [categoryList || '']),
+      title || '',
+      desc || '',
+      id || ''
+    ].join(' ').toLowerCase();
+    const normalizedCombined = combined.replace(/[^a-z0-9]/g, '');
+
+    if (normalizedCombined.includes(targetSlug)) return true;
+
+    if (catKey === 'brute_force') {
+      return normalizedCombined.includes('brut') || combined.includes('credential') || combined.includes('consolelogin') || combined.includes('login attempt') || combined.includes('failed auth') || combined.includes('authentication failure');
+    }
+    if (catKey === 'data_exfiltration') {
+      return normalizedCombined.includes('exfil') || combined.includes('egress') || combined.includes('data transfer');
+    }
+    if (catKey === 'iam_privilege_escalation') {
+      return normalizedCombined.includes('privilege') || normalizedCombined.includes('ciem') || combined.includes('attachuserpolicy') || combined.includes('multi-factor') || combined.includes('root account') || combined.includes('iam');
+    }
+    if (catKey === 'malware_ransomware') {
+      return normalizedCombined.includes('ransom') || normalizedCombined.includes('malware') || combined.includes('encryption');
+    }
+    if (catKey === 'network_scanning') {
+      return normalizedCombined.includes('scan') || normalizedCombined.includes('reconnaissance');
+    }
+    if (catKey === 'database_attacks') {
+      return normalizedCombined.includes('database') || combined.includes('5432') || combined.includes('3306') || combined.includes('rds') || combined.includes('sqli') || combined.includes('sql');
+    }
+    if (catKey === 'cloud_misconfiguration') {
+      return normalizedCombined.includes('cspm') || normalizedCombined.includes('misconfig') || combined.includes('publicly accessible') || combined.includes('unencrypted') || combined.includes('s3 bucket') || combined.includes('public access block');
+    }
+    if (catKey === 'defense_tampering') {
+      return combined.includes('stoplogging') || combined.includes('cloudtrail') || combined.includes('tampering');
+    }
+    if (catKey === 'suspicious_api_activity') {
+      return combined.includes('anomalous') || combined.includes('burst') || combined.includes('api reconnaissance');
+    }
+    if (catKey === 'cryptomining') {
+      return normalizedCombined.includes('crypto') || normalizedCombined.includes('mining');
+    }
+    if (catKey === 'bola_ssrf') {
+      return normalizedCombined.includes('ssrf') || normalizedCombined.includes('bola');
+    }
+    if (catKey === 'account_takeover') {
+      return normalizedCombined.includes('takeover') || normalizedCombined.includes('ato');
+    }
+    if (catKey === 'container_k8s') {
+      return normalizedCombined.includes('container') || normalizedCombined.includes('k8s');
+    }
+    if (catKey === 'serverless_abuse') {
+      return normalizedCombined.includes('serverless') || normalizedCombined.includes('lambda');
+    }
+    if (catKey === 'supply_chain') {
+      return normalizedCombined.includes('supply') || normalizedCombined.includes('pipeline');
+    }
+    if (catKey === 'ddos') {
+      return normalizedCombined.includes('ddos') || combined.includes('flood');
+    }
+    return false;
+  };
+
   const filteredIncidents = (incidents || []).filter(inc => {
     const matchesSearch = !searchTerm ||
       (inc.incident_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -414,15 +478,7 @@ const AlertsIncidentsTab = ({
 
     const matchesSeverity = severityFilter === 'All' || (inc.severity || '').toLowerCase() === severityFilter.toLowerCase();
     const matchesStatus = statusFilter === 'All' || (inc.status || '').toLowerCase() === statusFilter.toLowerCase();
-    const q = categoryFilter.toLowerCase();
-    const qClean = q.replace(/_/g, ' ');
-    const matchesCategory = categoryFilter === 'All' ||
-      (inc.attack_categories || []).some(cat => {
-        const c = cat.toLowerCase();
-        return c === q || c.includes(q) || q.includes(c);
-      }) ||
-      (inc.title || '').toLowerCase().includes(qClean) ||
-      (inc.description || '').toLowerCase().includes(qClean);
+    const matchesCategory = matchesCategoryFilter(categoryFilter, inc.attack_categories, inc.title, inc.description, inc.incident_id);
 
     return matchesSearch && matchesSeverity && matchesStatus && matchesCategory;
   });
@@ -437,11 +493,7 @@ const AlertsIncidentsTab = ({
     const matchesSeverity = severityFilter === 'All' || item.severity.toLowerCase() === severityFilter.toLowerCase();
     const matchesStatus = statusFilter === 'All' || item.status.toLowerCase() === statusFilter.toLowerCase();
     const matchesSource = sourceFilter === 'All' || item.source.toLowerCase() === sourceFilter.toLowerCase();
-    const q = categoryFilter.toLowerCase();
-    const qClean = q.replace(/_/g, ' ');
-    const matchesCategory = categoryFilter === 'All' ||
-      (item.attackCategory || '').includes(q) ||
-      (item.title || '').toLowerCase().includes(qClean);
+    const matchesCategory = matchesCategoryFilter(categoryFilter, item.attackCategory, item.title, item.description, item.id);
 
     return matchesSearch && matchesSeverity && matchesStatus && matchesSource && matchesCategory;
   });

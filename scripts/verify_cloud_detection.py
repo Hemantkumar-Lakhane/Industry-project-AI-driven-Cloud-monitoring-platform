@@ -19,10 +19,56 @@ import time
 import uuid
 import json
 import argparse
+import webbrowser
 from datetime import datetime, timezone
 import urllib.request
 import urllib.error
 import urllib.parse
+
+# ------------------------------------------------------------------------------
+# Robust .env Loader (Zero external dependencies)
+# ------------------------------------------------------------------------------
+def load_dotenv(path: str = None) -> None:
+    """Reads key-value pairs from .env and populates os.environ if not already set."""
+    candidates = [
+        path,
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloud_security_tests", ".env"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"),
+    ]
+    for c in candidates:
+        if c and os.path.isfile(c):
+            try:
+                with open(c, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith("#") or "=" not in line:
+                            continue
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip("\"'")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+                break
+            except Exception:
+                pass
+
+load_dotenv()
+
+# ------------------------------------------------------------------------------
+# Configuration & Constants (Loaded from .env / Environment)
+# ------------------------------------------------------------------------------
+TARGET_APP_URL      = os.environ.get("TARGET_APP_URL", "https://main.dfikzx2dg0tka.amplifyapp.com")
+TARGET_BACKEND_URL  = os.environ.get("TARGET_BACKEND_URL", "https://dcjovytpk37z6noqf7et5nt3uq0lnrvj.lambda-url.ap-southeast-2.on.aws")
+TARGET_USER_EMAIL   = os.environ.get("TARGET_USER_EMAIL", "hemantkumar.lakhane23@vit.edu")
+TARGET_USER_PASSWORD= os.environ.get("TARGET_USER_PASSWORD", "password123")
+AUDIT_ACCOUNT_ID    = os.environ.get("AUDIT_ACCOUNT_ID", "617711904818")
+AUDIT_REGION        = os.environ.get("AUDIT_REGION", "ap-southeast-2")
+AUDIT_PRINCIPAL     = os.environ.get("AUDIT_PRINCIPAL", "ram-audit-user")
+RAM_PLATFORM_URL    = os.environ.get("RAM_PLATFORM_URL", "https://yjgrkgtghhynpb2kh3xtgjh7km0vdnsu.lambda-url.ap-southeast-2.on.aws")
+RAM_FRONTEND_URL    = os.environ.get("RAM_FRONTEND_URL", "https://d3sa9ma9swl1ef.cloudfront.net")
+RAM_ADMIN_USER      = os.environ.get("RAM_ADMIN_USER", "admin")
+RAM_ADMIN_PASS      = os.environ.get("RAM_ADMIN_PASS", "admin123")
 
 # ------------------------------------------------------------------------------
 # Terminal ANSI Color Formatting
@@ -163,8 +209,9 @@ def test_brute_force_vector(
     target_email: str,
     client: RAMAntivirusClient,
     public_ip: str,
-    account_id: str = "617711904818"
+    account_id: str = None
 ) -> bool:
+    account_id = account_id or AUDIT_ACCOUNT_ID
     log_step(1, 4, f"Executing Brute Force & Credential Stuffing Vector (DET-BF-01)")
     print(f"  Target Workload Identity : {C.CYAN}{target_email}{C.RESET}")
     print(f"  Target Auth Endpoint     : {C.CYAN}{target_backend}/api/auth/login{C.RESET}")
@@ -255,8 +302,9 @@ def test_credential_abuse_vector(
     target_password: str,
     client: RAMAntivirusClient,
     public_ip: str,
-    account_id: str = "617711904818"
+    account_id: str = None
 ) -> bool:
+    account_id = account_id or AUDIT_ACCOUNT_ID
     log_step(2, 4, f"Executing Credential Guessing & Breach Sequence (DET-ATO-07)")
     print(f"  Target User Identity : {C.CYAN}{target_email}{C.RESET}")
     print(f"  Sequence Design      : 4 failed attempts immediately followed by valid login")
@@ -325,8 +373,9 @@ def test_credential_abuse_vector(
 def test_reconnaissance_vector(
     client: RAMAntivirusClient,
     public_ip: str,
-    account_id: str = "617711904818"
+    account_id: str = None
 ) -> bool:
+    account_id = account_id or AUDIT_ACCOUNT_ID
     log_step(3, 4, f"Executing Cloud Control-Plane Reconnaissance Burst (DET-API-09)")
     print(f"  Monitored AWS Account : {C.CYAN}{account_id}{C.RESET}")
     print(f"  Principal Under Audit : {C.CYAN}arn:aws:iam::{account_id}:user/ram-audit-user{C.RESET}")
@@ -392,8 +441,9 @@ def test_reconnaissance_vector(
 def test_privilege_escalation_vector(
     client: RAMAntivirusClient,
     public_ip: str,
-    account_id: str = "617711904818"
+    account_id: str = None
 ) -> bool:
+    account_id = account_id or AUDIT_ACCOUNT_ID
     log_step(4, 4, f"Executing Unauthorized Privilege Escalation Vector (DET-PE-03)")
     print(f"  Testing unauthorized IAM policy attachment against least-privilege boundary...")
 
@@ -415,7 +465,7 @@ def test_privilege_escalation_vector(
             "policyArn": "arn:aws:iam::aws:policy/AdministratorAccess"
         },
         "errorCode": "AccessDenied",
-        "errorMessage": "User: arn:aws:iam::617711904818:user/ram-audit-user is not authorized to perform: iam:AttachUserPolicy on resource: user ram-audit-user with an explicit deny"
+        "errorMessage": f"User: arn:aws:iam::{account_id}:user/ram-audit-user is not authorized to perform: iam:AttachUserPolicy on resource: user ram-audit-user with an explicit deny"
     }
 
     ingest_resp = client.ingest_telemetry([escalation_record])
@@ -475,6 +525,65 @@ def print_verification_summary(client: RAMAntivirusClient, public_ip: str):
 
 
 # ------------------------------------------------------------------------------
+# Interactive Verification Menu
+# ------------------------------------------------------------------------------
+def run_interactive_menu(args, client, public_ip):
+    while True:
+        print(f"\n{C.ORANGE}{'='*80}{C.RESET}")
+        print(f"{C.BOLD}{C.WHITE}  RAM ANTIVIRUS — INTERACTIVE DEFENSIVE VERIFICATION CONSOLE{C.RESET}")
+        print(f"{C.ORANGE}{'='*80}{C.RESET}")
+        print(f"  Target Workload : {C.CYAN}{args.target_url}{C.RESET}")
+        print(f"  Target Backend  : {C.CYAN}{args.target_backend}{C.RESET}")
+        print(f"  Audited Account : {C.YELLOW}{args.account_id}{C.RESET} ({AUDIT_REGION})")
+        print(f"  Client Public IP: {C.GREEN}{public_ip}{C.RESET}")
+        print(f"{C.ORANGE}{'-'*80}{C.RESET}")
+        print(f"  {C.BOLD}[1]{C.RESET}  High-Velocity Brute Force & Credential Stuffing (DET-BF-01)")
+        print(f"  {C.BOLD}[2]{C.RESET}  Credential Abuse & Account Takeover (DET-ATO-07)")
+        print(f"  {C.BOLD}[3]{C.RESET}  Cloud Control-Plane Reconnaissance Burst (DET-API-09)")
+        print(f"  {C.BOLD}[4]{C.RESET}  Unauthorized IAM Privilege Escalation (DET-PE-03)")
+        print(f"  {C.BOLD}[5]{C.RESET}  Run Full Verification Matrix (All Vectors)")
+        print(f"  {C.BOLD}[6]{C.RESET}  Inspect Correlated Incidents & Findings Summary")
+        print(f"  {C.BOLD}[7]{C.RESET}  Open RAM Antivirus Cloud Dashboard ({RAM_FRONTEND_URL})")
+        print(f"  {C.BOLD}[0]{C.RESET}  Exit Console")
+        print(f"{C.ORANGE}{'='*80}{C.RESET}")
+
+        try:
+            choice = input(f"{C.BOLD}Select an option [0-7]: {C.RESET}").strip()
+        except (KeyboardInterrupt, EOFError):
+            print("\nExiting console.")
+            break
+
+        if choice == "0":
+            print("Exiting verification console. Goodbye!")
+            break
+        elif choice == "1":
+            test_brute_force_vector(args.target_backend, args.email, client, public_ip, args.account_id)
+        elif choice == "2":
+            test_credential_abuse_vector(args.target_backend, args.email, args.password, client, public_ip, args.account_id)
+        elif choice == "3":
+            test_reconnaissance_vector(client, public_ip, args.account_id)
+        elif choice == "4":
+            test_privilege_escalation_vector(client, public_ip, args.account_id)
+        elif choice == "5":
+            test_brute_force_vector(args.target_backend, args.email, client, public_ip, args.account_id)
+            time.sleep(1)
+            test_credential_abuse_vector(args.target_backend, args.email, args.password, client, public_ip, args.account_id)
+            time.sleep(1)
+            test_reconnaissance_vector(client, public_ip, args.account_id)
+            time.sleep(1)
+            test_privilege_escalation_vector(client, public_ip, args.account_id)
+            print_verification_summary(client, public_ip)
+        elif choice == "6":
+            print_verification_summary(client, public_ip)
+        elif choice == "7":
+            dashboard_url = f"{RAM_FRONTEND_URL.rstrip('/')}/#/alerts"
+            print(f"Opening {dashboard_url} ...")
+            webbrowser.open(dashboard_url)
+        else:
+            print(f"{C.RED}Invalid option '{choice}'. Please select 0 to 7.{C.RESET}")
+
+
+# ------------------------------------------------------------------------------
 # Main Entrypoint
 # ------------------------------------------------------------------------------
 def main():
@@ -483,39 +592,44 @@ def main():
     )
     parser.add_argument(
         "--target-url",
-        default="https://main.dfikzx2dg0tka.amplifyapp.com",
+        default=TARGET_APP_URL,
         help="Target web app URL (CloudResumeAI)"
     )
     parser.add_argument(
         "--target-backend",
-        default="https://dcjovytpk37z6noqf7et5nt3uq0lnrvj.lambda-url.ap-southeast-2.on.aws",
+        default=TARGET_BACKEND_URL,
         help="Target backend API URL"
     )
     parser.add_argument(
         "--platform-api",
-        default="https://yjgrkgtghhynpb2kh3xtgjh7km0vdnsu.lambda-url.ap-southeast-2.on.aws",
+        default=RAM_PLATFORM_URL,
         help="RAM Antivirus Platform API URL"
     )
     parser.add_argument(
         "--email",
-        default="hemantkumar.lakhane23@vit.edu",
+        default=TARGET_USER_EMAIL,
         help="Target user email identity"
     )
     parser.add_argument(
         "--password",
-        default="password123",
+        default=TARGET_USER_PASSWORD,
         help="Target user valid password"
     )
     parser.add_argument(
         "--account-id",
-        default="617711904818",
+        default=AUDIT_ACCOUNT_ID,
         help="Customer AWS Account ID being audited"
     )
     parser.add_argument(
         "--vector",
-        choices=["all", "brute_force", "credential_abuse", "reconnaissance", "privilege_escalation"],
-        default="all",
-        help="Specific test vector to execute"
+        choices=["all", "brute_force", "credential_abuse", "reconnaissance", "privilege_escalation", "interactive"],
+        default=None,
+        help="Specific test vector to execute (leave blank for interactive menu)"
+    )
+    parser.add_argument(
+        "-i", "--interactive",
+        action="store_true",
+        help="Launch interactive terminal verification menu"
     )
     args = parser.parse_args()
 
@@ -532,31 +646,37 @@ def main():
     public_ip = get_public_ip()
     log_info(f"Resolved Authentic Public IP : {C.YELLOW}{public_ip}{C.RESET}")
     log_info(f"Target Workload              : {C.CYAN}{args.target_url}{C.RESET}")
-    log_info(f"Customer AWS Account         : {C.CYAN}{args.account_id}{C.RESET} (ap-southeast-2)")
+    log_info(f"Customer AWS Account         : {C.CYAN}{args.account_id}{C.RESET} ({AUDIT_REGION})")
     log_info(f"RAM Antivirus Platform       : {C.ORANGE}{args.platform_api}{C.RESET}")
 
     client = RAMAntivirusClient(args.platform_api)
     log_info("Authenticating with RAM Antivirus Platform...")
-    if client.login("admin", "admin123"):
+    if client.login(RAM_ADMIN_USER, RAM_ADMIN_PASS):
         log_success("Authenticated to RAM Antivirus API as Platform Admin.")
     else:
         log_warn("Continuing in unauthenticated telemetry submission mode.")
 
-    # Execute selected vectors
-    v = args.vector.lower()
-    if v in ("all", "brute_force"):
+    # Determine execution mode: interactive or direct CLI vector
+    if args.interactive or args.vector == "interactive" or (args.vector is None and sys.stdin.isatty()):
+        run_interactive_menu(args, client, public_ip)
+        return
+
+    # If vector wasn't provided, default to "all"
+    vector = (args.vector or "all").lower()
+
+    if vector in ("all", "brute_force"):
         test_brute_force_vector(args.target_backend, args.email, client, public_ip, args.account_id)
         time.sleep(1)
 
-    if v in ("all", "credential_abuse"):
+    if vector in ("all", "credential_abuse"):
         test_credential_abuse_vector(args.target_backend, args.email, args.password, client, public_ip, args.account_id)
         time.sleep(1)
 
-    if v in ("all", "reconnaissance"):
+    if vector in ("all", "reconnaissance"):
         test_reconnaissance_vector(client, public_ip, args.account_id)
         time.sleep(1)
 
-    if v in ("all", "privilege_escalation"):
+    if vector in ("all", "privilege_escalation"):
         test_privilege_escalation_vector(client, public_ip, args.account_id)
         time.sleep(1)
 

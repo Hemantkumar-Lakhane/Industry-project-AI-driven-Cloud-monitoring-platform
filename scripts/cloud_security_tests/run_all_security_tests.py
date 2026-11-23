@@ -9,11 +9,15 @@ import subprocess
 import time
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(SCRIPT_DIR)
+sys.path.insert(0, PARENT_DIR)
+
+from verify_cloud_detection import AUDIT_ACCOUNT_ID
 
 def main():
     print("=" * 80)
     print(" RAM ANTIVIRUS — AUTOMATED CLOUD SECURITY VERIFICATION SUITE")
-    print(" Verifying real-time threat detection across AWS environment 617711904818")
+    print(f" Verifying real-time threat detection across AWS environment {AUDIT_ACCOUNT_ID}")
     print("=" * 80)
 
     tests = [

@@ -1935,6 +1935,15 @@ def get_detected_findings(
         print(f"[Telemetry Detector Pipeline] {e}")
 
     try:
+        from engines.db import get_findings_db
+        db_findings = get_findings_db(limit=100, org_id=org_id, status="open")
+        for df in db_findings:
+            if not any(f.get("finding_id") == df.get("finding_id") for f in findings_data):
+                findings_data.append(df)
+    except Exception as e:
+        print(f"[Fetch DB Findings] {e}")
+
+    try:
         save_findings_db(findings_data, org_id=org_id)
     except Exception:
         pass
