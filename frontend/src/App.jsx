@@ -598,7 +598,10 @@ const App = () => {
               <button
                 key={tab.id}
                 className={`figma-nav-item ${isActive ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (tab.id === 'alerts') setSelectedCategoryFilter('All');
+                }}
                 title={sidebarCollapsed ? tab.label : undefined}
               >
                 {tab.icon}
@@ -615,7 +618,10 @@ const App = () => {
               <button
                 key={tab.id}
                 className={`figma-nav-item ${isActive ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (tab.id === 'alerts') setSelectedCategoryFilter('All');
+                }}
                 title={sidebarCollapsed ? tab.label : undefined}
               >
                 {tab.icon}

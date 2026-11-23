@@ -704,25 +704,26 @@ def api_auth_google(request: Request, payload: Dict[str, Any] = Body(...)):
     client_id = os.environ.get("GOOGLE_CLIENT_ID", "935815727495-8a34omegvgel2s6q99u7kn6t4j2a4o0k.apps.googleusercontent.com")
     idinfo = None
 
+    # Verify ID Token directly with Google's official Tokeninfo endpoint using Python standard library urllib (zero external dependency)
     try:
-        from google.oauth2 import id_token
-        from google.auth.transport import requests as google_requests
-        idinfo = id_token.verify_oauth2_token(credential, google_requests.Request(), client_id)
-    except Exception:
-        # High-reliability fallback: verify directly with Google Tokeninfo endpoint using standard library urllib
+        import urllib.request
+        import urllib.parse
+        tokeninfo_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(str(credential))}"
+        req = urllib.request.Request(tokeninfo_url, headers={"User-Agent": "RAM-Antivirus-Cloud-Auth/2.0"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            idinfo = json.loads(resp.read().decode("utf-8"))
+        aud = idinfo.get("aud")
+        if aud != client_id and client_id not in str(aud):
+            raise HTTPException(status_code=401, detail="Google token audience verification failed")
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Secondary fallback using google-auth library if installed
         try:
-            import urllib.request
-            import urllib.parse
-            tokeninfo_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(str(credential))}"
-            req = urllib.request.Request(tokeninfo_url, headers={"User-Agent": "RAM-Antivirus-Cloud-Auth/2.0"})
-            with urllib.request.urlopen(req, timeout=8) as resp:
-                idinfo = json.loads(resp.read().decode("utf-8"))
-            aud = idinfo.get("aud")
-            if aud != client_id and client_id not in str(aud):
-                raise HTTPException(status_code=401, detail="Google token audience verification failed")
-        except HTTPException:
-            raise
-        except Exception as e:
+            from google.oauth2 import id_token
+            from google.auth.transport import requests as google_requests
+            idinfo = id_token.verify_oauth2_token(credential, google_requests.Request(), client_id)
+        except Exception:
             raise HTTPException(status_code=401, detail=f"Google token verification failed: {str(e)}")
 
     email = str(idinfo.get("email", "")).strip().lower()
@@ -3271,8 +3272,14 @@ def reset_simulation_session(
     authorization: Optional[str] = Header(None, description="Bearer token"),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
-    _require_permission(authorization, "simulation:execute", credentials)
+    user = _require_permission(authorization, "simulation:execute", credentials)
+    org_id = user.get("org_id") if user else None
     session = session_manager.reset_to_baseline()
+    try:
+        from engines.db import clear_simulated_findings_and_incidents_db
+        clear_simulated_findings_and_incidents_db(org_id=org_id)
+    except Exception:
+        pass
     return {
         "status": "success",
         "message": "Telemetry session reset to clean baseline",

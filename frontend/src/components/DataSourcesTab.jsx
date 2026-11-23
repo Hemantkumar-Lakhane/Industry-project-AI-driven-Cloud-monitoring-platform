@@ -734,42 +734,50 @@ const DataSourcesTab = ({ showToast }) => {
                       </div>
 
                       {/* QUICK HOW-TO GUIDE TOGGLE */}
-                      <div style={{ marginTop: '12px' }}>
+                      <div style={{ marginTop: '14px' }}>
                         <button
                           type="button"
                           onClick={() => setShowGuide(!showGuide)}
                           style={{
                             background: 'transparent',
                             border: 'none',
-                            color: 'var(--text-secondary)',
-                            fontSize: '11.5px',
+                            color: 'var(--accent-orange)',
+                            fontSize: '12px',
+                            fontWeight: 600,
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '5px',
-                            padding: '2px 0'
+                            gap: '6px',
+                            padding: '4px 0'
                           }}
                         >
-                          <HelpCircle size={13} style={{ color: '#38bdf8' }} />
-                          <span>{showGuide ? 'Hide quick connection guide' : 'Need help? How to connect in 30 seconds'}</span>
+                          <HelpCircle size={14} style={{ color: 'var(--accent-orange)' }} />
+                          <span>{showGuide ? 'Hide AWS Credential Setup Guide' : 'How to generate AWS credentials in 3 steps'}</span>
+                          {showGuide ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                         </button>
                         {showGuide && (
                           <div style={{
-                            marginTop: '8px',
-                            padding: '10px 14px',
-                            backgroundColor: 'var(--surface-card)',
-                            borderRadius: '6px',
+                            marginTop: '10px',
+                            padding: '14px 16px',
+                            backgroundColor: 'var(--surface-muted)',
+                            borderRadius: '8px',
                             border: '1px solid var(--border-subtle)',
-                            fontSize: '11.5px',
-                            lineHeight: '1.6',
+                            fontSize: '12px',
+                            lineHeight: '1.65',
                             color: 'var(--text-secondary)'
                           }}>
-                            <ol style={{ margin: '0', paddingLeft: '16px' }}>
-                              <li>In your AWS Console, open <strong>IAM</strong> &rarr; <strong>Users</strong> &rarr; click on your user.</li>
-                              <li>Go to the <strong>Security credentials</strong> tab &rarr; click <strong>Create access key</strong>.</li>
-                              <li>Select <strong>Third-party service</strong> &rarr; click <strong>Next</strong> &rarr; click <strong>Download .csv file</strong>.</li>
-                              <li>Upload that downloaded <code>.csv</code> file above and click <strong>Connect Cloud</strong> below!</li>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                              Recommended: Read-Only Audit Access via AWS IAM
+                            </div>
+                            <ol style={{ margin: '0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <li>In your AWS Console, navigate to <strong>IAM</strong> &rarr; <strong>Users</strong> (e.g. your user or a dedicated audit user like <code>ram-audit-user</code> with <code>SecurityAudit</code> policy).</li>
+                              <li>Click the <strong>Security credentials</strong> tab &rarr; scroll down to <strong>Access keys</strong> &rarr; click <strong>Create access key</strong>.</li>
+                              <li>Select <strong>Third-party service</strong> &rarr; acknowledge &rarr; click <strong>Next</strong> &rarr; click <strong>Download .csv file</strong>.</li>
+                              <li>Upload that downloaded <code>.csv</code> file into the box above (or copy-paste the Access Key ID & Secret) and click <strong>Connect Cloud</strong>!</li>
                             </ol>
+                            <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                              Security Note: For production compliance audits, assigning the AWS-managed <code>SecurityAudit</code> policy provides full read-only visibility without any write permissions.
+                            </div>
                           </div>
                         )}
                       </div>

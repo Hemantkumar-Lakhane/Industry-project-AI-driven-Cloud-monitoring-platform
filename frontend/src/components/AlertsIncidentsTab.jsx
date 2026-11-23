@@ -321,7 +321,7 @@ const AlertsIncidentsTab = ({
     // Realistic forensic telemetry attributes
     const telemetry = raw.evidence?.telemetry_fields || {};
     const defaultTelemetry = {
-      'Source IP': telemetry.src_ip || telemetry.source_ip || (cat.includes('brute') ? '45.33.32.156' : (cat.includes('exfil') ? '185.220.101.5' : '198.51.100.23')),
+      'Source IP': telemetry.src_ip || telemetry.source_ip || raw.source_ip || (cat.includes('storage') || cat.includes('iam') || cat.includes('cspm') ? 'Cloud Control Plane / AWS IAM' : 'Direct API Ingress'),
       'Principal / Identity': principal,
       'Target Resource': resource,
       'API / Operation': telemetry.action || telemetry.event_name || (cat.includes('iam') ? 'AttachUserPolicy' : (cat.includes('exfil') ? 'GetObject' : (cat.includes('brute') ? 'SSH_AUTH_FAIL' : 'DescribeInstances'))),
@@ -564,9 +564,7 @@ const AlertsIncidentsTab = ({
 
             <div className="figma-ticker-provenance">
               <span>
-                {incidentsStats?.avg_findings_per_incident
-                  ? `${incidentsStats.avg_findings_per_incident} avg findings/incident`
-                  : `${findings.length} findings grouped into ${totalIncidents} incidents`}
+                {totalIncidents > 0 ? `${totalIncidents} Correlated Threat Campaign${totalIncidents > 1 ? 's' : ''}` : 'Real-time Correlation Active'}
               </span>
             </div>
           </>

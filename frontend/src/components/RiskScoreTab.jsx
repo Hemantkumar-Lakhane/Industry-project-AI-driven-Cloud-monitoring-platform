@@ -52,10 +52,42 @@ const RiskScoreTab = ({
     ? 'var(--text-tertiary)'
     : (unifiedScore >= 75 ? 'var(--sev-critical)' : (unifiedScore >= 50 ? 'var(--sev-high)' : 'var(--sev-medium)'));
 
-  // 7-Day Trend ending at current live date
-  const trendData = (risk?.trend && Array.isArray(risk.trend))
-    ? risk.trend
-    : (isEvaluated ? [{ period: liveTime ? liveTime.dayMonth : 'Today', score: unifiedScore }] : []);
+  // 7-Day Rolling Trend ending at current live date with unique calendar dates
+  const trendData = React.useMemo(() => {
+    const raw = (risk?.trend && Array.isArray(risk.trend)) ? risk.trend : [];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    if (raw.length === 0) {
+      if (!isEvaluated) return [];
+      const now = new Date();
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(now.getTime() - (6 - i) * 86400000);
+        const dayLabel = i === 6 ? 'Today' : `${d.getUTCDate()} ${months[d.getUTCMonth()]}`;
+        return {
+          period: dayLabel,
+          score: unifiedScore
+        };
+      });
+    }
+
+    return raw.map((item, i) => {
+      let label = item.period;
+      if (typeof label === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(label)) {
+        if (i === raw.length - 1) {
+          label = 'Today';
+        } else {
+          const parts = label.split('-');
+          const m = parseInt(parts[1], 10) - 1;
+          const day = parseInt(parts[2], 10);
+          label = `${day} ${months[m] || ''}`;
+        }
+      }
+      return {
+        ...item,
+        period: label
+      };
+    });
+  }, [risk?.trend, isEvaluated, unifiedScore]);
 
   const trendText = React.useMemo(() => {
     if (typeof risk?.trend === 'string') return risk.trend;

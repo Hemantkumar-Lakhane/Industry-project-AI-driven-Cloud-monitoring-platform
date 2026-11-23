@@ -7,22 +7,63 @@ export const getExplainableAnalysis = (incident) => {
   const target = incident.target || incident.resources?.[0] || '10.0.0.8';
   const principal = incident.principal || incident.principals?.[0] || 'root';
 
-  // Disambiguate IP: Ensure internal target host IP is not assigned as the adversary/pool IP
+  // Disambiguate IP: Use authentic CloudTrail source IP if present; otherwise indicate Cloud Control Plane / Audit
   let attackerIp = incident.attacker_ip || incident.source_ips?.[0];
   const isTargetIp = target && (attackerIp === target || target.includes(attackerIp) || (attackerIp && attackerIp.startsWith('10.')));
   if (!attackerIp || isTargetIp) {
     const extIp = (incident.source_ips || []).find(ip => ip !== target && !ip.startsWith('10.') && !ip.startsWith('192.168.'));
     if (extIp) {
       attackerIp = extIp;
-    } else if (cat.includes('mining') || cat.includes('crypto')) {
-      attackerIp = '185.220.101.44:3333';
-    } else if (cat.includes('exfil')) {
-      attackerIp = '103.21.5.9';
-    } else if (cat.includes('brute')) {
-      attackerIp = '198.51.100.26';
     } else {
-      attackerIp = '185.220.101.5';
+      attackerIp = 'Cloud Control Plane / IAM Policy';
     }
+  }
+
+  // 1. S3 Storage & Public Access Exposure (CSPM)
+  if (cat.includes('storage') || cat.includes('s3') || cat.includes('bucket') || title.includes('s3') || title.includes('bucket') || title.includes('public access') || title.includes('publicly accessible')) {
+    return {
+      categoryLabel: 'Cloud Storage Exposure (S3 / CSPM)',
+      mitreTactic: 'Initial Access & Exfiltration (MITRE T1530)',
+      attackerIp: attackerIp.includes('Cloud Control Plane') ? 'Public Internet / Anonymous Read' : attackerIp,
+      principal: principal || 'arn:aws:iam::account:root',
+      target: target,
+      whatIsAttack: `Storage bucket '${target}' is exposed without Public Access Block protection, allowing unauthorized parties or internet scanners to read, list, or download sensitive assets.`,
+      trueRootCause: `Disabled S3 Block Public Access & Permissive Bucket Policy. Bucket '${target}' lacks account-level and bucket-level Block Public Access settings, and permits unauthenticated anonymous read access.`,
+      containmentSteps: [
+        `Apply AWS S3 Block Public Access configuration to bucket '${target}' immediately.`,
+        `Remove permissive 'Principal: "*"' statements from the bucket policy.`,
+        `Enable default SSE-KMS encryption and restrict bucket access strictly to authorized VPC endpoints.`
+      ],
+      granularActions: [
+        { id: 'enable_pab', label: `Enable Block Public Access on ${target}`, action: 'put_public_access_block', desc: 'Blocks all public ACLs & policies' },
+        { id: 'restrict_policy', label: `Lock Bucket Policy for ${target}`, action: 'restrict_bucket_policy', desc: 'Restricts to VPC endpoint' },
+        { id: 'enable_kms', label: 'Enforce SSE-KMS Encryption', action: 'enable_encryption', desc: 'Encrypts storage at rest' },
+        { id: 'enable_access_logs', label: 'Enable Server Access Logging', action: 'enable_logging', desc: 'Audit access trail' }
+      ]
+    };
+  }
+
+  // 2. Network Security Group Exposure (EC2 / VPC)
+  if (cat.includes('network') || cat.includes('security_group') || cat.includes('ingress') || title.includes('security group') || title.includes('0.0.0.0/0') || title.includes('open port') || title.includes('unrestricted')) {
+    return {
+      categoryLabel: 'Network Ingress Exposure (Security Group)',
+      mitreTactic: 'Initial Access (MITRE T1190)',
+      attackerIp: attackerIp.includes('Cloud Control Plane') ? '0.0.0.0/0 (Global Ingress)' : attackerIp,
+      principal: principal,
+      target: target,
+      whatIsAttack: `Inbound firewall rules for '${target}' allow unrestricted ingress traffic from 0.0.0.0/0 on sensitive administrative or database listening ports.`,
+      trueRootCause: `Overly Permissive Inbound Security Group Rule. Management ports (SSH 22, RDP 3389, or DB 5432) were provisioned with 0.0.0.0/0 source CIDR instead of restricting ingress to corporate VPN or bastion subnets.`,
+      containmentSteps: [
+        `Revoke 0.0.0.0/0 ingress rule on the security group protecting '${target}'.`,
+        `Restrict management ingress strictly to verified corporate CIDR blocks or AWS Systems Manager (SSM).`,
+        `Enable AWS VPC Flow Logs to inspect connection attempts.`
+      ],
+      granularActions: [
+        { id: 'revoke_ingress', label: `Revoke 0.0.0.0/0 Ingress on ${target}`, action: 'revoke_sg_ingress', desc: 'Closes public port exposure' },
+        { id: 'restrict_vpn', label: 'Restrict Ingress to Corporate VPN CIDR', action: 'restrict_vpn_cidr', desc: 'Enforces authorized IPs only' },
+        { id: 'enable_ssm', label: 'Enforce AWS Systems Manager (SSM)', action: 'enforce_ssm', desc: 'Eliminates open management ports' }
+      ]
+    };
   }
 
   // 1. IAM Privilege Escalation

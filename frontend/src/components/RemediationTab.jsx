@@ -97,25 +97,20 @@ class ErrorBoundary extends React.Component {
 
 
 const mapAttackTypeToSlug = (title, category) => {
-
   const t = (title || '').toLowerCase();
-
   const c = (category || '').toLowerCase();
 
+  if (c.includes('storage') || c.includes('s3') || c.includes('bucket') || t.includes('s3') || t.includes('bucket') || t.includes('public access') || t.includes('publicly accessible')) return 'cloud_storage';
+  if (c.includes('network') || c.includes('security_group') || c.includes('ingress') || t.includes('security group') || t.includes('0.0.0.0/0') || t.includes('open port') || t.includes('unrestricted')) return 'network_misconfiguration';
+  if (c.includes('database') || c.includes('rds') || t.includes('database') || t.includes('rds')) return 'database_exposure';
   if (c.includes('iam') || c.includes('privilege') || t.includes('privilege') || t.includes('iam')) return 'privilege_escalation';
-
   if (c.includes('exfil') || t.includes('exfiltration') || t.includes('egress')) return 'data_exfiltration';
-
   if (c.includes('ransom') || c.includes('malware') || t.includes('ransomware') || t.includes('encryption')) return 'malware_ransomware';
-
   if (c.includes('crypto') || c.includes('mining') || t.includes('mining')) return 'cryptomining';
-
   if (c.includes('brute') || t.includes('brute') || t.includes('ssh')) return 'brute_force';
-
   if (c.includes('scan') || t.includes('scan')) return 'network_scanning';
 
-  return 'brute_force';
-
+  return 'cloud_misconfiguration';
 };
 
 
@@ -213,11 +208,8 @@ const RemediationTabInner = ({
     return (incidents || []).map((inc) => {
 
       const p = inc.principals?.[0] || 'svc-worker';
-
       const r = inc.resources?.[0] || '10.0.0.8';
-
-      const ip = inc.source_ips?.[0] || '185.220.101.5';
-
+      const ip = inc.source_ips?.[0] || 'Cloud Control Plane / Audit';
       const slug = mapAttackTypeToSlug(inc.title, inc.attack_categories?.[0]);
 
 
@@ -302,12 +294,9 @@ const RemediationTabInner = ({
       
 
       const ipMatch = (targetFinding.description || '').match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
-
       const tfIp = targetFinding.evidence?.telemetry_fields?.source_ip || 
-
                    targetFinding.network?.src_ip || 
-
-                   (ipMatch ? ipMatch[0] : '198.51.100.16');
+                   (ipMatch ? ipMatch[0] : 'Cloud Control Plane / Audit');
 
 
 

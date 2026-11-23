@@ -97,10 +97,6 @@ export default function LandingPage({ onLogin }) {
           <a href="#hero" className="landing-brand-wrap">
             <img src={logoUrl} alt="RAM Antivirus Logo" className="landing-brand-img" />
             <span className="landing-brand-text">RAM Antivirus</span>
-            <span className="landing-live-badge">
-              <span className="landing-live-dot" />
-              <span>Live Cloud Security</span>
-            </span>
           </a>
 
           <nav className="landing-nav-menu" aria-label="Main Navigation">

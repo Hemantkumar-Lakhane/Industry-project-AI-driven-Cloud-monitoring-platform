@@ -144,6 +144,48 @@ PLAYBOOKS = {
         ],
         "estimated_time_seconds": 20,
         "rollback_available": False
+    },
+    "cloud_storage": {
+        "playbook_id": "PB-CS-009",
+        "name": "S3 Public Storage Containment",
+        "description": "Enforce S3 Block Public Access and remove public wildcard statements from bucket policies",
+        "severity_trigger": "critical",
+        "steps": [
+            {"order": 1, "action": "put_public_access_block", "description": "Enable S3 Block Public Access (BlockPublicAcls, IgnorePublicAcls, BlockPublicPolicy, RestrictPublicBuckets)", "automated": True},
+            {"order": 2, "action": "restrict_bucket_policy", "description": "Remove wildcard Principal:* and public read statements from bucket policy", "automated": True},
+            {"order": 3, "action": "enable_sse_kms", "description": "Enforce Server-Side Encryption (SSE-KMS) on the bucket", "automated": True},
+            {"order": 4, "action": "enable_access_logging", "description": "Enable S3 Server Access Logging to an audit logging destination", "automated": True},
+            {"order": 5, "action": "alert_soc", "description": "Notify cloud security team of storage exposure containment", "automated": True},
+        ],
+        "estimated_time_seconds": 25,
+        "rollback_available": True
+    },
+    "network_misconfiguration": {
+        "playbook_id": "PB-NM-010",
+        "name": "Security Group Ingress Containment",
+        "description": "Revoke 0.0.0.0/0 public ingress on sensitive management and database ports",
+        "severity_trigger": "high",
+        "steps": [
+            {"order": 1, "action": "revoke_ingress", "description": "Revoke 0.0.0.0/0 ingress rule on the affected security group", "automated": True},
+            {"order": 2, "action": "restrict_vpn_cidr", "description": "Restrict port ingress to authorized corporate VPN CIDR blocks", "automated": True},
+            {"order": 3, "action": "enable_vpc_flow_logs", "description": "Verify VPC Flow Logs capture active network connection attempts", "automated": True},
+            {"order": 4, "action": "alert_soc", "description": "Notify SOC with updated firewall security group state", "automated": True},
+        ],
+        "estimated_time_seconds": 30,
+        "rollback_available": True
+    },
+    "cloud_misconfiguration": {
+        "playbook_id": "PB-MC-011",
+        "name": "Cloud Security Posture Auto-Fix",
+        "description": "Remediate detected cloud configuration deviations to CIS / ISO 27001 baseline",
+        "severity_trigger": "medium",
+        "steps": [
+            {"order": 1, "action": "validate_finding", "description": "Verify active posture finding against AWS API", "automated": True},
+            {"order": 2, "action": "apply_guardrail", "description": "Apply verified security guardrail policy", "automated": True},
+            {"order": 3, "action": "audit_compliance", "description": "Re-run compliance benchmark scan to confirm remediated status", "automated": True},
+        ],
+        "estimated_time_seconds": 45,
+        "rollback_available": True
     }
 }
 
@@ -244,6 +286,22 @@ def execute_playbook(attack_type: str, event: Optional[Dict] = None, dry_run: bo
         new_status = "contained" if dry_run else "resolved"
         update_finding_status_db(str(target_fid), new_status)
 
+    # Provide actionable CLI & Terraform remediation snippets
+    cli_snippet = (
+        "aws s3api put-public-access-block --bucket <BUCKET_NAME> --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+        if "storage" in attack_type or "s3" in attack_type else
+        ("aws ec2 revoke-security-group-ingress --group-id <SG_ID> --protocol tcp --port 22 --cidr 0.0.0.0/0"
+         if "network" in attack_type or "ingress" in attack_type else
+         "aws iam detach-user-policy --user-name <USER> --policy-arn arn:aws:iam::aws:policy/AdministratorAccess")
+    )
+    tf_snippet = (
+        'resource "aws_s3_bucket_public_access_block" "remediation" {\n  bucket = aws_s3_bucket.target.id\n  block_public_acls = true\n  block_public_policy = true\n  ignore_public_acls = true\n  restrict_public_buckets = true\n}'
+        if "storage" in attack_type or "s3" in attack_type else
+        ('resource "aws_security_group_rule" "restricted_ingress" {\n  type = "ingress"\n  from_port = 22\n  to_port = 22\n  protocol = "tcp"\n  cidr_blocks = ["10.0.0.0/16"]\n  security_group_id = aws_security_group.target.id\n}'
+         if "network" in attack_type or "ingress" in attack_type else
+         '# Remove AdministratorAccess policy attachment in IAM Terraform state')
+    )
+
     result_payload = {
         "execution_id": execution_id,
         "playbook_id": playbook["playbook_id"],
@@ -258,6 +316,9 @@ def execute_playbook(attack_type: str, event: Optional[Dict] = None, dry_run: bo
         ),
         "overall_status": overall_status,
         "status": overall_status,
+        "required_iam_permission": "s3:PutPublicAccessBlock" if ("storage" in attack_type or "s3" in attack_type) else ("ec2:RevokeSecurityGroupIngress" if ("network" in attack_type or "ingress" in attack_type) else "iam:DetachUserPolicy"),
+        "cli_remediation": cli_snippet,
+        "terraform_remediation": tf_snippet,
         "steps_executed": len(executed_steps),
         "steps_succeeded": sum(1 for s in executed_steps if s["status"] == "completed"),
         "steps_failed": sum(1 for s in executed_steps if s["status"] == "failed"),

@@ -5,7 +5,7 @@ Handles organizations, multi-tenant users, cloud account connections, findings, 
 import sqlite3
 import os
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 
 from dotenv import load_dotenv
@@ -408,12 +408,35 @@ def save_risk_score(unified: float, ml: float, cspm: float, ciem: float, level: 
 
 
 def get_risk_trend_db(periods: int = 7):
+    now = datetime.now(timezone.utc)
     conn = get_conn()
-    rows = conn.execute(
-        "SELECT timestamp, unified_score, level FROM risk_history ORDER BY timestamp DESC LIMIT ?", (periods,)
-    ).fetchall()
+    trend = []
+
+    latest_row = conn.execute("SELECT unified_score, level FROM risk_history ORDER BY timestamp DESC LIMIT 1").fetchone()
+    current_baseline = float(latest_row["unified_score"]) if latest_row else 25.0
+    baseline_level = latest_row["level"] if latest_row else "low"
+
+    for i in range(periods - 1, -1, -1):
+        target_date = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        row = conn.execute(
+            "SELECT unified_score, level FROM risk_history WHERE timestamp LIKE ? ORDER BY timestamp DESC LIMIT 1",
+            (f"{target_date}%",)
+        ).fetchone()
+
+        if row:
+            score = float(row["unified_score"])
+            lvl = row["level"]
+        else:
+            score = current_baseline
+            lvl = baseline_level
+
+        trend.append({
+            "period": target_date,
+            "score": score,
+            "level": lvl
+        })
+
     conn.close()
-    trend = [{"period": str(r["timestamp"])[:10], "score": float(r["unified_score"]), "level": r["level"]} for r in reversed(rows)]
     return trend
 
 
@@ -567,7 +590,7 @@ def save_findings_db(findings: list, org_id: str = None):
     conn.close()
 
 
-def get_findings_db(limit: int = 100, severity: str = None, org_id: str = None) -> list:
+def get_findings_db(limit: int = 100, severity: str = None, org_id: str = None, status: str = None) -> list:
     """Retrieve persisted findings ordered by timestamp descending, strictly scoped to the tenant org_id."""
     import json
     conn = get_conn()
@@ -580,6 +603,11 @@ def get_findings_db(limit: int = 100, severity: str = None, org_id: str = None) 
     if severity and severity.lower() != "all":
         clauses.append("LOWER(severity) = ?")
         params.append(severity.lower())
+    if status and status.lower() != "all":
+        clauses.append("LOWER(status) = ?")
+        params.append(status.lower())
+    elif not status:
+        clauses.append("LOWER(COALESCE(status, 'open')) != 'archived'")
 
     where_str = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     query = f"SELECT * FROM findings {where_str} ORDER BY timestamp DESC LIMIT ?"
@@ -654,11 +682,15 @@ def cleanup_duplicate_findings_db():
     conn.close()
 
 
-def clear_simulated_findings_and_incidents_db():
+def clear_simulated_findings_and_incidents_db(org_id: str = None):
     """Archive active simulated findings and incidents when resetting to clean baseline."""
     conn = get_conn()
-    conn.execute("UPDATE findings SET status = 'archived' WHERE data_source = 'SIMULATED' AND status = 'open'")
-    conn.execute("UPDATE incidents SET status = 'archived' WHERE status = 'open' AND (incident_id LIKE 'INC-SIM-%' OR title LIKE '%Simulat%' OR lead_attack_category IN ('brute_force', 'account_takeover', 'iam_privilege_escalation', 'data_exfiltration', 'cryptomining', 'ddos', 'malware_ransomware', 'defense_tampering'))")
+    if org_id:
+        conn.execute("UPDATE findings SET status = 'archived' WHERE org_id = ? AND status = 'open'", (org_id,))
+        conn.execute("UPDATE incidents SET status = 'archived' WHERE org_id = ? AND status = 'open'", (org_id,))
+    else:
+        conn.execute("UPDATE findings SET status = 'archived' WHERE status = 'open'")
+        conn.execute("UPDATE incidents SET status = 'archived' WHERE status = 'open'")
     conn.commit()
     conn.close()
 
@@ -869,6 +901,8 @@ def get_incidents_db(limit: int = 100, status: str = None, severity: str = None,
     if status and status.lower() != "all":
         clauses.append("LOWER(status) = ?")
         params.append(status.lower())
+    elif not status:
+        clauses.append("LOWER(COALESCE(status, 'open')) != 'archived'")
     if severity and severity.lower() != "all":
         clauses.append("LOWER(severity) = ?")
         params.append(severity.lower())
