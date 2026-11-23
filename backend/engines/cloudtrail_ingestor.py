@@ -140,11 +140,12 @@ def normalize_cloudtrail_record(raw: Dict[str, Any]) -> NormalizedEvent:
 
 def ingest_cloudtrail_events(
     records: Union[Dict[str, Any], List[Dict[str, Any]]],
-    save_to_database: bool = True
+    save_to_database: bool = True,
+    org_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Ingest a batch of CloudTrail records, normalize them, and execute the 16 attack detectors.
-    Optionally saves generated findings to SQLite for dashboard display.
+    Optionally saves generated findings to database for dashboard display and correlates incidents.
     """
     # Accept standard CloudTrail {"Records": [...]} wrapper or direct list
     if isinstance(records, dict):
@@ -173,10 +174,21 @@ def ingest_cloudtrail_events(
     if save_to_database and findings:
         findings_payload = [f.model_dump() if hasattr(f, "model_dump") else dict(f) for f in findings]
         try:
-            save_findings_db(findings_payload)
+            save_findings_db(findings_payload, org_id=org_id)
             persisted_count = len(findings_payload)
         except Exception as e:
             print(f"[CloudTrail Ingestor] Could not save findings: {e}")
+
+        # Correlate findings into deterministic security incidents
+        try:
+            from engines.correlation_engine import correlate_findings
+            from engines.db import save_incidents_db
+            corr_incidents = correlate_findings(findings_payload)
+            if corr_incidents:
+                inc_list = [inc.model_dump(mode="json") if hasattr(inc, "model_dump") else inc for inc in corr_incidents]
+                save_incidents_db(inc_list, org_id=org_id)
+        except Exception as e:
+            print(f"[CloudTrail Ingestor] Could not correlate incidents: {e}")
 
     return {
         "status": "success",

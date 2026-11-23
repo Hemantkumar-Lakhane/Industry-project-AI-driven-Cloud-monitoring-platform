@@ -2058,20 +2058,30 @@ def get_correlated_incidents(
 
     from engines.cloud_connector import probe_cloud_connectivity
     probe = probe_cloud_connectivity(org_id=org_id)
-    if probe.get("status") != "CONNECTED":
-        return {
-            "status": "success",
-            "count": 0,
-            "total": 0,
-            "data": [],
-            "source": "NOT_CONNECTED",
-            "summary": {
-                "total": 0, "open": 0, "contained": 0, "resolved": 0,
-                "critical": 0, "high": 0
+    if probe.get("status") != "CONNECTED" and org_id != "org_master_admin":
+        existing_findings = get_findings_db(limit=5, org_id=org_id)
+        if not existing_findings:
+            return {
+                "status": "success",
+                "count": 0,
+                "total": 0,
+                "data": [],
+                "source": "NOT_CONNECTED",
+                "summary": {
+                    "total": 0, "open": 0, "contained": 0, "resolved": 0,
+                    "critical": 0, "high": 0
+                }
             }
-        }
 
     incidents = get_incidents_db(limit=limit, status=status, severity=severity, org_id=org_id)
+    if not incidents:
+        try:
+            sess = session_manager.get_session()
+            if sess and getattr(sess, "incidents", None):
+                incidents = sess.incidents
+        except Exception:
+            pass
+
     if not incidents:
         current_findings = get_findings_db(limit=200, org_id=org_id)
         if current_findings:
@@ -2191,7 +2201,17 @@ def get_incident_stats(
 
         from engines.cloud_connector import probe_cloud_connectivity
         probe = probe_cloud_connectivity(org_id=org_id)
-        if probe.get("status") != "CONNECTED":
+
+        incidents = get_incidents_db(limit=200, org_id=org_id)
+        if not incidents:
+            try:
+                sess = session_manager.get_session()
+                if sess and getattr(sess, "incidents", None):
+                    incidents = sess.incidents
+            except Exception:
+                pass
+
+        if not incidents and probe.get("status") != "CONNECTED":
             return {
                 "status": "success",
                 "data": {
@@ -2204,8 +2224,6 @@ def get_incident_stats(
                     "avg_findings_per_incident": 0.0
                 }
             }
-
-        incidents = get_incidents_db(limit=200, org_id=org_id)
 
         total = len(incidents)
         open_cnt = sum(1 for inc in incidents if (inc.get("status") or "").lower() == "open")
@@ -3845,8 +3863,9 @@ def api_ingest_cloudtrail(
     authorization: Optional[str] = Header(None, description="Admin/Analyst Bearer token"),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
-    _require_permission(authorization, "telemetry:ingest", credentials)
-    result = ingest_cloudtrail_events(payload, save_to_database=True)
+    user = _require_permission(authorization, "telemetry:ingest", credentials)
+    org_id = user.get("org_id") if user else None
+    result = ingest_cloudtrail_events(payload, save_to_database=True, org_id=org_id)
     return result
 
 
