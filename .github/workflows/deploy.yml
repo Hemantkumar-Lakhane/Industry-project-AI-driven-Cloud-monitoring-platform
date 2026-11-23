@@ -55,7 +55,7 @@ jobs:
   build-and-deploy-aws:
     name: Build Docker & Deploy to AWS (Sydney ap-southeast-2)
     needs: test
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && secrets.AWS_ACCESS_KEY_ID != ''
     runs-on: ubuntu-latest
 
     steps:
