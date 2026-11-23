@@ -9,6 +9,7 @@ const GOOGLE_CLIENT_ID = "935815727495-8a34omegvgel2s6q99u7kn6t4j2a4o0k.apps.goo
 const LoginPage = ({ onLogin }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [showDemoLogins, setShowDemoLogins] = useState(false);
+  const [gsiRendered, setGsiRendered] = useState(false);
   const [form, setForm] = useState({ 
     username: '', 
     password: '', 
@@ -41,24 +42,46 @@ const LoginPage = ({ onLogin }) => {
   };
 
   useEffect(() => {
+    let checkInterval = null;
+    let observer = null;
+
+    const container = document.getElementById('google-btn-container');
+    if (container) {
+      observer = new MutationObserver(() => {
+        if (container.children.length > 0) {
+          setGsiRendered(true);
+        }
+      });
+      observer.observe(container, { childList: true, subtree: true });
+    }
+
     const renderGoogleBtn = () => {
       if (window.google?.accounts?.id) {
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: handleGoogleCallback,
-          auto_select: false
-        });
-        const container = document.getElementById('google-btn-container');
-        if (container) {
-          container.innerHTML = '';
-          window.google.accounts.id.renderButton(container, {
-            theme: 'outline',
-            size: 'large',
-            width: 360,
-            text: isRegister ? 'signup_with' : 'signin_with',
-            shape: 'rectangular',
-            logo_alignment: 'left'
+        try {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleGoogleCallback,
+            auto_select: false
           });
+          const btnContainer = document.getElementById('google-btn-container');
+          if (btnContainer) {
+            btnContainer.innerHTML = '';
+            window.google.accounts.id.renderButton(btnContainer, {
+              theme: 'outline',
+              size: 'large',
+              width: 360,
+              text: isRegister ? 'signup_with' : 'signin_with',
+              shape: 'rectangular',
+              logo_alignment: 'left'
+            });
+            setTimeout(() => {
+              if (btnContainer.children.length > 0) {
+                setGsiRendered(true);
+              }
+            }, 500);
+          }
+        } catch (err) {
+          console.warn('GSI render error:', err);
         }
       }
     };
@@ -66,14 +89,18 @@ const LoginPage = ({ onLogin }) => {
     if (window.google?.accounts?.id) {
       renderGoogleBtn();
     } else {
-      const timer = setInterval(() => {
+      checkInterval = setInterval(() => {
         if (window.google?.accounts?.id) {
-          clearInterval(timer);
+          clearInterval(checkInterval);
           renderGoogleBtn();
         }
       }, 300);
-      return () => clearInterval(timer);
     }
+
+    return () => {
+      if (checkInterval) clearInterval(checkInterval);
+      if (observer) observer.disconnect();
+    };
   }, [isRegister]);
 
   const handleSubmit = async (e) => {
@@ -277,48 +304,64 @@ const LoginPage = ({ onLogin }) => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-            {/* Google Identity Services Container */}
+            {/* Google Identity Services Container - visible only when Google's SDK successfully injected the official button */}
             <div
               id="google-btn-container"
-              style={{ minHeight: '44px', display: 'flex', justifyContent: 'center' }}
+              style={{
+                minHeight: gsiRendered ? '44px' : '0px',
+                display: gsiRendered ? 'flex' : 'none',
+                justifyContent: 'center',
+                width: '100%'
+              }}
             />
 
-            {/* Custom Google Branded Fallback Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (window.google?.accounts?.id) {
-                  window.google.accounts.id.prompt();
-                } else {
-                  setError('Google Identity Service is loading. Ensure http://localhost:5173 is added to Authorized Origins in Google Cloud Console.');
-                }
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-                width: '100%',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                border: '1px solid var(--border-subtle, #e2e8f0)',
-                backgroundColor: 'var(--surface-primary, #ffffff)',
-                color: 'var(--text-primary, #1e293b)',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-              </svg>
-              <span>{isRegister ? 'Sign up with Google' : 'Sign in with Google'}</span>
-            </button>
+            {/* Custom Google Branded Fallback Button - shown ONLY when GSI iframe is not rendered */}
+            {!gsiRendered && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.google?.accounts?.id) {
+                    try {
+                      window.google.accounts.id.prompt((notification) => {
+                        if (notification.isNotDisplayed()) {
+                          const reason = notification.getNotDisplayedReason();
+                          setError(`Google Sign-In prompt blocked by Google OAuth policy (${reason}). Please verify that '${window.location.origin}' is added to 'Authorised JavaScript origins' in Google Cloud Console.`);
+                        }
+                      });
+                    } catch (err) {
+                      setError(`Google OAuth error: Please verify that '${window.location.origin}' is added to 'Authorised JavaScript origins' in Google Cloud Console.`);
+                    }
+                  } else {
+                    setError(`Google Identity Services is initializing. Please ensure '${window.location.origin}' is registered in Google Cloud Console.`);
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  width: '100%',
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-subtle, #e2e8f0)',
+                  backgroundColor: 'var(--surface-primary, #ffffff)',
+                  color: 'var(--text-primary, #1e293b)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <span>{isRegister ? 'Sign up with Google' : 'Sign in with Google'}</span>
+              </button>
+            )}
 
             {/* AWS Cloud & IAM Compatibility Chip */}
             <div style={{
