@@ -127,7 +127,7 @@ def get_conn():
 def init_db():
     conn = get_conn()
     if getattr(conn, "is_pg", False):
-        # In PostgreSQL / Supabase, schema is initialized via schema_postgresql.sql
+        # In PostgreSQL / Supabase / AWS RDS
         try:
             cur = conn.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name='organizations';")
             if not cur.fetchone():
@@ -136,8 +136,24 @@ def init_db():
                     with open(schema_path, "r", encoding="utf-8") as f:
                         conn.executescript(f.read())
                     conn.commit()
-        except Exception:
-            pass
+
+            # Ensure default organizations exist so foreign keys in users table are never violated
+            now_iso = datetime.now(timezone.utc).isoformat()
+            conn.execute(
+                """INSERT INTO organizations (org_id, name, external_id, industry, created_at)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT (org_id) DO NOTHING""",
+                ("org_master_admin", "RAM Antivirus Platform", "ext_master_admin", "Cybersecurity", now_iso)
+            )
+            conn.execute(
+                """INSERT INTO organizations (org_id, name, external_id, industry, created_at)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT (org_id) DO NOTHING""",
+                ("org_demo", "Demo Organization (Simulated Telemetry)", "ext_demo_org", "Technology", now_iso)
+            )
+            conn.commit()
+        except Exception as e:
+            print(f"[DB] PostgreSQL init notice: {e}")
         finally:
             conn.close()
         return

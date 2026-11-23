@@ -118,9 +118,30 @@ def _save_user(user: Dict):
 
 # Seed default users if not present (Platform Superadmin & Demo User)
 def _seed_defaults():
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    conn = get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO organizations (org_id, name, external_id, industry, created_at)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT (org_id) DO NOTHING""",
+            ("org_master_admin", "RAM Antivirus Platform", "ext_master_admin", "Cybersecurity", now_str)
+        )
+        conn.execute(
+            """INSERT INTO organizations (org_id, name, external_id, industry, created_at)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT (org_id) DO NOTHING""",
+            ("org_demo", "Demo Organization (Simulated Telemetry)", "ext_demo_org", "Technology", now_str)
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"[AUTH] Note on org seeding: {e}")
+    finally:
+        conn.close()
+
     _defaults = [
         {"username": "admin", "password": "admin123", "email": "admin@ramantivirus.com", "role": "admin", "full_name": "RAM Antivirus Admin", "org_id": "org_master_admin"},
-        {"username": "demo",  "password": "demo123",  "email": "demo@ramantivirus.com",  "role": "analyst", "full_name": "Demo User", "org_id": "org_demo"},
+        {"username": "demo",  "password": "demo123",  "email": "demo@ramantivirus.com",  "role": "analyst", "full_name": "Demo Simulation Lead", "org_id": "org_demo"},
     ]
     for u in _defaults:
         existing = _get_user(u["username"])

@@ -182,6 +182,21 @@ def probe_cloud_connectivity(force_refresh: bool = False, org_id: Optional[str] 
     """
     start_time = time.time()
 
+    # Dedicated demo showcase organization support
+    if org_id == "org_demo":
+        return {
+            "status": "CONNECTED",
+            "provider": "wazuh_simulated",
+            "auth_mode": "simulation_telemetry",
+            "account_id": "DEMO-SIMULATED-ENV",
+            "principal_arn": "arn:aws:iam::123456789012:user/demo-simulation-lead",
+            "user_id": "DEMO_SIMULATION_LEAD",
+            "region": "ap-southeast-2",
+            "latency_ms": 12.4,
+            "message": "Connected to Wazuh Telemetry Simulation Sandbox (Demo Mode)",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
     # Look up connection from database for this specific organization
     tenant_conn = get_tenant_cloud_connection(org_id) if org_id else None
 

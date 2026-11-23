@@ -60,7 +60,7 @@ if not exist "%BACKEND_DIR%\models\iforest.pkl" (
 echo.
 echo [4/6] Verifying Database and Telemetry Seeds...
 cd /d "%BACKEND_DIR%"
-python -c "import os, sys; sys.path.insert(0, '.'); from engines.auth_engine import _seed_defaults; _seed_defaults(); print('[OK] Default user accounts verified in security.db (admin, analyst1, viewer1).')"
+python -c "import os, sys; sys.path.insert(0, '.'); from engines.auth_engine import _seed_defaults; _seed_defaults(); print('[OK] Default user accounts verified in database (admin, demo).')"
 if not exist "%BACKEND_DIR%\data\alerts.json" (
     echo [INFO] Seeding initial Wazuh telemetry batch to data/alerts.json...
     python -c "import os, sys; sys.path.insert(0, '.'); from simulator.log_generator import generate_batch, append_to_log; append_to_log(generate_batch())"
@@ -106,9 +106,8 @@ echo  - Backend API:   http://localhost:8000
 echo  - API Docs:      http://localhost:8000/docs
 echo.
 echo  Default Credentials:
-echo    admin    / admin123   (Administrator)
-echo    analyst1 / analyst123 (Security Analyst)
-echo    viewer1  / viewer123  (Viewer)
+echo    admin / admin123 (Platform Superadmin - Real Cloud Monitoring)
+echo    demo  / demo123  (Demo User - Simulated Wazuh Telemetry Showcase)
 echo.
 echo  Each service has opened in its own window.
 echo  Close those windows or press Ctrl+C in them to stop each service.

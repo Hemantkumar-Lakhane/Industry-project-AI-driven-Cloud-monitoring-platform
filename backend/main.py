@@ -18,7 +18,10 @@ from fastapi.responses import PlainTextResponse, StreamingResponse, JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field, ConfigDict
-import uvicorn
+try:
+    import uvicorn
+except ImportError:
+    uvicorn = None
 from typing import Optional, List, Dict, Any
 import asyncio
 from contextlib import asynccontextmanager
@@ -453,9 +456,21 @@ def _extract_user(authorization: Optional[str] = None, credentials: Optional[HTT
 def _get_events(normal: int = 80, attacks: int = 15, org_id: Optional[str] = None):
     """
     Returns events for the active tenant.
-    Only returns real AWS CloudTrail events if the tenant has connected AWS.
-    Never returns fake/simulated data.
+    For regular tenants: Only returns real AWS CloudTrail events if the tenant has connected AWS.
+    For demo tenant ('org_demo'): returns simulated Wazuh telemetry / attack simulator batch.
     """
+    if org_id == "org_demo":
+        try:
+            from simulator.wazuh_reader import read_wazuh_logs
+            logs = read_wazuh_logs(max_events=normal + attacks)
+            if logs:
+                return logs
+            from simulator.wazuh_simulator import simulate_session
+            return simulate_session(n_normal=normal, n_attacks=attacks)
+        except Exception:
+            from simulator.wazuh_simulator import simulate_session
+            return simulate_session(n_normal=normal, n_attacks=attacks)
+
     try:
         from engines.cloud_connector import probe_cloud_connectivity, fetch_live_cloudtrail_events
         probe = probe_cloud_connectivity(org_id=org_id)
@@ -468,7 +483,14 @@ def _get_events(normal: int = 80, attacks: int = 15, org_id: Optional[str] = Non
 
 
 def _get_cspm(events: list = None, org_id: Optional[str] = None):
-    """Derive CSPM findings from live cloud scan for active tenant."""
+    """Derive CSPM findings from live cloud scan for active tenant, or simulated scan for org_demo."""
+    if org_id == "org_demo":
+        try:
+            from engines.cspm_engine import run_cspm_scan
+            return run_cspm_scan(events or [])
+        except Exception:
+            pass
+
     try:
         from engines.cloud_connector import probe_cloud_connectivity, run_production_cspm_scan
         probe = probe_cloud_connectivity(org_id=org_id)
@@ -482,7 +504,14 @@ def _get_cspm(events: list = None, org_id: Optional[str] = None):
 
 
 def _get_ciem(events: list = None, org_id: Optional[str] = None):
-    """Derive CIEM findings from live cloud scan for active tenant."""
+    """Derive CIEM findings from live cloud scan for active tenant, or simulated scan for org_demo."""
+    if org_id == "org_demo":
+        try:
+            from engines.ciem_engine import run_ciem_scan
+            return run_ciem_scan(events or [])
+        except Exception:
+            pass
+
     try:
         from engines.cloud_connector import probe_cloud_connectivity, run_production_ciem_scan
         probe = probe_cloud_connectivity(org_id=org_id)
@@ -1027,7 +1056,7 @@ def get_simulated_events(
 
     from engines.cloud_connector import probe_cloud_connectivity
     probe = probe_cloud_connectivity(org_id=org_id)
-    if probe.get("status") != "CONNECTED":
+    if org_id != "org_demo" and probe.get("status") != "CONNECTED":
         return {
             "status": "success",
             "count": 0,
@@ -1037,7 +1066,7 @@ def get_simulated_events(
 
     raw_events = _get_events(normal, attacks, org_id=org_id)
     all_events = analyze_events(raw_events) if raw_events else []
-    source_mode = "LIVE_AWS"
+    source_mode = "DEMO_SIMULATION" if org_id == "org_demo" else "LIVE_AWS"
 
     # Apply search filter
     filtered = all_events
@@ -1235,7 +1264,44 @@ def get_dashboard_summary(
     probe = probe_cloud_connectivity(org_id=org_id)
     is_connected = probe.get("status") == "CONNECTED"
 
-    # If organization has not linked their cloud yet, return accurate zero state
+    # Dedicated Demo Account handler for simulated Wazuh showcase
+    if org_id == "org_demo":
+        from simulator.wazuh_simulator import simulate_session
+        from engines.cspm_engine import run_cspm_scan
+        sim_events = simulate_session(n_normal=80, n_attacks=20)
+        sim_cspm = run_cspm_scan(sim_events)
+        crit_count = sum(1 for f in sim_cspm if str(f.get("severity", "")).lower() == "critical")
+        high_count = sum(1 for f in sim_cspm if str(f.get("severity", "")).lower() == "high")
+        return {
+            "status": "success",
+            "data": {
+                "threats": {
+                    "critical": crit_count,
+                    "high": high_count,
+                    "total_analyzed": len(sim_events),
+                    "detected_threats": sum(1 for e in sim_events if e.get("is_anomaly"))
+                },
+                "posture": {
+                    "cspm_open_issues": len(sim_cspm),
+                    "ciem_open_risks": 2
+                },
+                "recent_critical_alerts": [
+                    {
+                        "id": f.get("finding_id", "FIND-01"),
+                        "title": f.get("title"),
+                        "severity": f.get("severity"),
+                        "user": f.get("resource") or "Wazuh Agent",
+                        "description": f.get("description"),
+                        "timestamp": f.get("timestamp")
+                    }
+                    for f in sim_cspm[:5]
+                ],
+                "cloud_connected": True,
+                "account_id": "DEMO-SIMULATED-ENV"
+            }
+        }
+
+    # If real organization has not linked their cloud yet, return accurate zero state
     if not is_connected:
         return {
             "status": "success",
@@ -1752,6 +1818,35 @@ def get_detected_findings(
     org_id = user.get("org_id") if user else None
 
     from engines.cloud_connector import probe_cloud_connectivity, run_production_cspm_scan, run_production_ciem_scan
+    
+    if org_id == "org_demo":
+        from simulator.wazuh_simulator import simulate_session
+        from engines.cspm_engine import run_cspm_scan
+        sim_events = simulate_session(n_normal=80, n_attacks=20)
+        sim_cspm = run_cspm_scan(sim_events)
+        now_ts = datetime.now(timezone.utc).isoformat()
+        demo_findings = []
+        for f in sim_cspm:
+            demo_findings.append({
+                "finding_id": f.get("scan_id") or f"CSPM-{f.get('vulnerability_id')}",
+                "timestamp": now_ts,
+                "attack_category": "Cloud Misconfiguration (CSPM)",
+                "title": f.get("title"),
+                "description": f.get("description"),
+                "severity": f.get("severity", "high"),
+                "status": f.get("status", "open"),
+                "affected_resource": f.get("resource"),
+                "affected_principal": "arn:aws:iam::123456789012:root",
+                "data_source": "DEMO_SIMULATION",
+                "confidence": 0.95
+            })
+        return {
+            "status": "success",
+            "count": len(demo_findings),
+            "data": demo_findings,
+            "source": "DEMO_SIMULATION"
+        }
+
     probe = probe_cloud_connectivity(org_id=org_id)
     if probe.get("status") != "CONNECTED":
         return {
@@ -3685,6 +3780,13 @@ def api_get_onboarding_template():
         return {"status": "success", "format": "yaml", "template": content}
     return {"status": "error", "message": "Onboarding template file not found on server"}
 
+
+# AWS Lambda Handler (Serverless Deployment)
+try:
+    from mangum import Mangum
+    handler = Mangum(app, lifespan="off")
+except ImportError:
+    pass
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
