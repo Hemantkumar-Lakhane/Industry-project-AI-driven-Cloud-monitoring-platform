@@ -177,6 +177,29 @@ def init_db():
                    ON CONFLICT (org_id) DO NOTHING""",
                 ("org_demo", "Demo Organization (Simulated Telemetry)", "ext_demo_org", "Technology", now_iso)
             )
+            # Idempotent schema upgrades for Super Admin Phase 1
+            for pg_stmt in [
+                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'active';",
+                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS plan VARCHAR(64) DEFAULT 'standard';",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS tokens_revoked_at_ms BIGINT DEFAULT 0;",
+                """CREATE TABLE IF NOT EXISTS platform_audit_logs (
+                    log_id VARCHAR(64) PRIMARY KEY,
+                    timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    actor_user_id VARCHAR(64),
+                    actor_username VARCHAR(128),
+                    actor_role VARCHAR(32),
+                    action VARCHAR(128) NOT NULL,
+                    target_type VARCHAR(64),
+                    target_id VARCHAR(128),
+                    details_json TEXT,
+                    ip_address VARCHAR(64),
+                    status VARCHAR(32) DEFAULT 'success'
+                );"""
+            ]:
+                try:
+                    conn.execute(pg_stmt)
+                except Exception:
+                    pass
             conn.commit()
         except Exception as e:
             print(f"[DB] PostgreSQL init notice: {e}")
@@ -357,7 +380,30 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_findings_timestamp ON findings(timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_remediation_timestamp ON remediation_history(timestamp DESC);
+
+        CREATE TABLE IF NOT EXISTS platform_audit_logs (
+            log_id TEXT PRIMARY KEY,
+            timestamp TEXT NOT NULL,
+            actor_user_id TEXT,
+            actor_username TEXT,
+            actor_role TEXT,
+            action TEXT NOT NULL,
+            target_type TEXT,
+            target_id TEXT,
+            details_json TEXT,
+            ip_address TEXT,
+            status TEXT DEFAULT 'success'
+        );
     """)
+    for tbl, col in [
+        ("organizations", "status TEXT DEFAULT 'active'"),
+        ("organizations", "plan TEXT DEFAULT 'standard'"),
+        ("users", "tokens_revoked_at_ms INTEGER DEFAULT 0"),
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE {tbl} ADD COLUMN {col}")
+        except Exception:
+            pass
     try:
         conn.execute("ALTER TABLE risk_history ADD COLUMN incident_score REAL DEFAULT 0.0")
     except Exception:
@@ -1194,6 +1240,247 @@ def list_organizations() -> List[Dict[str, Any]]:
     rows = conn.execute("SELECT * FROM organizations ORDER BY created_at DESC").fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ── Super Admin Fleet, Organization & Audit Helpers ──────────────────────────
+
+def log_platform_audit(
+    actor_user_id: Optional[str],
+    actor_username: Optional[str],
+    actor_role: Optional[str],
+    action: str,
+    target_type: str = "platform",
+    target_id: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+    ip_address: Optional[str] = None,
+    status: str = "success",
+) -> str:
+    """Append an immutable audit record to platform_audit_logs."""
+    import json
+    import uuid as _uuid
+    log_id = f"AUD-{_uuid.uuid4().hex[:10].upper()}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    conn = get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO platform_audit_logs
+               (log_id, timestamp, actor_user_id, actor_username, actor_role, action, target_type, target_id, details_json, ip_address, status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                log_id,
+                now_iso,
+                actor_user_id,
+                actor_username,
+                actor_role,
+                action,
+                target_type,
+                target_id,
+                json.dumps(details or {}),
+                ip_address or "internal",
+                status,
+            ),
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"[DB] Failed to write platform audit log: {e}")
+    finally:
+        conn.close()
+    return log_id
+
+
+def get_platform_audit_logs_db(limit: int = 100, action: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Retrieve immutable platform audit logs ordered newest first."""
+    import json
+    conn = get_conn()
+    try:
+        if action:
+            rows = conn.execute(
+                "SELECT * FROM platform_audit_logs WHERE action = ? ORDER BY timestamp DESC LIMIT ?",
+                (action, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM platform_audit_logs ORDER BY timestamp DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        results = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["details"] = json.loads(d.get("details_json") or "{}")
+            except Exception:
+                d["details"] = {}
+            results.append(d)
+        return results
+    finally:
+        conn.close()
+
+
+def get_all_organizations_db() -> List[Dict[str, Any]]:
+    """List all organizations enriched with user counts, cloud connector status, and open findings/incidents."""
+    conn = get_conn()
+    try:
+        orgs = [dict(r) for r in conn.execute("SELECT * FROM organizations ORDER BY created_at DESC").fetchall()]
+        user_counts = {
+            r["org_id"]: r["cnt"]
+            for r in conn.execute("SELECT org_id, COUNT(*) AS cnt FROM users WHERE org_id IS NOT NULL GROUP BY org_id").fetchall()
+        }
+        cloud_conns = {
+            r["org_id"]: dict(r)
+            for r in conn.execute("SELECT org_id, provider, account_id, region, status, last_scanned_at FROM tenant_cloud_connections").fetchall()
+        }
+        finding_counts = {
+            r["org_id"]: r["cnt"]
+            for r in conn.execute("SELECT org_id, COUNT(*) AS cnt FROM findings WHERE org_id IS NOT NULL AND LOWER(COALESCE(status,'open')) = 'open' GROUP BY org_id").fetchall()
+        }
+        incident_counts = {
+            r["org_id"]: r["cnt"]
+            for r in conn.execute("SELECT org_id, COUNT(*) AS cnt FROM incidents WHERE org_id IS NOT NULL AND LOWER(COALESCE(status,'open')) = 'open' GROUP BY org_id").fetchall()
+        }
+        for org in orgs:
+            oid = org["org_id"]
+            cc = cloud_conns.get(oid)
+            org["status"] = org.get("status") or "active"
+            org["plan"] = org.get("plan") or ("platform" if oid == "org_master_admin" else "standard")
+            org["user_count"] = int(user_counts.get(oid, 0))
+            org["open_findings"] = int(finding_counts.get(oid, 0))
+            org["open_incidents"] = int(incident_counts.get(oid, 0))
+            org["cloud_connected"] = bool(cc and cc.get("status") == "CONNECTED")
+            org["aws_account_id"] = cc.get("account_id") if cc else None
+            org["aws_region"] = cc.get("region") if cc else None
+        return orgs
+    finally:
+        conn.close()
+
+
+def create_organization_db(name: str, industry: str = "Cloud Infrastructure", plan: str = "standard") -> Dict[str, Any]:
+    """Create a new customer organization with unique org_id and AWS external_id."""
+    import uuid as _uuid
+    clean_name = name.strip()
+    org_id = f"org_{_uuid.uuid4().hex[:8]}"
+    slug = "".join(c for c in clean_name.upper() if c.isalnum() or c == "-")[:12] or "TENANT"
+    external_id = f"RAM-{slug}-{_uuid.uuid4().hex[:6].upper()}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    conn = get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO organizations (org_id, name, external_id, industry, status, plan, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (org_id, clean_name, external_id, industry.strip() or "Cloud Infrastructure", "active", plan, now_iso),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return {
+        "org_id": org_id,
+        "name": clean_name,
+        "external_id": external_id,
+        "industry": industry.strip() or "Cloud Infrastructure",
+        "status": "active",
+        "plan": plan,
+        "created_at": now_iso,
+        "user_count": 0,
+        "open_findings": 0,
+        "open_incidents": 0,
+        "cloud_connected": False,
+    }
+
+
+def update_organization_status_db(org_id: str, new_status: str) -> Optional[Dict[str, Any]]:
+    """Update organization status ('active' or 'suspended'). Returns updated org or None if not found."""
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM organizations WHERE org_id = ?", (org_id,)).fetchone()
+        if not row:
+            return None
+        conn.execute("UPDATE organizations SET status = ? WHERE org_id = ?", (new_status, org_id))
+        conn.commit()
+        updated = conn.execute("SELECT * FROM organizations WHERE org_id = ?", (org_id,)).fetchone()
+        return dict(updated) if updated else None
+    finally:
+        conn.close()
+
+
+def get_fleet_overview_db() -> Dict[str, Any]:
+    """Compute cross-tenant fleet-wide telemetry and platform infrastructure health."""
+    conn = get_conn()
+    try:
+        orgs = [dict(r) for r in conn.execute("SELECT org_id, status FROM organizations").fetchall()]
+        total_orgs = len(orgs)
+        active_orgs = sum(1 for o in orgs if (o.get("status") or "active").lower() == "active")
+        suspended_orgs = sum(1 for o in orgs if (o.get("status") or "active").lower() == "suspended")
+
+        users_row = conn.execute("SELECT COUNT(*) AS total, SUM(CASE WHEN is_active THEN 1 ELSE 0 END) AS active_cnt FROM users").fetchone()
+        total_users = int(dict(users_row)["total"] or 0) if users_row else 0
+        active_users = int(dict(users_row)["active_cnt"] or 0) if users_row else 0
+
+        cloud_row = conn.execute("SELECT COUNT(*) AS cnt FROM tenant_cloud_connections WHERE status = 'CONNECTED'").fetchone()
+        connected_clouds = int(dict(cloud_row)["cnt"] or 0) if cloud_row else 0
+
+        findings_row = conn.execute("SELECT COUNT(*) AS cnt FROM findings WHERE LOWER(COALESCE(status,'open')) = 'open'").fetchone()
+        open_findings = int(dict(findings_row)["cnt"] or 0) if findings_row else 0
+
+        incidents_row = conn.execute("SELECT COUNT(*) AS cnt FROM incidents WHERE LOWER(COALESCE(status,'open')) = 'open'").fetchone()
+        open_incidents = int(dict(incidents_row)["cnt"] or 0) if incidents_row else 0
+
+        audit_row = conn.execute("SELECT COUNT(*) AS cnt FROM platform_audit_logs").fetchone()
+        audit_events = int(dict(audit_row)["cnt"] or 0) if audit_row else 0
+
+        is_pg = getattr(conn, "is_pg", False)
+        return {
+            "fleet": {
+                "total_organizations": total_orgs,
+                "active_organizations": active_orgs,
+                "suspended_organizations": suspended_orgs,
+                "total_users": total_users,
+                "active_users": active_users,
+                "connected_cloud_accounts": connected_clouds,
+            },
+            "threats": {
+                "open_findings_across_fleet": open_findings,
+                "open_incidents_across_fleet": open_incidents,
+            },
+            "infrastructure": {
+                "database_engine": "PostgreSQL" if is_pg else "SQLite",
+                "database_status": "healthy",
+                "audit_ledger_events": audit_events,
+                "api_status": "operational",
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    finally:
+        conn.close()
+
+
+def revoke_user_sessions_db(user_id: str) -> Optional[int]:
+    """Set tokens_revoked_at_ms to current UTC epoch milliseconds for a user. Returns epoch ms or None if user missing."""
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        if not row:
+            return None
+        revoked_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        conn.execute("UPDATE users SET tokens_revoked_at_ms = ? WHERE user_id = ?", (revoked_ms, user_id))
+        conn.commit()
+        return revoked_ms
+    finally:
+        conn.close()
+
+
+def get_user_tokens_revoked_at_ms(user_id: str) -> int:
+    """Return tokens_revoked_at_ms for user_id, or 0 if unset."""
+    if not user_id:
+        return 0
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT tokens_revoked_at_ms FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        if not row:
+            return 0
+        return int(dict(row).get("tokens_revoked_at_ms") or 0)
+    except Exception:
+        return 0
+    finally:
+        conn.close()
 
 
 # Migration to ensure org_id column on users table

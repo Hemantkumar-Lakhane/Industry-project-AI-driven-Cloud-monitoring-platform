@@ -72,7 +72,11 @@ from engines.db import (
     save_findings_db, get_findings_db, get_findings_stats_db,
     save_incidents_db, get_incidents_db, get_incident_by_id_db, get_incidents_stats_db,
     update_finding_status_db, update_incident_status_db,
-    get_cloud_assets_db, get_vulnerabilities_db
+    get_cloud_assets_db, get_vulnerabilities_db,
+    log_platform_audit, get_platform_audit_logs_db,
+    get_all_organizations_db, create_organization_db,
+    update_organization_status_db, get_fleet_overview_db,
+    revoke_user_sessions_db
 )
 from engines.asset_engine import discover_assets, get_asset_inventory, check_connectors
 from engines.vulnerability_engine import (
@@ -443,6 +447,27 @@ def _require_permission(
     if not result.get("authorized"):
         raise HTTPException(status_code=403, detail=result.get("error", "Forbidden"))
     return result.get("user")
+
+
+def _require_super_admin(
+    authorization: Optional[str] = None,
+    permission: str = "platform:manage",
+    credentials: Optional[HTTPAuthorizationCredentials] = None
+):
+    """
+    Enforce strict Platform Super Admin boundary:
+    1. Valid JWT with required super_admin permission.
+    2. Role must be 'super_admin' and org_id must be 'org_master_admin'.
+    """
+    user = _require_permission(authorization, permission, credentials)
+    if not AUTH_ENFORCED and user is None:
+        return None
+    if not user or user.get("role") != "super_admin" or user.get("org_id") != "org_master_admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: Platform Super Admin privileges in master organization required"
+        )
+    return user
 
 
 def _extract_user(authorization: Optional[str] = None, credentials: Optional[HTTPAuthorizationCredentials] = None) -> Optional[Dict[str, Any]]:
@@ -1008,6 +1033,207 @@ def api_reactivate_user(
     if not result["success"]:
         raise HTTPException(status_code=404, detail=result["error"])
     return {"status": "success", "data": result}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 1B — PLATFORM SUPER ADMIN FLEET CONTROL PLANE (/api/admin/*)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class CreateOrganizationRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=128, description="Customer organization name")
+    industry: str = Field("Cloud Infrastructure", max_length=128, description="Industry vertical")
+    plan: str = Field("standard", description="Subscription tier: standard, pro, or enterprise")
+
+
+class UpdateOrganizationStatusRequest(BaseModel):
+    status: str = Field(..., description="Target status: 'active' or 'suspended'")
+
+
+@app.get(
+    "/api/admin/fleet/overview",
+    tags=["Platform Super Admin"],
+    summary="Get Fleet-Wide Platform Telemetry & Health (Super Admin)",
+    description="Retrieve cross-tenant fleet KPIs, connected cloud counts, global threat totals, and database health. Requires `fleet:telemetry` (`super_admin`).",
+    dependencies=[Depends(bearer_scheme)],
+)
+def api_admin_fleet_overview(
+    request: Request,
+    authorization: Optional[str] = Header(None, description="Super Admin Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
+    user = _require_super_admin(authorization, "fleet:telemetry", credentials)
+    overview = get_fleet_overview_db()
+    if user:
+        log_platform_audit(
+            actor_user_id=user.get("user_id"),
+            actor_username=user.get("username"),
+            actor_role=user.get("role"),
+            action="FLEET_TELEMETRY_VIEWED",
+            target_type="platform",
+            target_id="fleet",
+            ip_address=request.client.host if request.client else "unknown",
+        )
+    return {"status": "success", "data": overview}
+
+
+@app.get(
+    "/api/admin/organizations",
+    tags=["Platform Super Admin"],
+    summary="List All Customer Organizations (Super Admin)",
+    description="Retrieve all registered organizations with user counts, cloud connector status, open findings, and subscription state. Requires `tenants:read` (`super_admin`).",
+    dependencies=[Depends(bearer_scheme)],
+)
+def api_admin_list_organizations(
+    authorization: Optional[str] = Header(None, description="Super Admin Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
+    _require_super_admin(authorization, "tenants:read", credentials)
+    orgs = get_all_organizations_db()
+    return {"status": "success", "count": len(orgs), "data": orgs}
+
+
+@app.post(
+    "/api/admin/organizations",
+    tags=["Platform Super Admin"],
+    summary="Provision New Customer Organization (Super Admin)",
+    description="Create a new multi-tenant organization and assign a unique External ID. Requires `tenants:write` (`super_admin`).",
+    dependencies=[Depends(bearer_scheme)],
+)
+def api_admin_create_organization(
+    request: Request,
+    req: CreateOrganizationRequest,
+    authorization: Optional[str] = Header(None, description="Super Admin Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
+    user = _require_super_admin(authorization, "tenants:write", credentials)
+    allowed_plans = {"standard", "pro", "enterprise", "platform"}
+    plan_val = req.plan.strip().lower()
+    if plan_val not in allowed_plans:
+        raise HTTPException(status_code=400, detail=f"Invalid plan '{req.plan}'. Must be one of: {', '.join(sorted(allowed_plans))}")
+    org = create_organization_db(name=req.name, industry=req.industry, plan=plan_val)
+    if user:
+        log_platform_audit(
+            actor_user_id=user.get("user_id"),
+            actor_username=user.get("username"),
+            actor_role=user.get("role"),
+            action="TENANT_CREATED",
+            target_type="organization",
+            target_id=org["org_id"],
+            details={"name": org["name"], "plan": plan_val},
+            ip_address=request.client.host if request.client else "unknown",
+        )
+    return {"status": "success", "data": org}
+
+
+@app.put(
+    "/api/admin/organizations/{org_id}/status",
+    tags=["Platform Super Admin"],
+    summary="Suspend or Reactivate Organization (Super Admin)",
+    description="Toggle tenant status between 'active' and 'suspended'. Suspended tenants are blocked from logging in. Requires `tenants:suspend` (`super_admin`).",
+    dependencies=[Depends(bearer_scheme)],
+)
+def api_admin_update_organization_status(
+    request: Request,
+    org_id: str = Path(..., description="Target organization ID"),
+    req: UpdateOrganizationStatusRequest = Body(...),
+    authorization: Optional[str] = Header(None, description="Super Admin Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
+    user = _require_super_admin(authorization, "tenants:suspend", credentials)
+    new_status = req.status.strip().lower()
+    if new_status not in ("active", "suspended"):
+        raise HTTPException(status_code=400, detail="Status must be 'active' or 'suspended'")
+    if org_id == "org_master_admin" and new_status == "suspended":
+        raise HTTPException(status_code=400, detail="Cannot suspend the master platform organization")
+    updated = update_organization_status_db(org_id, new_status)
+    if not updated:
+        raise HTTPException(status_code=404, detail=f"Organization '{org_id}' not found")
+    if user:
+        log_platform_audit(
+            actor_user_id=user.get("user_id"),
+            actor_username=user.get("username"),
+            actor_role=user.get("role"),
+            action="TENANT_SUSPENDED" if new_status == "suspended" else "TENANT_REACTIVATED",
+            target_type="organization",
+            target_id=org_id,
+            details={"new_status": new_status},
+            ip_address=request.client.host if request.client else "unknown",
+        )
+    return {"status": "success", "data": updated}
+
+
+@app.get(
+    "/api/admin/users",
+    tags=["Platform Super Admin"],
+    summary="Global Cross-Tenant User Directory (Super Admin)",
+    description="List and search all users across all organizations. Requires `platform:manage` (`super_admin`).",
+    dependencies=[Depends(bearer_scheme)],
+)
+def api_admin_list_users(
+    org_id: Optional[str] = Query(None, description="Filter by organization ID"),
+    search: Optional[str] = Query(None, description="Search by username, email, or full name"),
+    authorization: Optional[str] = Header(None, description="Super Admin Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
+    _require_super_admin(authorization, "platform:manage", credentials)
+    users = get_all_users(org_id=org_id, search=search)
+    return {"status": "success", "count": len(users), "data": users}
+
+
+@app.post(
+    "/api/admin/users/{user_id}/terminate-sessions",
+    tags=["Platform Super Admin"],
+    summary="Revoke All Active JWT Sessions for User (Super Admin)",
+    description="Immediately invalidate all previously issued JWT tokens for the target user_id. Requires `platform:manage` (`super_admin`).",
+    dependencies=[Depends(bearer_scheme)],
+)
+def api_admin_terminate_user_sessions(
+    request: Request,
+    user_id: str = Path(..., description="Target user_id whose sessions should be revoked"),
+    authorization: Optional[str] = Header(None, description="Super Admin Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
+    user = _require_super_admin(authorization, "platform:manage", credentials)
+    revoked_ms = revoke_user_sessions_db(user_id)
+    if revoked_ms is None:
+        raise HTTPException(status_code=404, detail=f"User '{user_id}' not found")
+    if user:
+        log_platform_audit(
+            actor_user_id=user.get("user_id"),
+            actor_username=user.get("username"),
+            actor_role=user.get("role"),
+            action="USER_SESSIONS_REVOKED",
+            target_type="user",
+            target_id=user_id,
+            details={"tokens_revoked_at_ms": revoked_ms},
+            ip_address=request.client.host if request.client else "unknown",
+        )
+    return {
+        "status": "success",
+        "data": {
+            "user_id": user_id,
+            "tokens_revoked_at_ms": revoked_ms,
+            "message": "All active sessions for user have been revoked"
+        }
+    }
+
+
+@app.get(
+    "/api/admin/audit-logs",
+    tags=["Platform Super Admin"],
+    summary="Retrieve Immutable Platform Audit Ledger (Super Admin)",
+    description="Query system-wide administrative actions recorded in platform_audit_logs. Requires `audit:read` (`super_admin`).",
+    dependencies=[Depends(bearer_scheme)],
+)
+def api_admin_audit_logs(
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of audit records"),
+    action: Optional[str] = Query(None, description="Filter by audit action code"),
+    authorization: Optional[str] = Header(None, description="Super Admin Bearer token"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
+    _require_super_admin(authorization, "audit:read", credentials)
+    logs = get_platform_audit_logs_db(limit=limit, action=action)
+    return {"status": "success", "count": len(logs), "data": logs}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

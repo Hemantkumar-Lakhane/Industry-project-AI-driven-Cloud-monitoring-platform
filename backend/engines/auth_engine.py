@@ -14,7 +14,7 @@ try:
 except ImportError:
     bcrypt = None
     _BCRYPT_AVAILABLE = False
-from engines.db import get_conn, init_db
+from engines.db import get_conn, init_db, get_user_tokens_revoked_at_ms
 
 ENV = os.environ.get("ENV", os.environ.get("APP_ENV", "")).lower()
 JWT_SECRET = os.environ.get("JWT_SECRET")
@@ -141,7 +141,9 @@ def _seed_defaults():
     finally:
         conn.close()
 
+    _super_admin_pw = os.environ.get("SUPER_ADMIN_PASSWORD", "SuperAdmin!2026#")
     _defaults = [
+        {"username": "superadmin", "password": _super_admin_pw, "email": "superadmin@ramantivirus.com", "role": "super_admin", "full_name": "RAM Antivirus Super Admin", "org_id": "org_master_admin"},
         {"username": "ramantivirus", "password": "admin123", "email": "platform@ramantivirus.com", "role": "admin", "full_name": "RAM Antivirus Platform Admin", "org_id": "org_master_admin"},
         {"username": "admin", "password": "admin123", "email": "admin@ramantivirus.com", "role": "admin", "full_name": "RAM Antivirus Admin", "org_id": "org_master_admin"},
         {"username": "analyst1", "password": "analyst123", "email": "analyst1@ramantivirus.com", "role": "analyst", "full_name": "RAM Security Analyst", "org_id": "org_demo"},
@@ -175,8 +177,25 @@ except Exception as _e:
 
 # ── Role Permissions ─────────────────────────────────────────────────────────
 ROLE_PERMISSIONS = {
+    "super_admin": {
+        "description": "RAM Antivirus Platform Super Administrator — fleet-wide cross-organization governance, tenant provisioning, global telemetry, and immutable audit control",
+        "permissions": [
+            "platform:manage", "tenants:read", "tenants:write", "tenants:suspend",
+            "fleet:telemetry", "audit:read",
+            "dashboard:read", "events:read", "cspm:read", "ciem:read",
+            "ml:read", "ml:execute", "remediation:read", "remediation:execute",
+            "compliance:read", "compliance:generate", "compliance:export",
+            "simulation:read", "simulation:execute",
+            "users:read", "users:manage",
+            "risk:read", "risk:configure",
+            "assets:read", "assets:write",
+            "vulnerabilities:read", "vulnerabilities:write",
+            "cloud:read", "cloud:configure", "cloud:scan", "telemetry:ingest",
+            "findings:read", "incidents:read"
+        ]
+    },
     "admin": {
-        "description": "RAM Antivirus Platform Super Administrator — full access to all endpoints, platform oversight, and directory",
+        "description": "Company Tenant Administrator — full access to organization endpoints, remediation, and team directory",
         "permissions": [
             "dashboard:read", "events:read", "cspm:read", "ciem:read",
             "ml:read", "ml:execute", "remediation:read", "remediation:execute",
@@ -246,7 +265,7 @@ def register_user(username: str, password: str, email: str, role: str = "viewer"
         return {"success": False, "error": f"Username '{username}' already exists"}
 
     if role not in ROLE_PERMISSIONS:
-        return {"success": False, "error": f"Invalid role '{role}'. Must be: admin, analyst, or viewer"}
+        return {"success": False, "error": f"Invalid role '{role}'. Must be one of: {', '.join(ROLE_PERMISSIONS.keys())}"}
 
     conn = get_conn()
     existing_email = conn.execute("SELECT username FROM users WHERE email=?", (email,)).fetchone()
@@ -373,22 +392,32 @@ def login_user(username: str, password: str) -> Dict:
     user["last_login"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     _save_user(user)
 
-    # Fetch organization details for multi-tenant isolation
+    # Fetch organization details for multi-tenant isolation & suspension check
     org_id = user.get("org_id")
     company_name = None
     external_id = None
     if org_id:
         conn = get_conn()
-        org_row = conn.execute("SELECT name, external_id FROM organizations WHERE org_id = ?", (org_id,)).fetchone()
+        org_row = conn.execute("SELECT name, external_id, status FROM organizations WHERE org_id = ?", (org_id,)).fetchone()
         conn.close()
         if org_row:
-            company_name = org_row["name"]
-            external_id = org_row["external_id"]
+            org_dict = dict(org_row)
+            if (org_dict.get("status") or "active").lower() == "suspended":
+                return {"success": False, "error": "Organization is suspended. Contact RAM Antivirus Platform Support."}
+            company_name = org_dict.get("name")
+            external_id = org_dict.get("external_id")
     elif user["username"] == "admin":
         company_name = "RAM Antivirus Platform"
         org_id = "org_system_master"
 
-    role_label = "System Admin" if user["username"] == "admin" else ("Company Admin" if user["role"] == "admin" else "Security Analyst")
+    if user["role"] == "super_admin":
+        role_label = "Platform Super Admin"
+    elif user["username"] == "admin":
+        role_label = "System Admin"
+    elif user["role"] == "admin":
+        role_label = "Company Admin"
+    else:
+        role_label = "Security Analyst"
     
     # Generate JWT token
     payload = {
@@ -400,6 +429,7 @@ def login_user(username: str, password: str) -> Dict:
         "company_name": company_name,
         "permissions": ROLE_PERMISSIONS[user["role"]]["permissions"],
         "iat": now,
+        "iat_ms": int(now.timestamp() * 1000),
         "exp": now + timedelta(hours=JWT_EXPIRATION_HOURS),
         "iss": "ram-antivirus-cloud-security"
     }
@@ -498,14 +528,24 @@ def login_google_user(email: str, name: str, google_sub: str) -> Dict:
     external_id = None
     if org_id:
         conn = get_conn()
-        org_row = conn.execute("SELECT name, external_id FROM organizations WHERE org_id = ?", (org_id,)).fetchone()
+        org_row = conn.execute("SELECT name, external_id, status FROM organizations WHERE org_id = ?", (org_id,)).fetchone()
         conn.close()
         if org_row:
-            company_name = org_row["name"]
-            external_id = org_row["external_id"]
+            org_dict = dict(org_row)
+            if (org_dict.get("status") or "active").lower() == "suspended":
+                return {"success": False, "error": "Organization is suspended. Contact RAM Antivirus Platform Support."}
+            company_name = org_dict.get("name")
+            external_id = org_dict.get("external_id")
 
     role = user.get("role", "user")
-    role_label = "System Admin" if user["username"] == "admin" else ("Company Admin" if role == "admin" else "Security Analyst")
+    if role == "super_admin":
+        role_label = "Platform Super Admin"
+    elif user["username"] == "admin":
+        role_label = "System Admin"
+    elif role == "admin":
+        role_label = "Company Admin"
+    else:
+        role_label = "Security Analyst"
     now_dt = datetime.now(timezone.utc)
 
     payload = {
@@ -519,6 +559,7 @@ def login_google_user(email: str, name: str, google_sub: str) -> Dict:
         "email": user["email"],
         "permissions": ROLE_PERMISSIONS.get(role, {}).get("permissions", []),
         "iat": now_dt,
+        "iat_ms": int(now_dt.timestamp() * 1000),
         "exp": now_dt + timedelta(hours=JWT_EXPIRATION_HOURS),
         "iss": "ram-antivirus-cloud-security"
     }
@@ -549,11 +590,16 @@ def login_google_user(email: str, name: str, google_sub: str) -> Dict:
 # ── Token Verification ───────────────────────────────────────────────────────
 def verify_token(token: str) -> Dict:
     """
-    Verify and decode a JWT token.
+    Verify and decode a JWT token, including session revocation check.
     Returns the decoded payload or error.
     """
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        revoked_ms = get_user_tokens_revoked_at_ms(payload.get("user_id"))
+        if revoked_ms > 0:
+            token_iat_ms = payload.get("iat_ms") or (int(payload.get("iat", 0)) * 1000)
+            if token_iat_ms <= revoked_ms:
+                return {"valid": False, "error": "Session has been revoked by an administrator"}
         return {"valid": True, "payload": payload}
     except jwt.ExpiredSignatureError:
         return {"valid": False, "error": "Token has expired"}
@@ -653,7 +699,7 @@ def validate_ws_auth(raw_auth: str) -> Dict[str, Any]:
 
     # Check required permission for WebSocket streaming
     perms = payload.get("permissions", [])
-    if "dashboard:read" not in perms and payload.get("role") != "admin":
+    if "dashboard:read" not in perms and payload.get("role") not in ("admin", "super_admin"):
         return {
             "authorized": False,
             "error": "Forbidden: user lacks 'dashboard:read' permission"
@@ -671,20 +717,49 @@ def validate_ws_auth(raw_auth: str) -> Dict[str, Any]:
 
 
 # ── User Management ──────────────────────────────────────────────────────────
-def get_all_users() -> List[Dict]:
+def get_all_users(org_id: Optional[str] = None, search: Optional[str] = None) -> List[Dict]:
     conn = get_conn()
-    rows = conn.execute("SELECT * FROM users").fetchall()
-    conn.close()
-    return [
-        {"user_id": r["user_id"], "username": r["username"], "email": r["email"],
-         "role": r["role"], "full_name": r["full_name"], "created_at": r["created_at"],
-         "last_login": r["last_login"], "is_active": bool(r["is_active"])}
-        for r in rows
-    ]
+    try:
+        query = """
+            SELECT u.*, o.name AS company_name
+            FROM users u
+            LEFT JOIN organizations o ON u.org_id = o.org_id
+        """
+        clauses = []
+        params: List[Any] = []
+        if org_id:
+            clauses.append("u.org_id = ?")
+            params.append(org_id)
+        if search and search.strip():
+            term = f"%{search.strip().lower()}%"
+            clauses.append("(LOWER(u.username) LIKE ? OR LOWER(u.email) LIKE ? OR LOWER(COALESCE(u.full_name,'')) LIKE ?)")
+            params.extend([term, term, term])
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
+        query += " ORDER BY u.created_at DESC"
+        rows = conn.execute(query, tuple(params)).fetchall()
+        results = []
+        for r in rows:
+            d = dict(r)
+            results.append({
+                "user_id": d.get("user_id"),
+                "org_id": d.get("org_id"),
+                "company_name": d.get("company_name"),
+                "username": d.get("username"),
+                "email": d.get("email"),
+                "role": d.get("role"),
+                "full_name": d.get("full_name"),
+                "created_at": d.get("created_at"),
+                "last_login": d.get("last_login"),
+                "is_active": bool(d.get("is_active")),
+            })
+        return results
+    finally:
+        conn.close()
 
 
 def deactivate_user(username: str) -> Dict:
-    if username.strip().lower() in ("admin", "ramantivirus admin"):
+    if username.strip().lower() in ("admin", "superadmin", "ramantivirus", "ramantivirus admin"):
         return {"success": False, "error": "Cannot deactivate platform master admin account"}
     user = _get_user(username)
     if not user:

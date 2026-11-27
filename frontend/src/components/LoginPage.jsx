@@ -380,6 +380,69 @@ const LoginPage = ({ onLogin }) => {
               {isRegister ? 'Sign In' : 'Register Organization'}
             </button>
           </div>
+
+          {!isRegister && (
+            <div style={{
+              marginTop: '14px',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              border: '1px solid var(--border-subtle, #e2e8f0)',
+              backgroundColor: 'var(--surface-muted, #f8fafc)',
+              fontSize: '12px',
+              color: 'var(--text-secondary, #475569)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary, #0f172a)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Shield size={13} style={{ color: 'var(--accent-orange, #f06a1a)' }} />
+                  Evaluation &amp; Admin Test Credentials
+                </span>
+                <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)' }}>Click to auto-login</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[
+                  { label: 'Super Admin', user: 'superadmin', pass: 'RamSuperAdmin!2026#' },
+                  { label: 'Tenant Admin', user: 'admin', pass: 'admin123' },
+                  { label: 'Analyst', user: 'analyst1', pass: 'analyst123' }
+                ].map((cred) => (
+                  <div
+                    key={cred.user}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '6px 8px',
+                      borderRadius: '6px',
+                      backgroundColor: 'var(--surface-card, #ffffff)',
+                      border: '1px solid var(--border-subtle, #e2e8f0)'
+                    }}
+                  >
+                    <div>
+                      <strong style={{ color: 'var(--text-primary, #0f172a)' }}>{cred.label}:</strong>{' '}
+                      <code style={{ fontFamily: 'monospace' }}>{cred.user}</code> /{' '}
+                      <code style={{ fontFamily: 'monospace' }}>{cred.pass}</code>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => demoLogin(cred.label, cred.user, cred.pass)}
+                      style={{
+                        padding: '3px 9px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        borderRadius: '5px',
+                        border: 'none',
+                        backgroundColor: 'var(--accent-orange, #f06a1a)',
+                        color: '#ffffff',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {activeDemo === cred.label && loading ? 'Signing in...' : 'Use'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </form>
       </div>
     </div>

@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS organizations (
     name VARCHAR(255) NOT NULL,
     external_id VARCHAR(64) UNIQUE NOT NULL,
     industry VARCHAR(128) DEFAULT 'Technology',
+    status VARCHAR(32) DEFAULT 'active',
+    plan VARCHAR(64) DEFAULT 'standard',
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -26,7 +28,8 @@ CREATE TABLE IF NOT EXISTS users (
     full_name VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMPTZ,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    tokens_revoked_at_ms BIGINT DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -181,6 +184,22 @@ CREATE TABLE IF NOT EXISTS alert_log (
     email_sent BOOLEAN DEFAULT FALSE,
     recipient VARCHAR(255)
 );
+
+-- 11. IMMUTABLE PLATFORM SUPER ADMIN AUDIT LEDGER
+CREATE TABLE IF NOT EXISTS platform_audit_logs (
+    log_id VARCHAR(64) PRIMARY KEY,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actor_user_id VARCHAR(64),
+    actor_username VARCHAR(128),
+    actor_role VARCHAR(32),
+    action VARCHAR(128) NOT NULL,
+    target_type VARCHAR(64),
+    target_id VARCHAR(128),
+    details_json TEXT,
+    ip_address VARCHAR(64),
+    status VARCHAR(32) DEFAULT 'success'
+);
+CREATE INDEX IF NOT EXISTS idx_platform_audit_ts ON platform_audit_logs(timestamp DESC);
 
 -- SEED BASELINE MASTER ACCOUNTS:
 -- Master Admin (Password: admin123)

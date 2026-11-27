@@ -36,6 +36,7 @@ import RemediationTab from './components/RemediationTab';
 import UserManagementTab from './components/UserManagementTab';
 import DataSourcesTab from './components/DataSourcesTab';
 import WorkspaceSettingsTab from './components/WorkspaceSettingsTab';
+import SuperAdminConsole from './components/SuperAdminConsole';
 import { Toast, ErrorBoundary } from './components/SharedComponents';
 import { API_URL, WS_URL, WS_SUPPORTED } from './config';
 import './index.css';
@@ -577,6 +578,25 @@ const App = () => {
             handleLogin(userData, tokenData);
           }}
         />
+      </div>
+    );
+  }
+
+  if (user?.role === 'super_admin') {
+    return (
+      <div className={theme === 'dark' ? 'theme-dark' : ''}>
+        <SuperAdminConsole
+          user={user}
+          onLogout={handleLogout}
+          showToast={showToast}
+          theme={theme}
+          onToggleTheme={() => {
+            const next = theme === 'dark' ? 'light' : 'dark';
+            setTheme(next);
+            localStorage.setItem('theme', next);
+          }}
+        />
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </div>
     );
   }
